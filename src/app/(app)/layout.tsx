@@ -23,8 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { UserPlus, Send } from 'lucide-react'; 
-// Removed Badge import as it's no longer used here
+import { UserPlus, Send } from 'lucide-react';
 
 function AppSidebar() {
   const pathname = usePathname();
@@ -94,13 +93,13 @@ function AppHeader() {
             <Link href="/chat">
               <Send className="h-5 w-5" />
               <span className="sr-only">Chat</span>
-              {/* Notification Badge removed. Dynamic notifications require backend. */}
+              {/* Dynamic notification badge would require backend logic */}
             </Link>
           </Button>
         )}
         <ThemeToggleButton />
         <Button asChild>
-            <Link href="/signup"> {/* Placeholder link */}
+            <Link href="/auth/signup"> {/* Updated link to new signup page */}
                 <UserPlus className="mr-2 h-4 w-4 md:hidden" /> {/* Icon for mobile */}
                 <span className="hidden md:inline">Sign Up</span> {/* Text for desktop */}
             </Link>
