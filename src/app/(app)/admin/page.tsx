@@ -25,6 +25,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger, // Added AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -33,7 +34,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger, // Added DialogTrigger
+  DialogTrigger, 
   DialogClose
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import Image from 'next/image';
 import type { Story, StoryChapter, UserProfile } from '@/types'; // Using global types
 import { mockStories as initialMockStories } from '@/lib/mock-data'; // Import shared mock data
-import { Switch } from "@/components/ui/switch"; // Added Switch
+import { Switch } from "@/components/ui/switch";
 
 // Type for form data, closely related to the global Story type
 type StoryFormDataFields = Omit<Story, 'id' | 'chapters' | 'createdAt' | 'updatedAt' | 'authorId' | 'isTrending' | 'isCurated'> & { id?: string };
@@ -86,7 +87,10 @@ export default function AdminPage() {
   useEffect(() => {
     const lowerSearchTerm = searchTerm.toLowerCase();
     setFilteredStories(
-      stories.filter(story => story.title.toLowerCase().includes(lowerSearchTerm) || story.author.toLowerCase().includes(lowerSearchTerm))
+      stories.filter(story => 
+        story.title.toLowerCase().includes(lowerSearchTerm) || 
+        story.author.toLowerCase().includes(lowerSearchTerm)
+      )
     );
   }, [searchTerm, stories]);
   
@@ -102,7 +106,7 @@ export default function AdminPage() {
     setStories(prevStories => prevStories.filter(story => story.id !== storyId));
     toast({
       title: "Story Deleted (Simulated)",
-      description: `Story with ID ${storyId} has been removed from this view. Changes reflected in shared mock data.`,
+      description: `Story with ID ${storyId} has been removed. Changes reflected in shared mock data.`,
       variant: "default"
     });
   };
@@ -115,9 +119,11 @@ export default function AdminPage() {
   const handleSaveStory = (formData: StoryFormDataFields & {id?: string}) => {
     const fullFormData: Partial<Story> = {
         ...formData,
-        authorId: formData.authorId || `author-${Date.now()}`,
+        authorId: formData.authorId || `author-${Date.now()}`, // Use existing authorId or generate new
         createdAt: formData.id ? stories.find(s => s.id === formData.id)?.createdAt || new Date().toISOString() : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        isTrending: formData.category === 'Trending',
+        // views and rating would typically not be set here, but handled by other mechanisms
     };
 
     if (formData.id) { 
@@ -131,8 +137,11 @@ export default function AdminPage() {
             id: `story-${Date.now()}`,
             chapters: [], 
             publishedStatus: formData.publishedStatus || 'Draft',
-            status: 'Ongoing', 
+            status: 'Ongoing', // Default narrative status
             category: formData.category || 'General',
+            // Default views & rating for new story
+            views: 0,
+            rating: 0,
         } as Story;
         setStories(prevStories => [newStory, ...prevStories]);
         toast({ title: "Story Added (Simulated)", description: `"${formData.title}" has been added as a draft.` });
@@ -251,7 +260,7 @@ export default function AdminPage() {
   };
 
   const handleOpenChapterManagement = (storyToManage: Story) => {
-    setStoryForChapterManagement(JSON.parse(JSON.stringify(storyToManage))); 
+    setStoryForChapterManagement(JSON.parse(JSON.stringify(storyToManage))); // Deep clone for isolated editing
     setIsManageChaptersDialogOpen(true);
   };
 
@@ -268,6 +277,7 @@ export default function AdminPage() {
       chapters: [...storyForChapterManagement.chapters, newChapter]
     };
     setStoryForChapterManagement(updatedStory);
+    // This change should also be reflected in the main `stories` state if to persist across Admin UI
     setStories(prevStories => 
       prevStories.map(s => s.id === updatedStory.id ? updatedStory : s)
     );
@@ -285,14 +295,15 @@ export default function AdminPage() {
     if (!storyForChapterManagement || editingChapterIndex === null || !editingChapter) return;
 
     const updatedChapters = [...storyForChapterManagement.chapters];
-    updatedChapters[editingChapterIndex] = { ...editingChapter, ...currentChapterData, order: editingChapter.order };
+    updatedChapters[editingChapterIndex] = { ...editingChapter, ...currentChapterData, order: editingChapter.order }; // Use order from editingChapter
     
     const updatedStory = {
       ...storyForChapterManagement,
       chapters: updatedChapters
     };
     
-    setStoryForChapterManagement(updatedStory);
+    setStoryForChapterManagement(updatedStory); // Update state for the ManageChapters dialog
+    // Propagate change to the main stories list
     setStories(prevStories => 
       prevStories.map(s => s.id === updatedStory.id ? updatedStory : s)
     );
@@ -309,7 +320,7 @@ export default function AdminPage() {
 
   const handleRemoveChapter = () => {
     if (!storyForChapterManagement || !chapterToDelete || chapterToDelete.storyId !== storyForChapterManagement.id) {
-      setChapterToDelete(null);
+      setChapterToDelete(null); // Clear deletion state if conditions not met
       return;
     }
 
@@ -323,13 +334,14 @@ export default function AdminPage() {
       chapters: updatedChapters
     };
 
-    setStoryForChapterManagement(updatedStory);
+    setStoryForChapterManagement(updatedStory); // Update dialog's internal story state
+    // Propagate change to the main stories list
     setStories(prevStories => 
       prevStories.map(s => s.id === updatedStory.id ? updatedStory : s)
     );
     
     toast({title: "Chapter Removed (Locally)", description: `Chapter "${chapterToRemove?.title || 'N/A'}" removed from "${updatedStory.title}".`});
-    setChapterToDelete(null);
+    setChapterToDelete(null); // Clear deletion state after action
   };
 
 
@@ -695,3 +707,5 @@ export default function AdminPage() {
 }
 
       
+
+    
