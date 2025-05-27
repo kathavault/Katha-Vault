@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, SendHorizontal, Paperclip, Smile, Search as SearchIcon, Loader2 } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { MessageSquare, SendHorizontal, Paperclip, Smile, Search as SearchIcon, Loader2, MoreVertical, UserX } from 'lucide-react';
 import { format, formatDistanceToNowStrict } from 'date-fns';
 
 const mockCurrentUser: ChatUser = {
@@ -72,7 +73,9 @@ export default function ChatPage() {
     const mockData = generateInitialConversationsData();
     setConversations(mockData);
     if (mockData.length > 0) {
-      setSelectedConversationId(mockData[0].id);
+      // Sort by lastMessageTimestamp before selecting the first one
+      const sortedData = [...mockData].sort((a, b) => new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime());
+      setSelectedConversationId(sortedData[0].id);
     }
     setIsLoading(false);
   }, []);
@@ -116,6 +119,12 @@ export default function ChatPage() {
     } catch (error) {
       return 'Invalid date';
     }
+  };
+
+  const handleBlockUser = (userId: string, username: string) => {
+    console.log(`Attempting to block user: ${username} (ID: ${userId})`);
+    // Here you would typically call an API to block the user
+    alert(`User ${username} would be blocked. (This is a UI placeholder)`);
   };
 
   if (isLoading) {
@@ -179,15 +188,36 @@ export default function ChatPage() {
       <main className="w-2/3 flex flex-col bg-background">
         {selectedConversation ? (
           <>
-            <CardHeader className="p-4 border-b flex flex-row items-center space-x-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={selectedConversation.participant.avatarUrl} alt={selectedConversation.participant.username} data-ai-hint="user avatar chat"/>
-                <AvatarFallback>{selectedConversation.participant.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="font-semibold text-lg">{selectedConversation.participant.username}</p>
-                <p className="text-xs text-muted-foreground">Online</p> {/* Placeholder status */}
+            <CardHeader className="p-4 border-b flex flex-row items-center justify-between space-x-3">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={selectedConversation.participant.avatarUrl} alt={selectedConversation.participant.username} data-ai-hint="user avatar chat"/>
+                  <AvatarFallback>{selectedConversation.participant.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-semibold text-lg">{selectedConversation.participant.username}</p>
+                  <p className="text-xs text-muted-foreground">Online</p> {/* Placeholder status */}
+                </div>
               </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-5 w-5" />
+                    <span className="sr-only">Chat options</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => console.log(`View profile of ${selectedConversation.participant.username}`)}>
+                    View Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleBlockUser(selectedConversation.participant.id, selectedConversation.participant.username)}>
+                    <UserX className="mr-2 h-4 w-4" /> Block User
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => console.log(`Report user ${selectedConversation.participant.username}`)}>
+                    Report User
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </CardHeader>
             
             <ScrollArea className="flex-grow p-4 space-y-4">
@@ -256,5 +286,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
-    

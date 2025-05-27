@@ -5,13 +5,13 @@ import { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { StoryCard } from "@/components/story-card";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"; // Added Card components
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"; // Added Avatar
-import type { Story, UserProfile } from "@/types"; // Added UserProfile
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { Story, UserProfile } from "@/types";
 import { Search as SearchIcon, Filter, Info, UserPlus, Users } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // Added Tabs
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Mock data - replace with actual data fetching
 const mockStories: Story[] = [
@@ -49,6 +49,23 @@ const mockStories: Story[] = [
     updatedAt: new Date().toISOString(),
     dataAihint: "lush jungle"
   },
+   {
+    id: '3',
+    title: 'The Alchemist of Moonhaven',
+    author: 'Seraphina Gold',
+    authorId: 'author3',
+    coverImage: 'https://placehold.co/300x450/B4317B/F7F2FA?text=Moonhaven',
+    description: 'In a city powered by moonlight, a young alchemist seeks a forbidden truth.',
+    tags: ['steampunk', 'mystery', 'alchemy'],
+    chapters: [{ id: 'c1', title: 'First Transmutation', content: '...', order: 1 }],
+    genre: 'Steampunk',
+    status: 'Completed',
+    rating: 4.2,
+    views: 12000,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    dataAihint: "mystical city"
+  },
 ];
 
 const mockUsers: UserProfile[] = [
@@ -76,6 +93,18 @@ const mockUsers: UserProfile[] = [
     favorites: [],
     submittedStories: [],
   },
+  {
+    id: 'author1',
+    username: 'Eleanor Vance',
+    email: 'eleanor@example.com',
+    avatarUrl: 'https://placehold.co/100x100/B4317B/FFFFFF?text=EV',
+    bio: 'Author of "The Whispers of Chronos". Fascinated by time and its mysteries.',
+    followers: 5000,
+    following: 10,
+    readingHistory: [],
+    favorites: [],
+    submittedStories: [{storyId: '1', title: 'The Whispers of Chronos'}],
+  },
 ];
 
 
@@ -97,9 +126,8 @@ const UserSearchCard: React.FC<{ user: UserProfile }> = ({ user }) => (
         <span className="mr-2">{user.followers} Followers</span>
         <span>{user.following} Following</span>
       </div>
-      <Button size="sm" variant="outline">
+      <Button size="sm" variant="outline" onClick={() => console.log(`Follow request to ${user.username}`)}>
         <UserPlus className="mr-2 h-4 w-4" /> Follow
-        {/* This button would trigger a follow action. Full implementation requires backend. */}
       </Button>
     </CardContent>
   </Card>
@@ -117,45 +145,54 @@ export default function SearchPage() {
   const [hasSearchedStories, setHasSearchedStories] = useState(false);
   const [hasSearchedUsers, setHasSearchedUsers] = useState(false);
 
-  const handleStorySearch = () => {
-    if (!storySearchTerm && filterGenre === 'all') {
+  const performStorySearch = () => {
+    if (!storySearchTerm.trim() && filterGenre === 'all') {
       setStoryResults([]);
       setHasSearchedStories(false);
       return;
     }
     setHasSearchedStories(true);
+    const searchTermLower = storySearchTerm.toLowerCase();
     const filtered = mockStories.filter(story => {
-      const termMatch = storySearchTerm.toLowerCase()
-        ? story.title.toLowerCase().includes(storySearchTerm.toLowerCase()) ||
-          story.author.toLowerCase().includes(storySearchTerm.toLowerCase()) ||
-          story.tags.some(tag => tag.toLowerCase().includes(storySearchTerm.toLowerCase()))
+      const termMatch = storySearchTermLower
+        ? story.title.toLowerCase().includes(searchTermLower) ||
+          story.author.toLowerCase().includes(searchTermLower) ||
+          story.tags.some(tag => tag.toLowerCase().includes(searchTermLower)) ||
+          story.description.toLowerCase().includes(searchTermLower)
         : true;
       const genreMatch = filterGenre !== 'all' ? story.genre.toLowerCase() === filterGenre.toLowerCase() : true;
       return termMatch && genreMatch;
     });
     setStoryResults(filtered);
   };
+  
+  // Trigger search when filter changes, if a search term exists or if it's not the 'all' filter
+  useEffect(() => {
+    if (storySearchTerm.trim() || filterGenre !== 'all') {
+      performStorySearch();
+    } else if (!storySearchTerm.trim() && filterGenre === 'all' && hasSearchedStories ) {
+      // If search term is cleared and filter is all, clear results if a search had been made
+      setStoryResults([]);
+      setHasSearchedStories(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterGenre, storySearchTerm]); // Added storySearchTerm to dependency array
 
   const handleUserSearch = () => {
-    if (!userSearchTerm) {
+    if (!userSearchTerm.trim()) {
       setUserResults([]);
       setHasSearchedUsers(false);
       return;
     }
     setHasSearchedUsers(true);
+    const searchTermLower = userSearchTerm.toLowerCase();
     const filtered = mockUsers.filter(user =>
-      user.username.toLowerCase().includes(userSearchTerm.toLowerCase()) ||
-      (user.email && user.email.toLowerCase().includes(userSearchTerm.toLowerCase()))
+      user.username.toLowerCase().includes(searchTermLower) ||
+      (user.email && user.email.toLowerCase().includes(searchTermLower))
     );
     setUserResults(filtered);
   };
   
-  useEffect(() => {
-    if(hasSearchedStories || storySearchTerm) {
-        handleStorySearch();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterGenre]); 
 
   return (
     <div className="space-y-6">
@@ -180,7 +217,7 @@ export default function SearchPage() {
                 className="pl-10 w-full"
                 value={storySearchTerm}
                 onChange={(e) => setStorySearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleStorySearch()}
+                onKeyDown={(e) => { if (e.key === 'Enter') performStorySearch(); }}
               />
             </div>
             <Select value={filterGenre} onValueChange={setFilterGenre}>
@@ -194,9 +231,14 @@ export default function SearchPage() {
                 <SelectItem value="Fantasy">Fantasy</SelectItem>
                 <SelectItem value="Steampunk">Steampunk</SelectItem>
                 <SelectItem value="Mystery">Mystery</SelectItem>
+                 <SelectItem value="Romance">Romance</SelectItem>
+                <SelectItem value="Thriller">Thriller</SelectItem>
+                <SelectItem value="Historical">Historical Fiction</SelectItem>
+                <SelectItem value="Horror">Horror</SelectItem>
+                <SelectItem value="Cyberpunk">Cyberpunk</SelectItem>
               </SelectContent>
             </Select>
-            <Button onClick={handleStorySearch} className="w-full sm:w-auto">
+            <Button onClick={performStorySearch} className="w-full sm:w-auto">
               <SearchIcon className="mr-2 h-4 w-4 sm:hidden" /> Search
             </Button>
           </div>
@@ -222,7 +264,7 @@ export default function SearchPage() {
             <Alert variant="default" className="mt-6">
                 <Info className="h-5 w-5" />
                 <AlertTitle>Search for Stories</AlertTitle>
-                <AlertDescription>Enter a term or select a filter.</AlertDescription>
+                <AlertDescription>Enter a term or select a filter to start.</AlertDescription>
             </Alert>
           )}
         </TabsContent>
@@ -237,7 +279,7 @@ export default function SearchPage() {
                 className="pl-10 w-full"
                 value={userSearchTerm}
                 onChange={(e) => setUserSearchTerm(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleUserSearch()}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleUserSearch(); }}
               />
             </div>
             <Button onClick={handleUserSearch} className="w-full sm:w-auto">
