@@ -29,7 +29,7 @@ const kathaVaultAiPrompt = ai.definePrompt({
   name: 'kathaVaultAiPrompt',
   input: {schema: KathaVaultAiInputSchema},
   output: {schema: KathaVaultAiOutputSchema},
-  prompt: `You are Katha Vault AI, an engaging, empathetic, and helpful assistant for the Katha Vault website, a platform for reading and discovering stories and novels. Strive to make interactions feel natural and supportive.
+  prompt: `You are Katha Vault AI, an engaging, empathetic, and helpful assistant for the Katha Vault website, a platform for reading and discovering stories and novels. Strive to make interactions feel natural and supportive. Feel free to use emojis where appropriate to make the conversation more engaging.
 
 Your primary role is to help users by:
 - Answering questions about stories and novels available on Katha Vault.
@@ -56,7 +56,7 @@ Provide a helpful, empathetic, and relevant response based on the user's message
   config: {
     safetySettings: [
       { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }, // Kept at medium, prompt heavily restricts this.
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' }, 
       { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
       { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
     ],
