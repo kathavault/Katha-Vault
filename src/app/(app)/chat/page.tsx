@@ -51,7 +51,7 @@ const mockCurrentUser: ChatUser = {
 const kathaVaultAiUser: ChatUser = {
   id: 'kathaVaultAi',
   username: 'Katha Vault AI',
-  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV',
+  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Default AI avatar
   dataAihint: 'brand logo K',
 };
 
@@ -67,10 +67,19 @@ const generateInitialConversationsData = (customAiName?: string | null, customAi
     lastMessageTimestamp: new Date().toISOString(),
     unreadCount: 0,
     messages: [
-      { id: 'aiMsg1', senderId: kathaVaultAiUser.id, text: "Hello! How can I help you with Katha Vault stories today? You can ask me about novels on the site or for suggestions. I can chat in English or Hindi! Feel free to use emojis to make our chat more engaging.  sympathique. Your goal is to be a friendly and helpful companion for users exploring Katha Vault.", timestamp: new Date().toISOString() },
+      { id: 'aiMsg1', senderId: kathaVaultAiUser.id, text: "Hello! How can I help you with Katha Vault stories today? You can ask me about novels on the site or for suggestions. I can chat in English or Hindi! Feel free to use emojis to make our chat more engaging. My goal is to be a friendly and helpful companion for users exploring Katha Vault.", timestamp: new Date().toISOString() },
     ],
   },
 ];
+
+// Mock data for active users bar
+const mockActiveUsersList: ChatUser[] = [
+  kathaVaultAiUser, // AI is always "active"
+  { id: 'activeUser1', username: 'ReaderRiley', avatarUrl: 'https://placehold.co/40x40/4CAF50/FFFFFF?text=RR', dataAihint: 'green circle avatar' },
+  { id: 'activeUser2', username: 'StoryFan', avatarUrl: 'https://placehold.co/40x40/FFC107/FFFFFF?text=SF', dataAihint: 'yellow circle avatar' },
+  { id: 'activeUser3', username: 'BookLover', avatarUrl: 'https://placehold.co/40x40/2196F3/FFFFFF?text=BL', dataAihint: 'blue circle avatar' },
+];
+
 
 export default function ChatPage() {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -90,6 +99,8 @@ export default function ChatPage() {
 
   const [conversationToClear, setConversationToClear] = useState<string | null>(null);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
+  
+  const [activeUsers, setActiveUsers] = useState<ChatUser[]>([]);
 
 
   useEffect(() => {
@@ -103,15 +114,35 @@ export default function ChatPage() {
     if (mockData.length > 0) {
       setSelectedConversationId(mockData[0].id);
     }
+
+    // Update mockActiveUsersList with customized AI details if any
+    const updatedActiveUsers = mockActiveUsersList.map(user => 
+      user.id === kathaVaultAiUser.id 
+      ? { ...user, username: storedNickname || kathaVaultAiUser.username, avatarUrl: storedAvatarDataUri || kathaVaultAiUser.avatarUrl } 
+      : user
+    );
+    setActiveUsers(updatedActiveUsers);
+
     setIsLoadingInitialData(false);
   }, []);
 
   useEffect(() => {
+    // Update AI details in conversations list and active users bar if they change
+    const updatedAiUserName = aiCustomNickname || kathaVaultAiUser.username;
+    const updatedAiAvatarUrl = aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl;
+
     setConversations(prevConvos => 
       prevConvos.map(convo => 
         convo.participant.id === kathaVaultAiUser.id 
-        ? { ...convo, participant: { ...convo.participant, username: aiCustomNickname || kathaVaultAiUser.username, avatarUrl: aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl } }
+        ? { ...convo, participant: { ...convo.participant, username: updatedAiUserName, avatarUrl: updatedAiAvatarUrl } }
         : convo
+      )
+    );
+    setActiveUsers(prevActiveUsers =>
+      prevActiveUsers.map(user =>
+        user.id === kathaVaultAiUser.id
+        ? { ...user, username: updatedAiUserName, avatarUrl: updatedAiAvatarUrl }
+        : user
       )
     );
   }, [aiCustomNickname, aiCustomAvatarDataUri]);
@@ -295,6 +326,25 @@ export default function ChatPage() {
             <Input placeholder="Search chats..." className="pl-8 h-9" disabled />
           </div>
         </CardHeader>
+
+        {/* Active Users Horizontal Bar */}
+        <div className="p-3 border-b">
+            <ScrollArea className="w-full whitespace-nowrap">
+                <div className="flex space-x-4 pb-2">
+                    {activeUsers.map(user => (
+                        <div key={user.id} className="flex-shrink-0 relative" title={user.username}>
+                            <Avatar className="h-10 w-10">
+                                <AvatarImage src={user.avatarUrl} alt={user.username} data-ai-hint={user.dataAihint || "user avatar active"} />
+                                <AvatarFallback>{user.username.substring(0,1).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
+                        </div>
+                    ))}
+                </div>
+            </ScrollArea>
+        </div>
+
+
         <ScrollArea className="flex-grow">
           {conversations.map(convo => (
             <div key={convo.id} className="relative group">
@@ -464,7 +514,8 @@ export default function ChatPage() {
                         dataAihint: displayedAiDataAihint
                     };
                 } else {
-                    participantToDisplay = selectedConversation.participant;
+                    // Fallback for other participants if user-to-user chat is added later
+                    participantToDisplay = selectedConversation.participant; 
                 }
 
                 return (
@@ -483,7 +534,7 @@ export default function ChatPage() {
                     <div className={cn(
                         "max-w-[70%] p-3 rounded-xl",
                         isCurrentUserMsg ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted text-muted-foreground rounded-bl-none',
-                        isAiMsg && 'no-select' // Added no-select for AI messages
+                        isAiMsg && 'no-select' 
                       )}>
                       <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                       <p className={`text-xs mt-1 ${isCurrentUserMsg ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70 text-left'}`}>
@@ -496,7 +547,6 @@ export default function ChatPage() {
                            <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "current user avatar"}/>
                            <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        {/* Online indicator for current user in messages */}
                         <span className="absolute bottom-0 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-background" />
                        </div>
                     )}
@@ -601,4 +651,3 @@ export default function ChatPage() {
     </div>
   );
 }
-

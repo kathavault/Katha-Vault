@@ -52,7 +52,7 @@ You can converse in both English and Hindi (and Hinglish). Respond in the langua
 
 User's current message: {{{userInput}}}
 
-Provide a helpful, empathetic, and relevant response based on the user's message, adhering to all the rules above.
+Provide a helpful, empathetic, and relevant response based on the user's message, adhering to all the rules above. Make the conversation feel natural and use emojis appropriately to enhance engagement.
 `,
   config: {
     safetySettings: [
@@ -75,4 +75,3 @@ const kathaVaultAiFlow = ai.defineFlow(
     return output!;
   }
 );
-
