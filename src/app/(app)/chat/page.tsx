@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, SendHorizontal, Paperclip, Smile, Search as SearchIcon } from 'lucide-react';
+import { MessageSquare, SendHorizontal, Paperclip, Smile, Search as SearchIcon, Loader2 } from 'lucide-react';
 import { format, formatDistanceToNowStrict } from 'date-fns';
 
 const mockCurrentUser: ChatUser = {
@@ -24,7 +24,7 @@ const mockOtherUsers: ChatUser[] = [
   { id: 'user3', username: 'PageTurnerPete', avatarUrl: 'https://placehold.co/40x40/82E0AA/FFFFFF?text=PP' },
 ];
 
-const initialConversationsData: ChatConversation[] = [
+const generateInitialConversationsData = (): ChatConversation[] => [
   {
     id: 'convo1',
     participant: mockOtherUsers[0],
@@ -62,10 +62,20 @@ const initialConversationsData: ChatConversation[] = [
 ];
 
 export default function ChatPage() {
-  const [conversations, setConversations] = useState<ChatConversation[]>(initialConversationsData);
-  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(initialConversationsData[0]?.id || null);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [currentMessage, setCurrentMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const mockData = generateInitialConversationsData();
+    setConversations(mockData);
+    if (mockData.length > 0) {
+      setSelectedConversationId(mockData[0].id);
+    }
+    setIsLoading(false);
+  }, []);
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
@@ -95,12 +105,12 @@ export default function ChatPage() {
               lastMessageTimestamp: newMessage.timestamp,
             }
           : convo
-      )
+      ).sort((a, b) => new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime())
     );
     setCurrentMessage('');
   };
   
-  const formatTimestamp = (isoString: string) => {
+  const formatDisplayTimestamp = (isoString: string) => {
     try {
       return formatDistanceToNowStrict(new Date(isoString), { addSuffix: true });
     } catch (error) {
@@ -108,6 +118,14 @@ export default function ChatPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-[calc(100vh-var(--header-height,100px))] items-center justify-center border rounded-lg shadow-lg bg-card">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="ml-3 text-lg text-muted-foreground">Loading chats...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-[calc(100vh-var(--header-height,100px))] border rounded-lg shadow-lg bg-card">
@@ -142,7 +160,7 @@ export default function ChatPage() {
                 <div className="flex justify-between items-center">
                   <p className="font-semibold truncate">{convo.participant.username}</p>
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatTimestamp(convo.lastMessageTimestamp)}
+                    {formatDisplayTimestamp(convo.lastMessageTimestamp)}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
@@ -230,6 +248,7 @@ export default function ChatPage() {
             <div className="text-center">
               <MessageSquare className="h-16 w-16 mx-auto mb-4" />
               <p className="text-lg">Select a chat to start messaging</p>
+              <p className="text-sm">Or, if no chats loaded, something went wrong.</p>
             </div>
           </div>
         )}
@@ -238,14 +257,4 @@ export default function ChatPage() {
   );
 }
 
-// Helper to define header height CSS variable (for calc in h-[calc(...)])
-// This would typically be in globals.css or a layout component,
-// but for a standalone page, we can ensure the class is used.
-// Assuming a header height of approx 60px from layout. Add this to main element style or globals
-// For this example, I'm using a placeholder var --header-height, which should be defined in globals or a parent layout.
-// Defaulting to 100px if not set, can be adjusted.
-// The class h-[calc(100vh-var(--header-height,100px))] in the main div handles this.
-// The actual AppLayout provides h-14 or h-[60px] for the header.
-// So, this chat page will take full height below the main app header.
-// No explicit header height var needed here if it's a child of AppLayout.
-
+    
