@@ -72,12 +72,9 @@ const generateInitialConversationsData = (customAiName?: string | null, customAi
   },
 ];
 
-// Mock data for active users bar
+// Updated mock data for active users bar - only Katha Vault AI
 const mockActiveUsersList: ChatUser[] = [
   kathaVaultAiUser, // AI is always "active"
-  { id: 'activeUser1', username: 'ReaderRiley', avatarUrl: 'https://placehold.co/40x40/4CAF50/FFFFFF?text=RR', dataAihint: 'green circle avatar' },
-  { id: 'activeUser2', username: 'StoryFan', avatarUrl: 'https://placehold.co/40x40/FFC107/FFFFFF?text=SF', dataAihint: 'yellow circle avatar' },
-  { id: 'activeUser3', username: 'BookLover', avatarUrl: 'https://placehold.co/40x40/2196F3/FFFFFF?text=BL', dataAihint: 'blue circle avatar' },
 ];
 
 
@@ -119,7 +116,7 @@ export default function ChatPage() {
     const updatedActiveUsers = mockActiveUsersList.map(user => 
       user.id === kathaVaultAiUser.id 
       ? { ...user, username: storedNickname || kathaVaultAiUser.username, avatarUrl: storedAvatarDataUri || kathaVaultAiUser.avatarUrl } 
-      : user
+      : user // This branch is now less relevant as only AI is in the list, but good for future expansion
     );
     setActiveUsers(updatedActiveUsers);
 
@@ -651,3 +648,5 @@ export default function ChatPage() {
     </div>
   );
 }
+
+    
