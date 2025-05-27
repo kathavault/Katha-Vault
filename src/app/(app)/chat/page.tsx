@@ -19,7 +19,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"; // DialogTrigger removed as it's implicitly handled by DialogTrigger
+  DialogTrigger, 
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,7 +67,7 @@ const generateInitialConversationsData = (customAiName?: string | null, customAi
     lastMessageTimestamp: new Date().toISOString(),
     unreadCount: 0,
     messages: [
-      { id: 'aiMsg1', senderId: kathaVaultAiUser.id, text: "Hello! How can I help you with Katha Vault stories today? You can ask me about novels on the site or for suggestions. I can chat in English or Hindi!", timestamp: new Date().toISOString() },
+      { id: 'aiMsg1', senderId: kathaVaultAiUser.id, text: "Hello! How can I help you with Katha Vault stories today? You can ask me about novels on the site or for suggestions. I can chat in English or Hindi! Feel free to use emojis to make our chat more engaging.  sympathique. Your goal is to be a friendly and helpful companion for users exploring Katha Vault.", timestamp: new Date().toISOString() },
     ],
   },
 ];
@@ -482,7 +483,7 @@ export default function ChatPage() {
                     <div className={cn(
                         "max-w-[70%] p-3 rounded-xl",
                         isCurrentUserMsg ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted text-muted-foreground rounded-bl-none',
-                        isAiMsg && 'no-select'
+                        isAiMsg && 'no-select' // Added no-select for AI messages
                       )}>
                       <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                       <p className={`text-xs mt-1 ${isCurrentUserMsg ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70 text-left'}`}>
