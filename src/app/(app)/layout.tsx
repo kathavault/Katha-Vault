@@ -23,7 +23,8 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { UserPlus, Send } from 'lucide-react'; // Added Send icon
+import { UserPlus, Send } from 'lucide-react'; 
+import { Badge } from '@/components/ui/badge'; // Added Badge for notification
 
 function AppSidebar() {
   const pathname = usePathname();
@@ -89,10 +90,14 @@ function AppHeader() {
       </div>
       <div className="flex items-center gap-2">
         {isHomePage && (
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/chat"> {/* Placeholder link for chat */}
+          <Button variant="ghost" size="icon" asChild className="relative">
+            <Link href="/chat">
               <Send className="h-5 w-5" />
               <span className="sr-only">Chat</span>
+              {/* Static Notification Badge Placeholder */}
+              <Badge variant="destructive" className="absolute -top-1 -right-1 h-3 w-3 p-0 flex items-center justify-center rounded-full text-xs">
+                {/* For a number: 1, or leave empty for a dot */}
+              </Badge>
             </Link>
           </Button>
         )}

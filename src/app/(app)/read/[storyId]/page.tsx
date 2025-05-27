@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from 'react';
-import { useParams, useRouter } from 'next/navigation'; // Added useRouter
+import { useParams, useRouter } from 'next/navigation'; 
 import type { Story, StoryChapter } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import Image from "next/image";
 import { 
-  ChevronLeft, ChevronRight, Settings2, Minus, Plus, Sun, Moon, Bookmark, Share2, MessageCircle, Star, Send, ThumbsUp, ThumbsDown, AlertTriangle, Loader2 as LoaderIcon // Renamed Loader2 to LoaderIcon
+  ChevronLeft, ChevronRight, Settings2, Minus, Plus, Sun, Moon, Bookmark, Share2, MessageCircle, Star, Send, ThumbsUp, ThumbsDown, AlertTriangle, Loader2 as LoaderIcon
 } from 'lucide-react'; 
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
@@ -21,8 +21,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { mockStories } from '@/lib/mock-data'; // Import shared mock data
-import { cn } from "@/lib/utils"; // Import cn utility
+import { mockStories } from '@/lib/mock-data'; 
+import { cn } from "@/lib/utils"; 
 
 
 export default function ReadingPage() {
@@ -37,6 +37,7 @@ export default function ReadingPage() {
   const [commentText, setCommentText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [storyNotFound, setStoryNotFound] = useState(false);
+  const [userRating, setUserRating] = useState(0); // For user's submitted rating
 
   useEffect(() => {
     setIsLoading(true);
@@ -50,8 +51,18 @@ export default function ReadingPage() {
       setStoryNotFound(true);
     }
     setCurrentChapterIndex(0); 
+    setUserRating(0); // Reset user rating when story changes
     setIsLoading(false);
   }, [storyId]);
+
+  const handleRatingSubmit = (rating: number) => {
+    setUserRating(rating);
+    // In a real app, you'd send this to a backend
+    toast({
+      title: "Rating Submitted (Simulated)",
+      description: `You rated this story ${rating} out of 5 stars.`,
+    });
+  };
 
   if (isLoading) {
     return (
@@ -84,7 +95,7 @@ export default function ReadingPage() {
     );
   }
 
-  if (!story) { // Should be caught by storyNotFound, but as a fallback
+  if (!story) { 
     return <p>An unexpected error occurred.</p>;
   }
 
@@ -179,6 +190,23 @@ export default function ReadingPage() {
                             <span className={`font-semibold ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>{story.rating?.toFixed(1)}</span>
                             <span className={`text-xs ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>({story.views} views)</span>
                         </div>
+                        {/* Placeholder for User Rating Input */}
+                        <div className="mt-3">
+                          <p className={`text-sm font-medium ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'} mb-1`}>Rate this story:</p>
+                          <div className="flex items-center">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Button
+                                key={star}
+                                variant="ghost"
+                                size="icon"
+                                className={`p-1 h-7 w-7 ${readingTheme === 'light' ? 'text-gray-500 hover:text-yellow-500' : 'text-gray-400 hover:text-yellow-400'} ${userRating >= star ? (readingTheme === 'light' ? 'text-yellow-500 fill-yellow-500' : 'text-yellow-400 fill-yellow-400') : ''}`}
+                                onClick={() => handleRatingSubmit(star)}
+                              >
+                                <Star className="h-5 w-5" />
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
                         <div className="flex flex-wrap gap-2 mt-3">
                             {story.tags.map(tag => <Badge key={tag} variant={readingTheme === 'dark' ? "secondary" : "default"} className="text-xs">{tag}</Badge>)}
                         </div>
@@ -231,7 +259,11 @@ export default function ReadingPage() {
             </header>
             
             <ScrollArea className="h-auto max-h-[calc(100vh-300px)] md:max-h-[calc(100vh-250px)]"> 
-              <article className="p-4 md:p-6 prose prose-sm sm:prose lg:prose-lg max-w-none no-select" style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}>
+              <article className={cn(
+                  "p-4 md:p-6 prose prose-sm sm:prose lg:prose-lg max-w-none",
+                  "no-select" // Class to prevent text selection
+                )} 
+                style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}>
                 {currentChapter.content.split('\n').map((paragraph, index) => (
                   paragraph.trim() !== "" && <p key={index} className="mb-4">{paragraph}</p>
                 ))}
@@ -271,7 +303,7 @@ export default function ReadingPage() {
               </div>
             </form>
           </CardContent>
-          <CardContent className="mt-6 border-t pt-6 ${readingTheme === 'light' ? 'border-gray-200' : 'border-gray-700'}">
+          <CardContent className={`mt-6 border-t pt-6 ${readingTheme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>
              <h3 className={`text-md font-semibold mb-3 ${readingTheme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>Comments (Placeholder)</h3>
              <div className="space-y-4">
                 <div className="flex items-start space-x-3">
