@@ -34,7 +34,7 @@ const mockCurrentUser: ChatUser = {
 const kathaVaultAiUser: ChatUser = {
   id: 'kathaVaultAi',
   username: 'Katha Vault AI',
-  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV',
+  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Default, will be overridden by localStorage if set
   dataAihint: 'brand logo K',
 };
 
@@ -65,19 +65,19 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const [aiCustomNickname, setAiCustomNickname] = useState<string>('');
-  const [aiCustomAvatarUrl, setAiCustomAvatarUrl] = useState<string>('');
+  const [aiCustomAvatarDataUri, setAiCustomAvatarDataUri] = useState<string>(''); // Store Data URI
   const [isEditingAiProfile, setIsEditingAiProfile] = useState(false);
   const [tempNickname, setTempNickname] = useState('');
-  const [tempAvatarUrl, setTempAvatarUrl] = useState('');
+  const [tempAvatarDataUri, setTempAvatarDataUri] = useState<string>('');
 
 
   useEffect(() => {
     const storedNickname = localStorage.getItem('kathaAiNickname');
-    const storedAvatarUrl = localStorage.getItem('kathaAiAvatarUrl');
+    const storedAvatarDataUri = localStorage.getItem('kathaAiAvatarDataUri');
     if (storedNickname) setAiCustomNickname(storedNickname);
-    if (storedAvatarUrl) setAiCustomAvatarUrl(storedAvatarUrl);
+    if (storedAvatarDataUri) setAiCustomAvatarDataUri(storedAvatarDataUri);
 
-    const mockData = generateInitialConversationsData(storedNickname, storedAvatarUrl);
+    const mockData = generateInitialConversationsData(storedNickname, storedAvatarDataUri);
     setConversations(mockData);
     if (mockData.length > 0) {
       setSelectedConversationId(mockData[0].id);
@@ -86,15 +86,14 @@ export default function ChatPage() {
   }, []);
 
   useEffect(() => {
-    // Update conversation participant if AI profile changes
     setConversations(prevConvos => 
       prevConvos.map(convo => 
         convo.participant.id === kathaVaultAiUser.id 
-        ? { ...convo, participant: { ...convo.participant, username: aiCustomNickname || kathaVaultAiUser.username, avatarUrl: aiCustomAvatarUrl || kathaVaultAiUser.avatarUrl } }
+        ? { ...convo, participant: { ...convo.participant, username: aiCustomNickname || kathaVaultAiUser.username, avatarUrl: aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl } }
         : convo
       )
     );
-  }, [aiCustomNickname, aiCustomAvatarUrl]);
+  }, [aiCustomNickname, aiCustomAvatarDataUri]);
 
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
@@ -185,16 +184,34 @@ export default function ChatPage() {
 
   const handleOpenEditAiProfileDialog = () => {
     setTempNickname(aiCustomNickname || kathaVaultAiUser.username);
-    setTempAvatarUrl(aiCustomAvatarUrl || kathaVaultAiUser.avatarUrl);
+    setTempAvatarDataUri(aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl);
     setIsEditingAiProfile(true);
+  };
+
+  const handleAvatarFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setTempAvatarDataUri(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // Optionally reset to default or keep current if selection is cancelled
+      setTempAvatarDataUri(aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl); 
+    }
   };
 
   const handleSaveAiProfile = (e: FormEvent) => {
     e.preventDefault();
     setAiCustomNickname(tempNickname);
-    setAiCustomAvatarUrl(tempAvatarUrl);
     localStorage.setItem('kathaAiNickname', tempNickname);
-    localStorage.setItem('kathaAiAvatarUrl', tempAvatarUrl);
+    
+    if (tempAvatarDataUri) {
+      setAiCustomAvatarDataUri(tempAvatarDataUri);
+      localStorage.setItem('kathaAiAvatarDataUri', tempAvatarDataUri);
+    }
+    
     setIsEditingAiProfile(false);
     toast({ title: "AI Profile Updated", description: "Katha Vault AI's appearance has been updated for you." });
   };
@@ -210,8 +227,8 @@ export default function ChatPage() {
   }
 
   const displayedAiName = aiCustomNickname || kathaVaultAiUser.username;
-  const displayedAiAvatar = aiCustomAvatarUrl || kathaVaultAiUser.avatarUrl;
-  const displayedAiDataAihint = kathaVaultAiUser.dataAihint; // Base hint, as custom avatar is a URL
+  const displayedAiAvatar = aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl;
+  const displayedAiDataAihint = kathaVaultAiUser.dataAihint;
 
   return (
     <div className="flex h-[calc(100vh-var(--header-height,100px))] border rounded-lg shadow-lg bg-card">
@@ -320,18 +337,28 @@ export default function ChatPage() {
                           />
                         </div>
                         <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="ai-avatar-url" className="text-right">
-                            Avatar URL
+                          <Label htmlFor="ai-avatar-file" className="text-right">
+                            Avatar
                           </Label>
                           <Input
-                            id="ai-avatar-url"
-                            type="url"
-                            value={tempAvatarUrl}
-                            onChange={(e) => setTempAvatarUrl(e.target.value)}
+                            id="ai-avatar-file"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarFileChange}
                             className="col-span-3"
-                            placeholder={kathaVaultAiUser.avatarUrl}
                           />
                         </div>
+                        {tempAvatarDataUri && (
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <div className="col-start-2 col-span-3">
+                                     <Label className="text-xs text-muted-foreground">Preview:</Label>
+                                    <Avatar className="mt-1 h-20 w-20">
+                                        <AvatarImage src={tempAvatarDataUri} alt="Avatar Preview" data-ai-hint="avatar preview" />
+                                        <AvatarFallback>??</AvatarFallback>
+                                    </Avatar>
+                                </div>
+                            </div>
+                        )}
                       </div>
                       <DialogFooter>
                         <Button type="submit"><Save className="mr-2 h-4 w-4"/>Save Changes</Button>
@@ -357,6 +384,7 @@ export default function ChatPage() {
                         dataAihint: displayedAiDataAihint
                     };
                 } else {
+                    // Should not happen with current AI-only setup, but good for future
                     participantToDisplay = selectedConversation.participant;
                 }
 
@@ -442,3 +470,4 @@ export default function ChatPage() {
     </div>
   );
 }
+
