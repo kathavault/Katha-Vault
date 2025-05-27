@@ -1,5 +1,6 @@
+
 import type { NavItem } from '@/types';
-import { Home, Library, Search, UserCircle2, UploadCloud, Sparkles, Settings2 } from 'lucide-react';
+import { Home, Library, Search, UserCircle2, UploadCloud, Sparkles, Settings2, ShieldCheck } from 'lucide-react'; // Added ShieldCheck for Admin
 
 export const siteConfig = {
   name: 'Katha Vault',
@@ -41,5 +42,11 @@ export const siteConfig = {
       href: '/account',
       icon: UserCircle2,
     },
+    {
+      title: 'Admin Panel', // New Admin Panel Link
+      href: '/admin',
+      icon: ShieldCheck, 
+    }
   ] satisfies NavItem[],
 };
+

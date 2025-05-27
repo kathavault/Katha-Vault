@@ -4,6 +4,7 @@ export type StoryChapter = {
   title: string;
   content: string; // Markdown or plain text
   order: number;
+  // chapterImageUrl?: string; // Optional: if you want small images per chapter
 };
 
 export type Story = {
@@ -24,7 +25,7 @@ export type Story = {
   category?: 'Trending' | 'Novel' | 'ShortStory' | 'Curated' | 'Romance' | 'SciFi' | string; // Made category more flexible
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
-  dataAihint?: string; // Optional for StoryCard
+  dataAihint?: string; // Optional for StoryCard and other images
 };
 
 export type UserProfile = {

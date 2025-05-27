@@ -16,10 +16,10 @@ const KCircleLogo = ({ className }: { className?: string }) => (
     strokeLinejoin="round"
   >
     <circle cx="12" cy="12" r="10" />
-    <path d="M10.5 17l-2.5-5M10.5 7l-2.5 5" />
-    <path d="M8 12h5.5" />
-    <path d="M13.5 12l2.5 5" />
-    <path d="M13.5 12l2.5-5" />
+    <path d="M10.5 17l-2.5-5M10.5 7l-2.5 5" /> {/* Left part of K */}
+    <path d="M8 12h5.5" /> {/* Middle part of K */}
+    <path d="M13.5 12l2.5 5" /> {/* Top-right part of K's leg */}
+    <path d="M13.5 12l2.5-5" /> {/* Bottom-right part of K's leg */}
   </svg>
 );
 
