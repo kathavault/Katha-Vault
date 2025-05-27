@@ -1,5 +1,4 @@
 
-import Link from 'next/link';
 import { siteConfig } from '@/config/site';
 import { cn } from '@/lib/utils';
 
@@ -24,11 +23,11 @@ const KCircleLogo = ({ className }: { className?: string }) => (
 );
 
 
-export function Logo({ collapsed } : { collapsed?: boolean }) {
+export function Logo({ collapsed, className }: { collapsed?: boolean, className?: string }) {
   return (
-    <Link href="/" className="flex items-center gap-2 text-lg font-semibold text-primary px-2">
+    <div className={cn("flex items-center gap-2 text-lg font-semibold text-primary px-2", className)}>
       <KCircleLogo />
       {!collapsed && <span className="truncate">{siteConfig.name}</span>}
-    </Link>
+    </div>
   );
 }

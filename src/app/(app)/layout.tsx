@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { UserPlus, Send } from 'lucide-react';
+import { UserPlus, Send, Badge } from 'lucide-react';
 
 function AppSidebar() {
   const pathname = usePathname();
@@ -32,7 +32,9 @@ function AppSidebar() {
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
       <SidebarHeader>
-        <Logo collapsed={!open} />
+        <Link href="/">
+          <Logo collapsed={!open} />
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <ScrollArea className="h-full">
@@ -84,7 +86,9 @@ function AppHeader() {
       <div className="flex-1 md:flex md:justify-center">
         {/* Logo for mobile, centered on desktop */}
         <div className="md:absolute md:left-1/2 md:-translate-x-1/2">
-          <Logo collapsed={true}/> {/* Always show collapsed (icon only) logo in header */}
+          <Link href="/">
+            <Logo collapsed={true}/> {/* Always show collapsed (icon only) logo in header */}
+          </Link>
         </div>
       </div>
       <div className="flex items-center gap-2">
@@ -93,15 +97,19 @@ function AppHeader() {
             <Link href="/chat">
               <Send className="h-5 w-5" />
               <span className="sr-only">Chat</span>
-              {/* Dynamic notification badge would require backend logic */}
+              {/* Static placeholder for notification, real notifications need backend */}
+              {/* <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+              </span> */}
             </Link>
           </Button>
         )}
         <ThemeToggleButton />
         <Button asChild>
-            <Link href="/auth/signup"> {/* Updated link to new signup page */}
-                <UserPlus className="mr-2 h-4 w-4 md:hidden" /> {/* Icon for mobile */}
-                <span className="hidden md:inline">Sign Up</span> {/* Text for desktop */}
+            <Link href="/auth/signup">
+                <UserPlus className="mr-2 h-4 w-4 md:hidden" />
+                <span className="hidden md:inline">Sign Up</span>
             </Link>
         </Button>
       </div>
