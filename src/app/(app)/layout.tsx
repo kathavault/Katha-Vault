@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { LogIn, Send } from 'lucide-react'; // Changed UserPlus to LogIn, removed unused Badge
+import { LogIn, Send } from 'lucide-react'; 
 
 function AppSidebar() {
   const pathname = usePathname();
