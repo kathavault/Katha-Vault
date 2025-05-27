@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { toast } from '@/hooks/use-toast';
+import { cn } from "@/lib/utils"; // Added cn import
 
 const mockCurrentUser: ChatUser = {
   id: 'currentUser',
@@ -51,8 +52,8 @@ const mockCurrentUser: ChatUser = {
 const kathaVaultAiUser: ChatUser = {
   id: 'kathaVaultAi',
   username: 'Katha Vault AI',
-  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV',
-  dataAihint: 'brand logo K',
+  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Updated placeholder
+  dataAihint: 'brand logo K', // Updated hint
 };
 
 const generateInitialConversationsData = (customAiName?: string | null, customAiAvatar?: string | null): ChatConversation[] => [
@@ -217,6 +218,8 @@ export default function ChatPage() {
       };
       reader.readAsDataURL(file);
     } else {
+      // If no file is selected (e.g., user cancels), retain the current preview or default.
+      // This part might need refinement based on desired behavior if user clears file input
       setTempAvatarDataUri(aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl); 
     }
   };
@@ -436,11 +439,12 @@ export default function ChatPage() {
             <ScrollArea className="flex-grow p-4 space-y-4">
               {selectedConversation.messages.map(msg => {
                 const isCurrentUserMsg = msg.senderId === mockCurrentUser.id;
+                const isAiMsg = msg.senderId === kathaVaultAiUser.id;
                 
                 let participantToDisplay: ChatUser;
                 if (isCurrentUserMsg) {
                     participantToDisplay = mockCurrentUser;
-                } else if (msg.senderId === kathaVaultAiUser.id) {
+                } else if (isAiMsg) {
                     participantToDisplay = {
                         ...kathaVaultAiUser,
                         username: displayedAiName,
@@ -459,7 +463,11 @@ export default function ChatPage() {
                          <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
                     )}
-                    <div className={`max-w-[70%] p-3 rounded-xl ${isCurrentUserMsg ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted text-muted-foreground rounded-bl-none'}`}>
+                    <div className={cn(
+                        "max-w-[70%] p-3 rounded-xl",
+                        isCurrentUserMsg ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted text-muted-foreground rounded-bl-none',
+                        isAiMsg && 'no-select' // Apply no-select to AI messages
+                      )}>
                       <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                       <p className={`text-xs mt-1 ${isCurrentUserMsg ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70 text-left'}`}>
                         {format(new Date(msg.timestamp), 'p')}
@@ -480,7 +488,7 @@ export default function ChatPage() {
                         <AvatarImage src={displayedAiAvatar} alt={displayedAiName} data-ai-hint={displayedAiDataAihint || "brand logo K small"}/>
                         <AvatarFallback>{displayedAiName.substring(0,1).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className="max-w-[70%] p-3 rounded-xl bg-muted text-muted-foreground rounded-bl-none">
+                    <div className="max-w-[70%] p-3 rounded-xl bg-muted text-muted-foreground rounded-bl-none no-select">
                         <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
                 </div>
@@ -491,7 +499,7 @@ export default function ChatPage() {
                         <AvatarImage src={displayedAiAvatar} alt={displayedAiName} data-ai-hint={displayedAiDataAihint}/>
                         <AvatarFallback>{displayedAiName.substring(0,1).toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className="max-w-[70%] p-3 rounded-xl bg-destructive/20 text-destructive-foreground rounded-bl-none">
+                    <div className="max-w-[70%] p-3 rounded-xl bg-destructive/20 text-destructive-foreground rounded-bl-none no-select">
                         <p className="text-sm">{aiError}</p>
                     </div>
                 </div>
@@ -566,3 +574,4 @@ export default function ChatPage() {
     </div>
   );
 }
+
