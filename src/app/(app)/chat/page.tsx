@@ -23,8 +23,8 @@ const mockCurrentUser: ChatUser = {
 const kathaVaultAiUser: ChatUser = {
   id: 'kathaVaultAi',
   username: 'Katha Vault AI',
-  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Purple avatar for AI
-  dataAihint: 'robot face',
+  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Purple avatar for AI, KV initials
+  dataAihint: 'brand logo K', // Updated data-ai-hint
 };
 
 const generateInitialConversationsData = (): ChatConversation[] => [
@@ -250,7 +250,7 @@ export default function ChatPage() {
               {isAiResponding && (
                 <div className="flex items-end gap-2 justify-start">
                     <Avatar className="h-8 w-8 self-start">
-                        <AvatarImage src={kathaVaultAiUser.avatarUrl} alt={kathaVaultAiUser.username} data-ai-hint="robot face small"/>
+                        <AvatarImage src={kathaVaultAiUser.avatarUrl} alt={kathaVaultAiUser.username} data-ai-hint="brand logo K small"/>
                         <AvatarFallback>{kathaVaultAiUser.username.substring(0,1)}</AvatarFallback>
                     </Avatar>
                     <div className="max-w-[70%] p-3 rounded-xl bg-muted text-muted-foreground rounded-bl-none">
@@ -274,7 +274,6 @@ export default function ChatPage() {
 
             <div className="p-4 border-t bg-background">
               <div className="flex items-center gap-2">
-                {/* File attachment button removed */}
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
                   <Smile className="h-5 w-5" />
                   <span className="sr-only">Add emoji</span>
@@ -307,3 +306,4 @@ export default function ChatPage() {
     </div>
   );
 }
+

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { User, Edit3, BookOpen, UploadCloud, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon } from "lucide-react";
+import { User, Edit3, BookOpen, UploadCloud, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle } from "lucide-react"; // Added MessageCircle
 import Link from "next/link";
 import { useState, useEffect } from 'react';
 
@@ -92,11 +92,18 @@ export default function AccountPage() {
               </div>
             </div>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/account/edit-profile"> 
-              <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
-            </Link>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/account/edit-profile"> 
+                <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
+              </Link>
+            </Button>
+             <Button size="sm" asChild>
+              <Link href="/chat"> 
+                <MessageCircle className="mr-2 h-4 w-4" /> Message
+              </Link>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-6 pt-0">
           {mockUser.bio && (
@@ -158,3 +165,4 @@ export default function AccountPage() {
     </div>
   );
 }
+
