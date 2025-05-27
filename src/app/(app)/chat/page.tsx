@@ -19,8 +19,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"; // DialogTrigger removed as it's implicitly handled by DialogTrigger
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,7 +29,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -40,7 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { toast } from '@/hooks/use-toast';
-import { cn } from "@/lib/utils"; // Added cn import
+import { cn } from "@/lib/utils";
 
 const mockCurrentUser: ChatUser = {
   id: 'currentUser',
@@ -52,8 +50,8 @@ const mockCurrentUser: ChatUser = {
 const kathaVaultAiUser: ChatUser = {
   id: 'kathaVaultAi',
   username: 'Katha Vault AI',
-  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Updated placeholder
-  dataAihint: 'brand logo K', // Updated hint
+  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV',
+  dataAihint: 'brand logo K',
 };
 
 const generateInitialConversationsData = (customAiName?: string | null, customAiAvatar?: string | null): ChatConversation[] => [
@@ -87,6 +85,7 @@ export default function ChatPage() {
   const [isEditingAiProfile, setIsEditingAiProfile] = useState(false);
   const [tempNickname, setTempNickname] = useState('');
   const [tempAvatarDataUri, setTempAvatarDataUri] = useState<string>('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const [conversationToClear, setConversationToClear] = useState<string | null>(null);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
@@ -206,20 +205,21 @@ export default function ChatPage() {
   const handleOpenEditAiProfileDialog = () => {
     setTempNickname(aiCustomNickname || kathaVaultAiUser.username);
     setTempAvatarDataUri(aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl);
+    setAvatarFile(null); // Reset file input state
     setIsEditingAiProfile(true);
   };
 
   const handleAvatarFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setAvatarFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setTempAvatarDataUri(reader.result as string);
       };
       reader.readAsDataURL(file);
     } else {
-      // If no file is selected (e.g., user cancels), retain the current preview or default.
-      // This part might need refinement based on desired behavior if user clears file input
+      setAvatarFile(null);
       setTempAvatarDataUri(aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl); 
     }
   };
@@ -229,12 +229,13 @@ export default function ChatPage() {
     setAiCustomNickname(tempNickname);
     localStorage.setItem('kathaAiNickname', tempNickname);
     
-    if (tempAvatarDataUri) {
+    if (tempAvatarDataUri && (avatarFile || tempAvatarDataUri !== kathaVaultAiUser.avatarUrl)) {
       setAiCustomAvatarDataUri(tempAvatarDataUri);
       localStorage.setItem('kathaAiAvatarDataUri', tempAvatarDataUri);
     }
     
     setIsEditingAiProfile(false);
+    setAvatarFile(null);
     toast({ title: "AI Profile Updated", description: "Katha Vault AI's appearance has been updated for you." });
   };
 
@@ -301,16 +302,21 @@ export default function ChatPage() {
                 className="w-full h-auto justify-start p-3 rounded-none border-b"
                 onClick={() => setSelectedConversationId(convo.id)}
               >
-                <Avatar className="h-10 w-10 mr-3">
-                  <AvatarImage 
-                    src={convo.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : convo.participant.avatarUrl} 
-                    alt={convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username} 
-                    data-ai-hint={convo.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : convo.participant.dataAihint || "user avatar"}
-                  />
-                  <AvatarFallback>
-                    {(convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username).substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-10 w-10 mr-3">
+                    <AvatarImage 
+                      src={convo.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : convo.participant.avatarUrl} 
+                      alt={convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username} 
+                      data-ai-hint={convo.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : convo.participant.dataAihint || "user avatar"}
+                    />
+                    <AvatarFallback>
+                      {(convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username).substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {convo.participant.id === kathaVaultAiUser.id && ( // Online indicator for AI
+                     <span className="absolute bottom-0 right-2 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
+                  )}
+                </div>
                 <div className="flex-grow text-left overflow-hidden">
                   <div className="flex justify-between items-center">
                     <p className="font-semibold truncate">
@@ -355,22 +361,27 @@ export default function ChatPage() {
           <>
             <CardHeader className="p-4 border-b flex flex-row items-center justify-between space-x-3">
               <div className="flex items-center space-x-3">
-                <Avatar className="h-10 w-10">
-                  <AvatarImage 
-                    src={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : selectedConversation.participant.avatarUrl} 
-                    alt={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username}
-                    data-ai-hint={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : selectedConversation.participant.dataAihint || "user avatar chat"}
-                  />
-                  <AvatarFallback>
-                    {(selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username).substring(0, 2).toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage 
+                      src={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : selectedConversation.participant.avatarUrl} 
+                      alt={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username}
+                      data-ai-hint={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : selectedConversation.participant.dataAihint || "user avatar chat"}
+                    />
+                    <AvatarFallback>
+                      {(selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username).substring(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  {selectedConversation.participant.id === kathaVaultAiUser.id && (
+                     <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-card" />
+                  )}
+                </div>
                 <div>
                   <p className="font-semibold text-lg">
                     {selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username}
                   </p>
                   {selectedConversation.participant.id === kathaVaultAiUser.id && (
-                    <p className="text-xs text-muted-foreground">AI Assistant</p>
+                    <p className="text-xs text-muted-foreground">AI Assistant &bull; Online</p>
                   )}
                 </div>
               </div>
@@ -458,15 +469,20 @@ export default function ChatPage() {
                 return (
                   <div key={msg.id} className={`flex items-end gap-2 ${isCurrentUserMsg ? 'justify-end' : 'justify-start'}`}>
                     {!isCurrentUserMsg && (
-                      <Avatar className="h-8 w-8 self-start">
-                         <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "user avatar small"}/>
-                         <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      <div className="relative self-start">
+                        <Avatar className="h-8 w-8">
+                           <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "user avatar small"}/>
+                           <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        {isAiMsg && ( // Online indicator for AI in messages
+                           <span className="absolute bottom-0 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-background" />
+                        )}
+                      </div>
                     )}
                     <div className={cn(
                         "max-w-[70%] p-3 rounded-xl",
                         isCurrentUserMsg ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted text-muted-foreground rounded-bl-none',
-                        isAiMsg && 'no-select' // Apply no-select to AI messages
+                        isAiMsg && 'no-select'
                       )}>
                       <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                       <p className={`text-xs mt-1 ${isCurrentUserMsg ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70 text-left'}`}>
@@ -474,20 +490,27 @@ export default function ChatPage() {
                       </p>
                     </div>
                      {isCurrentUserMsg && (
-                      <Avatar className="h-8 w-8 self-start">
-                         <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "current user avatar"}/>
-                         <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                       <div className="relative self-start">
+                        <Avatar className="h-8 w-8">
+                           <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "current user avatar"}/>
+                           <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        {/* Online indicator for current user in messages */}
+                        <span className="absolute bottom-0 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-background" />
+                       </div>
                     )}
                   </div>
                 );
               })}
               {isAiResponding && (
                 <div className="flex items-end gap-2 justify-start">
-                    <Avatar className="h-8 w-8 self-start">
-                        <AvatarImage src={displayedAiAvatar} alt={displayedAiName} data-ai-hint={displayedAiDataAihint || "brand logo K small"}/>
-                        <AvatarFallback>{displayedAiName.substring(0,1).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                    <div className="relative self-start">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={displayedAiAvatar} alt={displayedAiName} data-ai-hint={displayedAiDataAihint || "brand logo K small"}/>
+                            <AvatarFallback>{displayedAiName.substring(0,1).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="absolute bottom-0 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-background" />
+                    </div>
                     <div className="max-w-[70%] p-3 rounded-xl bg-muted text-muted-foreground rounded-bl-none no-select">
                         <Loader2 className="h-4 w-4 animate-spin" />
                     </div>
@@ -495,10 +518,13 @@ export default function ChatPage() {
               )}
               {aiError && (
                  <div className="flex items-end gap-2 justify-start">
-                    <Avatar className="h-8 w-8 self-start">
-                        <AvatarImage src={displayedAiAvatar} alt={displayedAiName} data-ai-hint={displayedAiDataAihint}/>
-                        <AvatarFallback>{displayedAiName.substring(0,1).toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                     <div className="relative self-start">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={displayedAiAvatar} alt={displayedAiName} data-ai-hint={displayedAiDataAihint}/>
+                            <AvatarFallback>{displayedAiName.substring(0,1).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <span className="absolute bottom-0 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-background" />
+                    </div>
                     <div className="max-w-[70%] p-3 rounded-xl bg-destructive/20 text-destructive-foreground rounded-bl-none no-select">
                         <p className="text-sm">{aiError}</p>
                     </div>
