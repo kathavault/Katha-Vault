@@ -36,8 +36,8 @@ export type UserProfile = {
   readingHistory: Array<{ storyId: string; title: string; lastReadChapterId?: string; progress?: number }>;
   favorites: string[]; // Array of story IDs
   submittedStories: Array<{ storyId: string; title: string }>;
-  followers?: number; // Added followers
-  following?: number; // Added following
+  followers?: number; 
+  following?: number;  
 };
 
 export type NavItem = {
@@ -62,6 +62,7 @@ export type ChatUser = {
   id: string;
   username: string;
   avatarUrl: string;
+  dataAihint?: string; // Optional hint for AI image generation if needed
 };
 
 export type ChatConversation = {

@@ -9,55 +9,33 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { MessageSquare, SendHorizontal, Paperclip, Smile, Search as SearchIcon, Loader2, MoreVertical, UserX } from 'lucide-react';
+import { MessageSquare, SendHorizontal, Smile, Search as SearchIcon, Loader2 } from 'lucide-react';
 import { format, formatDistanceToNowStrict } from 'date-fns';
+import { kathaVaultAiChat, type KathaVaultAiInput, type KathaVaultAiOutput } from '@/ai/flows/katha-vault-ai-flow';
 
 const mockCurrentUser: ChatUser = {
   id: 'currentUser',
   username: 'StorySeeker92',
   avatarUrl: 'https://placehold.co/40x40/E62E9A/FFFFFF?text=ME',
+  dataAihint: 'user initial',
 };
 
-const mockOtherUsers: ChatUser[] = [
-  { id: 'user1', username: 'BookwormAlice', avatarUrl: 'https://placehold.co/40x40/A1C9F1/FFFFFF?text=BA' },
-  { id: 'user2', username: 'NovelNinja', avatarUrl: 'https://placehold.co/40x40/F5D28C/000000?text=NN' },
-  { id: 'user3', username: 'PageTurnerPete', avatarUrl: 'https://placehold.co/40x40/82E0AA/FFFFFF?text=PP' },
-];
+const kathaVaultAiUser: ChatUser = {
+  id: 'kathaVaultAi',
+  username: 'Katha Vault AI',
+  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Purple avatar for AI
+  dataAihint: 'robot face',
+};
 
 const generateInitialConversationsData = (): ChatConversation[] => [
   {
-    id: 'convo1',
-    participant: mockOtherUsers[0],
-    lastMessage: "You totally should! The time travel part is so well done.",
-    lastMessageTimestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), // 5 mins ago
-    unreadCount: 2,
-    messages: [
-      { id: 'msg1a', senderId: mockOtherUsers[0].id, text: "Hey, did you read 'The Whispers of Chronos' yet? It's amazing!", timestamp: new Date(Date.now() - 1000 * 60 * 7).toISOString() },
-      { id: 'msg1b', senderId: mockCurrentUser.id, text: "Not yet, but it's on my list! Heard great things.", timestamp: new Date(Date.now() - 1000 * 60 * 6).toISOString() },
-      { id: 'msg1c', senderId: mockOtherUsers[0].id, text: "You totally should! The time travel part is so well done.", timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString() },
-    ],
-  },
-  {
-    id: 'convo2',
-    participant: mockOtherUsers[1],
-    lastMessage: "Sure, I can send it over. Which format do you prefer?",
-    lastMessageTimestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+    id: 'convoWithAi',
+    participant: kathaVaultAiUser,
+    lastMessage: "Hello! How can I help you with Katha Vault stories today?",
+    lastMessageTimestamp: new Date().toISOString(),
     unreadCount: 0,
     messages: [
-      { id: 'msg2a', senderId: mockCurrentUser.id, text: "Hi Ninja, do you have a copy of 'Beneath the Emerald Canopy' to share?", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2 - 1000 * 60 * 5).toISOString() },
-      { id: 'msg2b', senderId: mockOtherUsers[1].id, text: "Sure, I can send it over. Which format do you prefer?", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString() },
-    ],
-  },
-   {
-    id: 'convo3',
-    participant: mockOtherUsers[2],
-    lastMessage: "Haha, true! The ending was a bit rushed though.",
-    lastMessageTimestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
-    messages: [
-      { id: 'msg3a', senderId: mockOtherUsers[2].id, text: "Just finished 'The Alchemist of Moonhaven'. What a ride!", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 - 1000*60*10).toISOString() },
-      { id: 'msg3b', senderId: mockCurrentUser.id, text: "Oh nice! I loved the steampunk elements in that one.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 - 1000*60*5).toISOString() },
-      { id: 'msg3c', senderId: mockOtherUsers[2].id, text: "Haha, true! The ending was a bit rushed though.", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString() },
+      { id: 'aiMsg1', senderId: kathaVaultAiUser.id, text: "Hello! How can I help you with Katha Vault stories today? You can ask me about novels on the site or for suggestions. I can chat in English or Hindi!", timestamp: new Date().toISOString() },
     ],
   },
 ];
@@ -66,18 +44,18 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [currentMessage, setCurrentMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingInitialData, setIsLoadingInitialData] = useState(true);
+  const [isAiResponding, setIsAiResponding] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const mockData = generateInitialConversationsData();
     setConversations(mockData);
     if (mockData.length > 0) {
-      // Sort by lastMessageTimestamp before selecting the first one
-      const sortedData = [...mockData].sort((a, b) => new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime());
-      setSelectedConversationId(sortedData[0].id);
+      setSelectedConversationId(mockData[0].id);
     }
-    setIsLoading(false);
+    setIsLoadingInitialData(false);
   }, []);
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
@@ -88,29 +66,75 @@ export default function ChatPage() {
 
   useEffect(scrollToBottom, [selectedConversation?.messages]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!currentMessage.trim() || !selectedConversation) return;
 
-    const newMessage: ChatMessage = {
-      id: `msg${Date.now()}`,
+    const userMessage: ChatMessage = {
+      id: `msgUser${Date.now()}`,
       senderId: mockCurrentUser.id,
       text: currentMessage.trim(),
       timestamp: new Date().toISOString(),
     };
 
+    // Optimistically update UI with user's message
     setConversations(prevConvos =>
       prevConvos.map(convo =>
         convo.id === selectedConversation.id
           ? {
               ...convo,
-              messages: [...convo.messages, newMessage],
-              lastMessage: newMessage.text,
-              lastMessageTimestamp: newMessage.timestamp,
+              messages: [...convo.messages, userMessage],
+              lastMessage: userMessage.text,
+              lastMessageTimestamp: userMessage.timestamp,
             }
           : convo
-      ).sort((a, b) => new Date(b.lastMessageTimestamp).getTime() - new Date(a.lastMessageTimestamp).getTime())
+      )
     );
-    setCurrentMessage('');
+    const userInput = currentMessage.trim();
+    setCurrentMessage(''); // Clear input after sending
+    
+    if (selectedConversation.participant.id === kathaVaultAiUser.id) {
+      setIsAiResponding(true);
+      setAiError(null);
+      try {
+        const aiResult: KathaVaultAiOutput = await kathaVaultAiChat({ userInput });
+        const aiMessage: ChatMessage = {
+          id: `msgAi${Date.now()}`,
+          senderId: kathaVaultAiUser.id,
+          text: aiResult.aiResponse,
+          timestamp: new Date().toISOString(),
+        };
+        setConversations(prevConvos =>
+          prevConvos.map(convo =>
+            convo.id === selectedConversation.id
+              ? {
+                  ...convo,
+                  messages: [...convo.messages, aiMessage],
+                  lastMessage: aiMessage.text.substring(0, 50) + (aiMessage.text.length > 50 ? "..." : ""), // Truncate for last message preview
+                  lastMessageTimestamp: aiMessage.timestamp,
+                }
+              : convo
+          )
+        );
+      } catch (error) {
+        console.error("Error fetching AI response:", error);
+        setAiError("Sorry, I couldn't process that. Please try again.");
+        const errorMessage: ChatMessage = {
+            id: `msgErr${Date.now()}`,
+            senderId: kathaVaultAiUser.id,
+            text: "Sorry, I encountered an error. Please try asking something else.",
+            timestamp: new Date().toISOString(),
+          };
+        setConversations(prevConvos =>
+          prevConvos.map(convo =>
+            convo.id === selectedConversation.id
+              ? { ...convo, messages: [...convo.messages, errorMessage] }
+              : convo
+          )
+        );
+      } finally {
+        setIsAiResponding(false);
+      }
+    }
   };
   
   const formatDisplayTimestamp = (isoString: string) => {
@@ -121,13 +145,8 @@ export default function ChatPage() {
     }
   };
 
-  const handleBlockUser = (userId: string, username: string) => {
-    console.log(`Attempting to block user: ${username} (ID: ${userId})`);
-    // Here you would typically call an API to block the user
-    alert(`User ${username} would be blocked. (This is a UI placeholder)`);
-  };
 
-  if (isLoading) {
+  if (isLoadingInitialData) {
     return (
       <div className="flex h-[calc(100vh-var(--header-height,100px))] items-center justify-center border rounded-lg shadow-lg bg-card">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -143,14 +162,11 @@ export default function ChatPage() {
         <CardHeader className="p-4 border-b">
           <div className="flex justify-between items-center">
             <CardTitle className="text-xl">Chats</CardTitle>
-            <Button variant="ghost" size="icon">
-              <MessageSquare className="h-5 w-5" />
-              <span className="sr-only">New Message</span>
-            </Button>
+            {/* Removed new message button as AI is the only chat for now */}
           </div>
           <div className="relative mt-2">
             <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search chats..." className="pl-8 h-9" />
+            <Input placeholder="Search chats..." className="pl-8 h-9" disabled />
           </div>
         </CardHeader>
         <ScrollArea className="flex-grow">
@@ -162,7 +178,7 @@ export default function ChatPage() {
               onClick={() => setSelectedConversationId(convo.id)}
             >
               <Avatar className="h-10 w-10 mr-3">
-                <AvatarImage src={convo.participant.avatarUrl} alt={convo.participant.username} data-ai-hint="user avatar"/>
+                <AvatarImage src={convo.participant.avatarUrl} alt={convo.participant.username} data-ai-hint={convo.participant.dataAihint || "user avatar"}/>
                 <AvatarFallback>{convo.participant.username.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="flex-grow text-left overflow-hidden">
@@ -191,70 +207,74 @@ export default function ChatPage() {
             <CardHeader className="p-4 border-b flex flex-row items-center justify-between space-x-3">
               <div className="flex items-center space-x-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={selectedConversation.participant.avatarUrl} alt={selectedConversation.participant.username} data-ai-hint="user avatar chat"/>
+                  <AvatarImage src={selectedConversation.participant.avatarUrl} alt={selectedConversation.participant.username} data-ai-hint={selectedConversation.participant.dataAihint || "user avatar chat"}/>
                   <AvatarFallback>{selectedConversation.participant.username.substring(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div>
                   <p className="font-semibold text-lg">{selectedConversation.participant.username}</p>
-                  <p className="text-xs text-muted-foreground">Online</p> {/* Placeholder status */}
+                  {selectedConversation.participant.id === kathaVaultAiUser.id && (
+                    <p className="text-xs text-muted-foreground">AI Assistant</p>
+                  )}
                 </div>
               </div>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-5 w-5" />
-                    <span className="sr-only">Chat options</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => console.log(`View profile of ${selectedConversation.participant.username}`)}>
-                    View Profile
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleBlockUser(selectedConversation.participant.id, selectedConversation.participant.username)}>
-                    <UserX className="mr-2 h-4 w-4" /> Block User
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => console.log(`Report user ${selectedConversation.participant.username}`)}>
-                    Report User
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              {/* Removed dropdown menu for AI chat */}
             </CardHeader>
             
             <ScrollArea className="flex-grow p-4 space-y-4">
               {selectedConversation.messages.map(msg => {
                 const isCurrentUserMsg = msg.senderId === mockCurrentUser.id;
+                const participantToDisplay = isCurrentUserMsg ? mockCurrentUser : selectedConversation.participant;
                 return (
                   <div key={msg.id} className={`flex items-end gap-2 ${isCurrentUserMsg ? 'justify-end' : 'justify-start'}`}>
                     {!isCurrentUserMsg && (
                       <Avatar className="h-8 w-8 self-start">
-                         <AvatarImage src={selectedConversation.participant.avatarUrl} alt={selectedConversation.participant.username} data-ai-hint="user avatar small"/>
-                         <AvatarFallback>{selectedConversation.participant.username.substring(0,1)}</AvatarFallback>
+                         <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "user avatar small"}/>
+                         <AvatarFallback>{participantToDisplay.username.substring(0,1)}</AvatarFallback>
                       </Avatar>
                     )}
                     <div className={`max-w-[70%] p-3 rounded-xl ${isCurrentUserMsg ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted text-muted-foreground rounded-bl-none'}`}>
-                      <p className="text-sm">{msg.text}</p>
+                      <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                       <p className={`text-xs mt-1 ${isCurrentUserMsg ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70 text-left'}`}>
                         {format(new Date(msg.timestamp), 'p')}
                       </p>
                     </div>
                      {isCurrentUserMsg && (
                       <Avatar className="h-8 w-8 self-start">
-                         <AvatarImage src={mockCurrentUser.avatarUrl} alt={mockCurrentUser.username} data-ai-hint="current user avatar"/>
-                         <AvatarFallback>{mockCurrentUser.username.substring(0,1)}</AvatarFallback>
+                         <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "current user avatar"}/>
+                         <AvatarFallback>{participantToDisplay.username.substring(0,1)}</AvatarFallback>
                       </Avatar>
                     )}
                   </div>
                 );
               })}
+              {isAiResponding && (
+                <div className="flex items-end gap-2 justify-start">
+                    <Avatar className="h-8 w-8 self-start">
+                        <AvatarImage src={kathaVaultAiUser.avatarUrl} alt={kathaVaultAiUser.username} data-ai-hint="robot face small"/>
+                        <AvatarFallback>{kathaVaultAiUser.username.substring(0,1)}</AvatarFallback>
+                    </Avatar>
+                    <div className="max-w-[70%] p-3 rounded-xl bg-muted text-muted-foreground rounded-bl-none">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    </div>
+                </div>
+              )}
+              {aiError && (
+                 <div className="flex items-end gap-2 justify-start">
+                    <Avatar className="h-8 w-8 self-start">
+                        <AvatarImage src={kathaVaultAiUser.avatarUrl} alt={kathaVaultAiUser.username} />
+                        <AvatarFallback>{kathaVaultAiUser.username.substring(0,1)}</AvatarFallback>
+                    </Avatar>
+                    <div className="max-w-[70%] p-3 rounded-xl bg-destructive/20 text-destructive-foreground rounded-bl-none">
+                        <p className="text-sm">{aiError}</p>
+                    </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </ScrollArea>
 
             <div className="p-4 border-t bg-background">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
-                  <Paperclip className="h-5 w-5" />
-                  <span className="sr-only">Attach file</span>
-                </Button>
+                {/* File attachment button removed */}
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
                   <Smile className="h-5 w-5" />
                   <span className="sr-only">Add emoji</span>
@@ -263,10 +283,11 @@ export default function ChatPage() {
                   placeholder="Type a message..."
                   value={currentMessage}
                   onChange={(e) => setCurrentMessage(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyPress={(e) => e.key === 'Enter' && !isAiResponding && handleSendMessage()}
                   className="flex-grow"
+                  disabled={isAiResponding}
                 />
-                <Button size="icon" onClick={handleSendMessage} disabled={!currentMessage.trim()}>
+                <Button size="icon" onClick={handleSendMessage} disabled={!currentMessage.trim() || isAiResponding}>
                   <SendHorizontal className="h-5 w-5" />
                   <span className="sr-only">Send message</span>
                 </Button>
