@@ -41,6 +41,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge"; // Added import for Badge
 
 
 interface AdminStoryChapter {
@@ -217,9 +218,7 @@ export default function AdminPage() {
           <Link href="/">Go Back to Site</Link>
         </Button>
       </header>
-      <p className="text-muted-foreground">
-        Manage users, stories, and site settings. Most actions are simulated and do not persist data without backend integration.
-      </p>
+      {/* Removed developer note/warning */}
 
       {/* Story Management Section */}
       <Card>
@@ -422,3 +421,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
