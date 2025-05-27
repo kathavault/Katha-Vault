@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
-  ShieldCheck, AlertTriangle, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey
+  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey
 } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import {
@@ -28,24 +28,43 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 interface AdminStory {
   id: string;
   title: string;
   author: string;
+  description: string;
+  coverImageUrl: string;
+  genre: string;
+  tags: string[];
   status: 'Published' | 'Draft' | 'Review';
   chapters: number;
 }
 
 const mockAdminStories: AdminStory[] = [
-  { id: '1', title: 'The Whispers of Chronos', author: 'Eleanor Vance', status: 'Published', chapters: 3 },
-  { id: '2', title: 'Beneath the Emerald Canopy', author: 'Marcus Stone', status: 'Draft', chapters: 2 },
-  { id: '3', title: 'The Alchemist of Moonhaven', author: 'Seraphina Gold', status: 'Published', chapters: 5 },
-  { id: '4', title: 'Echoes of the Void', author: 'Orion Nebula', status: 'Review', chapters: 10 },
+  { id: '1', title: 'The Whispers of Chronos', author: 'Eleanor Vance', description: 'A thrilling journey through time.', coverImageUrl: 'https://placehold.co/300x450', genre: 'Sci-Fi', tags: ['time travel', 'adventure'], status: 'Published', chapters: 3 },
+  { id: '2', title: 'Beneath the Emerald Canopy', author: 'Marcus Stone', description: 'Into the wild green yonder.', coverImageUrl: 'https://placehold.co/300x450', genre: 'Fantasy', tags: ['jungle', 'magic'], status: 'Draft', chapters: 2 },
+  { id: '3', title: 'The Alchemist of Moonhaven', author: 'Seraphina Gold', description: 'Secrets in a moonlit city.', coverImageUrl: 'https://placehold.co/300x450', genre: 'Steampunk', tags: ['alchemy', 'mystery'], status: 'Published', chapters: 5 },
+  { id: '4', title: 'Echoes of the Void', author: 'Orion Nebula', description: 'Cosmic horrors await.', coverImageUrl: 'https://placehold.co/300x450', genre: 'Space Opera', tags: ['horror', 'space'], status: 'Review', chapters: 10 },
 ];
 
 export default function AdminPage() {
   const [stories, setStories] = useState<AdminStory[]>(mockAdminStories);
+  const [isAddStoryDialogOpen, setIsAddStoryDialogOpen] = useState(false);
+  const [isEditStoryDialogOpen, setIsEditStoryDialogOpen] = useState(false);
+  const [editingStory, setEditingStory] = useState<AdminStory | null>(null);
 
   const handlePlaceholderAction = (actionName: string) => {
     toast({
@@ -55,7 +74,6 @@ export default function AdminPage() {
   };
 
   const handleDeleteStory = (storyId: string) => {
-    // Simulate deletion
     setStories(prevStories => prevStories.filter(story => story.id !== storyId));
     toast({
       title: "Story Deleted (Simulated)",
@@ -63,6 +81,86 @@ export default function AdminPage() {
       variant: "default"
     });
   };
+
+  const handleOpenEditDialog = (story: AdminStory) => {
+    setEditingStory(story);
+    setIsEditStoryDialogOpen(true);
+  };
+  
+  const handleSaveStory = (formData: Omit<AdminStory, 'id' | 'status' | 'chapters'> & { id?: string }) => {
+    if (formData.id) { // Editing existing story
+        setStories(prevStories => prevStories.map(s => s.id === formData.id ? { ...s, ...formData, status: s.status, chapters: s.chapters } : s));
+        toast({ title: "Story Updated (Simulated)", description: `"${formData.title}" has been updated.` });
+        setIsEditStoryDialogOpen(false);
+        setEditingStory(null);
+    } else { // Adding new story
+        const newStory: AdminStory = {
+            ...formData,
+            id: `story-${Date.now()}`, // Generate a mock ID
+            status: 'Draft', // Default status
+            chapters: 0, // Default chapters
+        };
+        setStories(prevStories => [newStory, ...prevStories]);
+        toast({ title: "Story Added (Simulated)", description: `"${formData.title}" has been added as a draft.` });
+        setIsAddStoryDialogOpen(false);
+    }
+  };
+  
+  const StoryForm: React.FC<{story?: AdminStory | null, onSave: (data: Omit<AdminStory, 'id' | 'status' | 'chapters'> & { id?: string }) => void, onCancel: () => void}> = ({ story, onSave, onCancel }) => {
+    const [title, setTitle] = useState(story?.title || '');
+    const [author, setAuthor] = useState(story?.author || '');
+    const [description, setDescription] = useState(story?.description || '');
+    const [coverImageUrl, setCoverImageUrl] = useState(story?.coverImageUrl || '');
+    const [genre, setGenre] = useState(story?.genre || '');
+    const [tags, setTags] = useState(story?.tags.join(', ') || '');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        onSave({ 
+            id: story?.id, 
+            title, 
+            author, 
+            description, 
+            coverImageUrl, 
+            genre, 
+            tags: tags.split(',').map(t => t.trim()).filter(t => t) 
+        });
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <Label htmlFor="story-title">Title</Label>
+                <Input id="story-title" value={title} onChange={e => setTitle(e.target.value)} required />
+            </div>
+            <div>
+                <Label htmlFor="story-author">Author</Label>
+                <Input id="story-author" value={author} onChange={e => setAuthor(e.target.value)} required />
+            </div>
+            <div>
+                <Label htmlFor="story-description">Description</Label>
+                <Textarea id="story-description" value={description} onChange={e => setDescription(e.target.value)} required />
+            </div>
+            <div>
+                <Label htmlFor="story-coverImageUrl">Cover Image URL</Label>
+                <Input id="story-coverImageUrl" type="url" value={coverImageUrl} onChange={e => setCoverImageUrl(e.target.value)} placeholder="https://placehold.co/300x450" />
+            </div>
+            <div>
+                <Label htmlFor="story-genre">Genre</Label>
+                <Input id="story-genre" value={genre} onChange={e => setGenre(e.target.value)} required />
+            </div>
+            <div>
+                <Label htmlFor="story-tags">Tags (comma-separated)</Label>
+                <Input id="story-tags" value={tags} onChange={e => setTags(e.target.value)} />
+            </div>
+            <DialogFooter>
+                <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+                <Button type="submit">Save Story</Button>
+            </DialogFooter>
+        </form>
+    );
+  };
+
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
@@ -76,7 +174,7 @@ export default function AdminPage() {
         </Button>
       </header>
       <p className="text-muted-foreground">
-        Manage users, stories, and site settings. Most actions are UI placeholders.
+        Manage users, stories, and site settings. Management actions are simulated and do not persist data.
       </p>
 
       {/* Story Management Section */}
@@ -87,10 +185,21 @@ export default function AdminPage() {
             <CardDescription>Add, edit, or delete stories and chapters.</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button onClick={() => handlePlaceholderAction("Add New Story")} size="sm">
-              <BookPlus className="mr-2 h-4 w-4" /> Add New Story
-            </Button>
-            <Button onClick={() => handlePlaceholderAction("Upload Default Image")} variant="outline" size="sm">
+            <Dialog open={isAddStoryDialogOpen} onOpenChange={setIsAddStoryDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button size="sm">
+                        <BookPlus className="mr-2 h-4 w-4" /> Add New Story
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[600px]">
+                    <DialogHeader>
+                        <DialogTitle>Add New Story</DialogTitle>
+                        <DialogDescription>Fill in the details for the new story. Click save when you're done.</DialogDescription>
+                    </DialogHeader>
+                    <StoryForm onSave={handleSaveStory} onCancel={() => setIsAddStoryDialogOpen(false)} />
+                </DialogContent>
+            </Dialog>
+            <Button onClick={() => handlePlaceholderAction("Upload Default Image triggered. Actual upload requires backend.")} variant="outline" size="sm">
               <ImageUp className="mr-2 h-4 w-4" /> Upload Image
             </Button>
           </div>
@@ -117,9 +226,9 @@ export default function AdminPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handlePlaceholderAction(`Edit Story: ${story.title}`)}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit Story
-                      </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenEditDialog(story)}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit Story
+                        </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handlePlaceholderAction(`Manage Chapters for: ${story.title}`)}>
                         <BookKey className="mr-2 h-4 w-4" /> Manage Chapters
                       </DropdownMenuItem>
@@ -134,8 +243,7 @@ export default function AdminPage() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the story
-                              (simulated - no actual data will be deleted in this demo).
+                              This action cannot be undone. This will (simulate) permanently delete the story.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -156,6 +264,23 @@ export default function AdminPage() {
           )}
         </CardContent>
       </Card>
+        
+      {/* Edit Story Dialog */}
+      {editingStory && (
+        <Dialog open={isEditStoryDialogOpen} onOpenChange={(isOpen) => {
+            setIsEditStoryDialogOpen(isOpen);
+            if (!isOpen) setEditingStory(null);
+        }}>
+            <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                    <DialogTitle>Edit Story: {editingStory.title}</DialogTitle>
+                    <DialogDescription>Make changes to the story details below. Click save when you're done.</DialogDescription>
+                </DialogHeader>
+                <StoryForm story={editingStory} onSave={handleSaveStory} onCancel={() => { setIsEditStoryDialogOpen(false); setEditingStory(null); }} />
+            </DialogContent>
+        </Dialog>
+      )}
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
@@ -179,17 +304,10 @@ export default function AdminPage() {
         </Card>
       </div>
 
-      <Card className="mt-8 border-destructive bg-destructive/10">
-        <CardHeader className="flex-row items-center gap-3">
-          <AlertTriangle className="h-8 w-8 text-destructive" />
-          <div>
-            <CardTitle className="text-destructive">Developer Note</CardTitle>
-            <CardDescription className="text-destructive/80">
-              This admin panel is primarily a UI concept. Management actions are simulated and do not persist data. Full functionality requires backend development.
-            </CardDescription>
-          </div>
-        </CardHeader>
-      </Card>
+      {/* Removed Developer Note Card */}
     </div>
   );
 }
+
+
+    
