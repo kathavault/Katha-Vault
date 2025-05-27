@@ -25,6 +25,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger, // Added AlertDialogTrigger here
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -45,7 +46,7 @@ import Image from 'next/image'; // For image preview
 interface AdminStoryChapter {
   id: string;
   title: string;
-  content: string; 
+  content: string;
 }
 interface AdminStory {
   id: string;
@@ -92,7 +93,7 @@ export default function AdminPage() {
   useEffect(() => {
     const lowerSearchTerm = searchTerm.toLowerCase();
     setFilteredStories(
-      stories.filter(story => story.title.toLowerCase().includes(lowerSearchTerm))
+      stories.filter(story => story.title.toLowerCase().includes(lowerSearchTerm) || story.author.toLowerCase().includes(lowerSearchTerm))
     );
   }, [searchTerm, stories]);
 
@@ -120,7 +121,7 @@ export default function AdminPage() {
         const newStory: AdminStory = {
             ...formData,
             id: `story-${Date.now()}`,
-            chapters: [],
+            chapters: [], // New stories start with no chapters
         };
         setStories(prevStories => [newStory, ...prevStories]);
         toast({ title: "Story Added (Simulated)", description: `"${formData.title}" has been added as a draft.` });
@@ -339,13 +340,13 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <Label htmlFor="search-stories">Search Stories by Title</Label>
+            <Label htmlFor="search-stories">Search Stories by Title or Author</Label>
             <div className="relative">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 id="search-stories"
                 type="search"
-                placeholder="Enter story title..."
+                placeholder="Enter story title or author..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -372,9 +373,9 @@ export default function AdminPage() {
                       <Badge variant={
                         story.status === 'Published' ? 'default' : story.status === 'Draft' ? 'secondary' : 'outline'
                       } className={`text-xs font-medium mt-1 ${
-                        story.status === 'Published' ? 'bg-green-100 text-green-700 border-green-300' :
-                        story.status === 'Draft' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
-                        'bg-blue-100 text-blue-700 border-blue-300'
+                        story.status === 'Published' ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-700 dark:text-green-100 dark:border-green-500' :
+                        story.status === 'Draft' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-700 dark:text-yellow-100 dark:border-yellow-500' :
+                        'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-700 dark:text-blue-100 dark:border-blue-500'
                       }`}>{story.status}</Badge>
                     </div>
                   </div>
@@ -576,4 +577,5 @@ export default function AdminPage() {
     </div>
   );
 }
+
 
