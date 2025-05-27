@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Settings as SettingsIcon, Bell, Palette, ShieldCheck, LogOut, Save } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Palette, ShieldCheck, LogOut, Save, UserCog, VenetianMask, Mail, KeyRound, SlashCircle } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -15,24 +15,32 @@ export default function AccountSettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [darkModeSystem, setDarkModeSystem] = useState(true);
+  const [isProfilePrivate, setIsProfilePrivate] = useState(false);
 
   const handleSaveChanges = () => {
     // In a real app, you'd save these settings to a backend.
-    console.log("Settings saved:", { emailNotifications, pushNotifications, darkModeSystem });
+    console.log("Settings saved:", { emailNotifications, pushNotifications, darkModeSystem, isProfilePrivate });
     toast({
       title: "Settings Saved",
       description: "Your preferences have been updated.",
     });
   };
 
+  const handlePlaceholderClick = (featureName: string) => {
+    toast({
+        title: "Feature Placeholder",
+        description: `${featureName} functionality is not yet implemented.`,
+    });
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <header className="flex items-center gap-4">
-        <SettingsIcon className="h-10 w-10 text-primary" />
+        <UserCog className="h-10 w-10 text-primary" />
         <h1 className="text-3xl font-bold text-primary">Account Settings</h1>
       </header>
       <p className="text-muted-foreground">
-        Manage your notification preferences, theme settings, and account security.
+        Manage your notification preferences, theme settings, account security, and privacy.
       </p>
 
       <Card>
@@ -103,9 +111,30 @@ export default function AccountSettingsPage() {
           <CardDescription>Manage your account security and privacy settings.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <Button variant="outline" className="w-full justify-start">Change Password</Button>
-            <Button variant="outline" className="w-full justify-start">Privacy Policy</Button>
-             <Button variant="destructive" className="w-full justify-start">
+            <div className="flex items-center justify-between space-x-2 p-4 rounded-md border">
+                <Label htmlFor="profile-private" className="font-medium">
+                Private Profile
+                <p className="text-sm text-muted-foreground font-normal">If enabled, your profile and activity will not be publicly visible.</p>
+                </Label>
+                <Switch
+                id="profile-private"
+                checked={isProfilePrivate}
+                onCheckedChange={setIsProfilePrivate}
+                />
+            </div>
+            <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Change Email")}>
+                <Mail className="mr-2 h-4 w-4" /> Change Email Address
+            </Button>
+            <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Change Password")}>
+                <KeyRound className="mr-2 h-4 w-4" /> Change Password
+            </Button>
+            <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Blocked Accounts")}>
+                <SlashCircle className="mr-2 h-4 w-4" /> Blocked Accounts
+            </Button>
+            <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Privacy Policy")}>
+                <VenetianMask className="mr-2 h-4 w-4" /> Privacy Policy
+            </Button>
+             <Button variant="destructive" className="w-full justify-start" onClick={() => handlePlaceholderClick("Log Out")}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Log Out
             </Button>

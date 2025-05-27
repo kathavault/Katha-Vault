@@ -259,8 +259,8 @@ export default function HomePage() {
           </Link>
         </Button>
          <Button variant="outline" size="lg" asChild className="ml-4 px-10 py-6 text-lg">
-          <Link href="/suggestions">
-            <Sparkles className="mr-2 h-5 w-5" /> Get AI Suggestions
+          <Link href="/chat"> {/* Changed from /suggestions to /chat */}
+            <Sparkles className="mr-2 h-5 w-5" /> Get AI Assistance
           </Link>
         </Button>
       </section>
