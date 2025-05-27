@@ -1,3 +1,4 @@
+
 "use client";
 import type { NavItem } from '@/types';
 import { siteConfig } from '@/config/site';
@@ -20,6 +21,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ThemeToggleButton } from '@/components/theme-toggle-button';
+import { BottomNavigation } from '@/components/bottom-navigation';
+import { MessageSquare } from 'lucide-react'; // For chat icon
 
 function AppSidebar() {
   const pathname = usePathname();
@@ -69,6 +73,9 @@ function AppSidebar() {
 }
 
 function AppHeader() {
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
+
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
       <div className="md:hidden">
@@ -77,6 +84,15 @@ function AppHeader() {
       <div className="flex-1">
         {/* Add page title or search bar here if needed */}
       </div>
+      {isHomePage && (
+        <Button variant="ghost" size="icon" asChild>
+          <Link href="/chat"> {/* Placeholder for chat functionality */}
+            <MessageSquare className="h-5 w-5" />
+            <span className="sr-only">Chat</span>
+          </Link>
+        </Button>
+      )}
+      <ThemeToggleButton />
        {/* <Button variant="outline" size="sm">Logout</Button> */}
     </header>
   );
@@ -89,9 +105,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset>
         <AppHeader />
-        <main className="flex-1 p-4 sm:p-6">
+        <main className="flex-1 p-4 sm:p-6 pb-20 md:pb-6"> {/* Added padding-bottom for bottom nav */}
           {children}
         </main>
+        <BottomNavigation />
       </SidebarInset>
     </SidebarProvider>
   );

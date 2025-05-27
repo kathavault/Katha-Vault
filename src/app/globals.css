@@ -8,6 +8,57 @@ body {
 
 @layer base {
   :root {
+    /* Light Theme (Default) */
+    --background: 0 0% 100%; /* white */
+    --foreground: 240 10% 3.9%; /* near black */
+
+    --muted: 240 4.8% 95.9%; /* light gray */
+    --muted-foreground: 240 3.8% 46.1%; /* mid gray */
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --border: 240 5.9% 90%; /* light gray border */
+    --input: 240 5.9% 90%;
+
+    --primary: 325 57% 45%; /* #B4317B - original primary */
+    --primary-foreground: 0 0% 98%; /* nearly white for primary contrast */
+
+    --secondary: 240 4.8% 95.9%; /* light gray for secondary elements */
+    --secondary-foreground: 240 10% 3.9%;
+
+    --accent: 240 4.8% 95.9%; /* light gray for accents */
+    --accent-foreground: 240 10% 3.9%;
+
+    --destructive: 0 84.2% 60.2%; /* standard red */
+    --destructive-foreground: 0 0% 98%;
+
+    --ring: 325 57% 45%; /* Primary color for rings */
+    --radius: 0.5rem;
+
+    /* Chart colors - light theme friendly */
+    --chart-1: 325 57% 55%;
+    --chart-2: 220 80% 60%;
+    --chart-3: 180 70% 50%;
+    --chart-4: 40 90% 60%;
+    --chart-5: 0 70% 65%;
+
+    /* Sidebar specific colors - Light Theme */
+    --sidebar-background: 240 4.8% 97.9%; /* very light gray */
+    --sidebar-foreground: 240 10% 3.9%; 
+    --sidebar-primary: 325 57% 45%; 
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 92.9%; /* slightly darker gray for hover */
+    --sidebar-accent-foreground: 240 10% 3.9%;
+    --sidebar-border: 240 5.9% 88%; 
+    --sidebar-ring: 325 57% 45%;
+  }
+
+  .dark {
+    /* Dark Theme Overrides */
     --background: 267 47% 20%; /* #2A1A46 */
     --foreground: 280 67% 99%; /* #F7F2FA */
 
@@ -36,68 +87,20 @@ body {
     --destructive-foreground: 0 0% 98%;
 
     --ring: 325 57% 45%; /* Primary color for rings */
-    --radius: 0.5rem;
-
-    /* Chart colors - can be adjusted to fit the theme */
+    
+    /* Chart colors - dark theme */
     --chart-1: 325 57% 55%;
     --chart-2: 280 60% 60%;
     --chart-3: 267 50% 50%;
     --chart-4: 300 55% 50%;
     --chart-5: 340 50% 50%;
 
-    /* Sidebar specific colors */
+    /* Sidebar specific colors - Dark Theme */
     --sidebar-background: 267 47% 18%; /* Slightly darker than main background */
     --sidebar-foreground: 280 67% 95%; 
     --sidebar-primary: 325 57% 50%; /* Brighter primary for sidebar active items */
     --sidebar-primary-foreground: 280 67% 99%;
     --sidebar-accent: 325 57% 35%; /* Darker accent for sidebar hover */
-    --sidebar-accent-foreground: 280 67% 99%;
-    --sidebar-border: 280 67% 25%; 
-    --sidebar-ring: 325 57% 50%;
-  }
-
-  .dark {
-    /* Dark theme is default, so these are same as :root */
-    --background: 267 47% 20%;
-    --foreground: 280 67% 99%;
-
-    --muted: 267 47% 25%;
-    --muted-foreground: 280 67% 70%;
-
-    --popover: 267 47% 15%;
-    --popover-foreground: 280 67% 99%;
-
-    --card: 267 47% 25%;
-    --card-foreground: 280 67% 99%;
-
-    --border: 280 67% 30%;
-    --input: 280 67% 30%;
-
-    --primary: 325 57% 45%;
-    --primary-foreground: 280 67% 99%;
-
-    --secondary: 325 57% 35%;
-    --secondary-foreground: 280 67% 99%;
-
-    --accent: 325 57% 50%;
-    --accent-foreground: 280 67% 99%;
-
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 98%;
-
-    --ring: 325 57% 45%;
-
-    --chart-1: 325 57% 55%;
-    --chart-2: 280 60% 60%;
-    --chart-3: 267 50% 50%;
-    --chart-4: 300 55% 50%;
-    --chart-5: 340 50% 50%;
-    
-    --sidebar-background: 267 47% 18%;
-    --sidebar-foreground: 280 67% 95%; 
-    --sidebar-primary: 325 57% 50%; 
-    --sidebar-primary-foreground: 280 67% 99%;
-    --sidebar-accent: 325 57% 35%; 
     --sidebar-accent-foreground: 280 67% 99%;
     --sidebar-border: 280 67% 25%; 
     --sidebar-ring: 325 57% 50%;

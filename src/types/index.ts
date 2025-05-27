@@ -1,4 +1,5 @@
 
+
 export type StoryChapter = {
   id: string;
   title: string;
@@ -21,8 +22,10 @@ export type Story = {
   views?: number;
   isTrending?: boolean;
   isCurated?: boolean;
+  category?: 'Trending' | 'Novel' | 'ShortStory' | 'Curated'; // Added category
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
+  dataAihint?: string; // Optional for StoryCard
 };
 
 export type UserProfile = {
@@ -34,6 +37,8 @@ export type UserProfile = {
   readingHistory: Array<{ storyId: string; title: string; lastReadChapterId?: string; progress?: number }>;
   favorites: string[]; // Array of story IDs
   submittedStories: Array<{ storyId: string; title: string }>;
+  followers?: number; // Added followers
+  following?: number; // Added following
 };
 
 export type NavItem = {

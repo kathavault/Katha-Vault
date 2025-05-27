@@ -1,12 +1,16 @@
+
 "use client";
 
-import type { UserProfile, Story } from '@/types';
+import type { UserProfile } from '@/types'; // Assuming Story type is not directly needed here unless for specific rendering
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { User, Edit3, BookOpen, UploadCloud, Mail, CalendarDays } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { User, Edit3, BookOpen, UploadCloud, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon } from "lucide-react";
 import Link from "next/link";
+import { useState, useEffect } from 'react';
+
 
 const mockUser: UserProfile = {
   id: 'user123',
@@ -22,14 +26,48 @@ const mockUser: UserProfile = {
   submittedStories: [
     { storyId: 's1', title: 'My First Space Opera (Draft)' },
   ],
+  followers: 1250, // Mock data
+  following: 180,  // Mock data
 };
 
 export default function AccountPage() {
+  const [joinedDate, setJoinedDate] = useState('');
+
+  useEffect(() => {
+    // Generate join date only on client to avoid hydration mismatch
+    setJoinedDate(new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString());
+  }, []);
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
-      <header className="flex items-center gap-4">
-        <User className="h-10 w-10 text-primary" />
-        <h1 className="text-3xl font-bold text-primary">My Account</h1>
+      <header className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <User className="h-10 w-10 text-primary" />
+          <h1 className="text-3xl font-bold text-primary">My Account</h1>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MenuIcon className="h-6 w-6" />
+              <span className="sr-only">Account Options</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/account/edit-profile"> {/* Placeholder link */}
+                <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/account/settings"> {/* Placeholder link */}
+                <Settings className="mr-2 h-4 w-4" /> Account Settings
+              </Link>
+            </DropdownMenuItem>
+            {/* Add more options like Privacy, Notifications, etc. */}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
       <p className="text-muted-foreground">Manage your profile, view your reading activity, and keep track of your submissions.</p>
 
@@ -45,11 +83,21 @@ export default function AccountPage() {
               <Mail className="h-4 w-4" /> {mockUser.email}
             </CardDescription>
             <CardDescription className="flex items-center gap-2 mt-1">
-              <CalendarDays className="h-4 w-4" /> Joined: {new Date().toLocaleDateString()} {/* Placeholder */}
+              <CalendarDays className="h-4 w-4" /> Joined: {joinedDate || 'Loading...'}
             </CardDescription>
+            <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Users className="h-4 w-4" /> <strong>{mockUser.followers}</strong> Followers
+              </div>
+              <div className="flex items-center gap-1">
+                <UserPlus className="h-4 w-4" /> <strong>{mockUser.following}</strong> Following
+              </div>
+            </div>
           </div>
-          <Button variant="outline" size="sm">
-            <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/account/edit-profile"> {/* Placeholder link */}
+              <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
+            </Link>
           </Button>
         </CardHeader>
         <CardContent className="p-6 pt-0">
@@ -91,10 +139,10 @@ export default function AccountPage() {
               <ul className="space-y-2 text-sm">
                 {mockUser.submittedStories.map(item => (
                   <li key={item.storyId} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
-                     <Link href={`/submit?edit=${item.storyId}`} className="text-accent-foreground hover:underline"> {/* Assuming edit mode for submissions */}
+                     <Link href={`/submit?edit=${item.storyId}`} className="text-accent-foreground hover:underline">
                       {item.title}
                     </Link>
-                    <span className="text-xs text-muted-foreground">Status: Draft</span> {/* Placeholder status */}
+                    <span className="text-xs text-muted-foreground">Status: Draft</span>
                   </li>
                 ))}
               </ul>
