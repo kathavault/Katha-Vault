@@ -2,47 +2,48 @@
 "use client";
 
 import { useState, useEffect, FormEvent } from 'react';
-import { useParams, useRouter } from 'next/navigation'; 
+import { useParams, useRouter } from 'next/navigation';
 import type { Story, StoryChapter } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import Image from "next/image";
-import { 
-  ChevronLeft, ChevronRight, Settings2, Minus, Plus, Sun, Moon, Bookmark, Share2, MessageCircle, Star, Send, ThumbsUp, ThumbsDown, AlertTriangle, Loader2 as LoaderIcon
-} from 'lucide-react'; 
+import {
+  ChevronLeft, ChevronRight, Settings2, Minus, Plus, Sun, Moon, Bookmark, Share2, MessageCircle, Star, Send, ThumbsUp, ThumbsDown, AlertTriangle, Loader2 as LoaderIcon, LogIn
+} from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { Slider } from '@/components/ui/slider';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { mockStories } from '@/lib/mock-data'; 
-import { cn } from "@/lib/utils"; 
+import { mockStories } from '@/lib/mock-data';
+import { cn } from "@/lib/utils";
 
 
 export default function ReadingPage() {
   const params = useParams();
   const router = useRouter();
   const storyId = params.storyId as string;
-  
+
   const [story, setStory] = useState<Story | null>(null);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
-  const [fontSize, setFontSize] = useState(16); 
+  const [fontSize, setFontSize] = useState(16);
   const [readingTheme, setReadingTheme] = useState<'light' | 'dark'>('dark');
   const [commentText, setCommentText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [storyNotFound, setStoryNotFound] = useState(false);
-  const [userRating, setUserRating] = useState(0); // For user's submitted rating
+  const [userRating, setUserRating] = useState(0);
+
+  // Simulate authentication state - for a real app, this would come from context/session
+  const [isUserAuthenticated, setIsUserAuthenticated] = useState(false); // Default to false
 
   useEffect(() => {
     setIsLoading(true);
     const foundStory = mockStories.find(s => s.id === storyId);
-    
+
     if (foundStory && foundStory.publishedStatus === 'Published') {
       setStory(foundStory);
       setStoryNotFound(false);
@@ -50,14 +51,17 @@ export default function ReadingPage() {
       setStory(null);
       setStoryNotFound(true);
     }
-    setCurrentChapterIndex(0); 
-    setUserRating(0); // Reset user rating when story changes
+    setCurrentChapterIndex(0);
+    setUserRating(0);
     setIsLoading(false);
+
+    // In a real app, you would check actual auth status here
+    // For simulation, we're keeping it simple. You could add a mock login button elsewhere
+    // that sets this to true to see the content.
   }, [storyId]);
 
   const handleRatingSubmit = (rating: number) => {
     setUserRating(rating);
-    // In a real app, you'd send this to a backend
     toast({
       title: "Rating Submitted (Simulated)",
       description: `You rated this story ${rating} out of 5 stars.`,
@@ -66,8 +70,8 @@ export default function ReadingPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <LoaderIcon className="h-10 w-10 animate-spin text-primary" /> 
+      <div className="flex items-center justify-center h-[calc(100vh-150px)]">
+        <LoaderIcon className="h-10 w-10 animate-spin text-primary" />
         <p className="ml-2">Loading story...</p>
       </div>
     );
@@ -95,16 +99,38 @@ export default function ReadingPage() {
     );
   }
 
-  if (!story) { 
-    return <p>An unexpected error occurred.</p>;
+  if (!story) {
+    // This case should ideally be covered by storyNotFound or isLoading
+    return <p className="text-center mt-10">An unexpected error occurred while loading the story.</p>;
   }
+
+  // Simulated Authentication Check
+  if (!isUserAuthenticated) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center p-4">
+        <Alert variant="default" className="max-w-md w-full shadow-lg">
+          <LogIn className="h-5 w-5" />
+          <AlertTitle className="text-xl font-semibold">Access Restricted</AlertTitle>
+          <AlertDescription className="mt-2 text-base">
+            You need to be logged in to read this story. Please log in to continue.
+          </AlertDescription>
+          <Button asChild className="mt-6 w-full sm:w-auto">
+            <Link href="/auth/login">
+              <LogIn className="mr-2 h-4 w-4" /> Go to Login
+            </Link>
+          </Button>
+        </Alert>
+      </div>
+    );
+  }
+
 
   const currentChapter = story.chapters[currentChapterIndex];
 
   const goToNextChapter = () => {
     if (currentChapterIndex < story.chapters.length - 1) {
       setCurrentChapterIndex(prev => prev + 1);
-      window.scrollTo(0, 0); 
+      window.scrollTo(0, 0);
     }
   };
 
@@ -139,17 +165,15 @@ export default function ReadingPage() {
   }
 
 
-  const readingAreaClasses = readingTheme === 'light' 
-    ? 'bg-gray-100 text-gray-800' 
+  const readingAreaClasses = readingTheme === 'light'
+    ? 'bg-gray-100 text-gray-800'
     : 'bg-gray-900 text-gray-200';
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto">
       <Card className="lg:w-1/4 hidden lg:block sticky top-[76px] h-[calc(100vh-90px)] self-start overflow-y-auto">
         <CardHeader className="p-4">
-            <AspectRatio ratio={2 / 3} className="mb-4 rounded-md overflow-hidden shadow-md">
-             <Image src={story.coverImage} alt={story.title} layout="fill" className="object-cover" data-ai-hint={story.dataAihint || "book cover story"}/>
-            </AspectRatio>
+            <Image src={story.coverImage} alt={story.title} width={300} height={450} className="mb-4 rounded-md object-cover shadow-md" data-ai-hint={story.dataAihint || "book cover story"}/>
           <CardTitle className="text-xl">{story.title}</CardTitle>
           <CardDescription>By {story.author}</CardDescription>
            <div className="flex flex-wrap gap-1 pt-2">
@@ -158,7 +182,7 @@ export default function ReadingPage() {
         </CardHeader>
         <CardContent className="p-4 pt-0">
           <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Chapters</h4>
-          <ScrollArea className="h-[calc(100vh-450px)] pr-2"> 
+          <ScrollArea className="h-[calc(100vh-450px)] pr-2">
             <ul className="space-y-1">
               {story.chapters.map((chap, index) => (
                 <li key={chap.id}>
@@ -190,7 +214,6 @@ export default function ReadingPage() {
                             <span className={`font-semibold ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>{story.rating?.toFixed(1)}</span>
                             <span className={`text-xs ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>({story.views} views)</span>
                         </div>
-                        {/* Placeholder for User Rating Input */}
                         <div className="mt-3">
                           <p className={`text-sm font-medium ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'} mb-1`}>Rate this story:</p>
                           <div className="flex items-center">
@@ -229,7 +252,7 @@ export default function ReadingPage() {
                 </div>
             </CardContent>
         </Card>
-        
+
         {currentChapter && (
         <div className={`${readingAreaClasses} rounded-lg shadow-lg`}>
             <header className="p-4 border-b flex items-center justify-between sticky top-[60px] z-10 bg-inherit rounded-t-lg ${readingTheme === 'light' ? 'border-gray-300' : 'border-gray-700'}">
@@ -257,12 +280,12 @@ export default function ReadingPage() {
                 </Button>
               </div>
             </header>
-            
-            <ScrollArea className="h-auto max-h-[calc(100vh-300px)] md:max-h-[calc(100vh-250px)]"> 
+
+            <ScrollArea className="h-auto max-h-[calc(100vh-300px)] md:max-h-[calc(100vh-250px)]">
               <article className={cn(
                   "p-4 md:p-6 prose prose-sm sm:prose lg:prose-lg max-w-none",
-                  "no-select" // Class to prevent text selection
-                )} 
+                  "no-select"
+                )}
                 style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}>
                 {currentChapter.content.split('\n').map((paragraph, index) => (
                   paragraph.trim() !== "" && <p key={index} className="mb-4">{paragraph}</p>
@@ -289,9 +312,9 @@ export default function ReadingPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCommentSubmit} className="space-y-4">
-              <Textarea 
-                placeholder="Write your comment here..." 
-                rows={4} 
+              <Textarea
+                placeholder="Write your comment here..."
+                rows={4}
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 className={`${readingTheme === 'light' ? 'bg-gray-50 border-gray-300' : 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400'}`}
@@ -346,3 +369,5 @@ export default function ReadingPage() {
     </div>
   );
 }
+
+    
