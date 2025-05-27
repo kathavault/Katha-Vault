@@ -24,8 +24,8 @@ body {
     --border: 240 5.9% 90%; /* light gray border */
     --input: 240 5.9% 90%;
 
-    --primary: 325 57% 45%; /* #B4317B - original primary */
-    --primary-foreground: 0 0% 98%; /* nearly white for primary contrast */
+    --primary: 325 80% 55%; /* #E62E9A - New Pink */
+    --primary-foreground: 0 0% 100%; /* white for primary contrast */
 
     --secondary: 240 4.8% 95.9%; /* light gray for secondary elements */
     --secondary-foreground: 240 10% 3.9%;
@@ -36,7 +36,7 @@ body {
     --destructive: 0 84.2% 60.2%; /* standard red */
     --destructive-foreground: 0 0% 98%;
 
-    --ring: 325 57% 45%; /* Primary color for rings */
+    --ring: 325 80% 55%; /* Primary color for rings */
     --radius: 0.5rem;
 
     /* Chart colors - light theme friendly */
@@ -49,61 +49,61 @@ body {
     /* Sidebar specific colors - Light Theme */
     --sidebar-background: 240 4.8% 97.9%; /* very light gray */
     --sidebar-foreground: 240 10% 3.9%; 
-    --sidebar-primary: 325 57% 45%; 
-    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-primary: 325 80% 55%; 
+    --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 4.8% 92.9%; /* slightly darker gray for hover */
     --sidebar-accent-foreground: 240 10% 3.9%;
     --sidebar-border: 240 5.9% 88%; 
-    --sidebar-ring: 325 57% 45%;
+    --sidebar-ring: 325 80% 55%;
   }
 
   .dark {
-    /* Dark Theme Overrides */
-    --background: 267 47% 20%; /* #2A1A46 */
-    --foreground: 280 67% 99%; /* #F7F2FA */
+    /* Dark Theme Overrides - Based on Image */
+    --background: 260 30% 12%; /* Dark deep purple */
+    --foreground: 260 20% 95%; /* Very light lavender/off-white */
 
-    --muted: 267 47% 25%;
-    --muted-foreground: 280 67% 70%; /* Dimmer version of foreground */
+    --muted: 260 30% 20%; /* Slightly lighter purple for muted elements */
+    --muted-foreground: 260 20% 70%; /* Dimmer version of foreground */
 
-    --popover: 267 47% 15%; /* Darker than background for popovers */
-    --popover-foreground: 280 67% 99%;
+    --popover: 260 30% 10%; /* Darker for popovers */
+    --popover-foreground: 260 20% 95%;
 
-    --card: 267 47% 25%; /* Slightly lighter than background */
-    --card-foreground: 280 67% 99%;
+    --card: 260 30% 15%; /* Slightly lighter purple for cards */
+    --card-foreground: 260 20% 95%;
 
-    --border: 280 67% 30%; /* Based on foreground, but darker */
-    --input: 280 67% 30%;
+    --border: 260 20% 30%; 
+    --input: 260 20% 30%;
 
-    --primary: 325 57% 45%; /* #B4317B */
-    --primary-foreground: 280 67% 99%; /* #F7F2FA */
+    --primary: 325 80% 55%; /* #E62E9A - Bright Pink */
+    --primary-foreground: 0 0% 100%; /* White for pink button text */
 
-    --secondary: 325 57% 35%; /* Darker shade of primary */
-    --secondary-foreground: 280 67% 99%;
+    --secondary: 325 80% 45%; /* Darker shade of pink */
+    --secondary-foreground: 0 0% 100%;
 
-    --accent: 325 57% 50%; /* Brighter shade of primary for accents */
-    --accent-foreground: 280 67% 99%;
+    --accent: 325 80% 60%; /* Brighter shade of pink for accents if needed, or use primary */
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 63% 31%; /* Default dark destructive */
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 70% 50%; /* Adjusted red for dark mode */
+    --destructive-foreground: 0 0% 100%;
 
-    --ring: 325 57% 45%; /* Primary color for rings */
+    --ring: 325 80% 55%; /* Pink for rings */
     
     /* Chart colors - dark theme */
-    --chart-1: 325 57% 55%;
-    --chart-2: 280 60% 60%;
-    --chart-3: 267 50% 50%;
-    --chart-4: 300 55% 50%;
-    --chart-5: 340 50% 50%;
+    --chart-1: 325 80% 60%;
+    --chart-2: 280 70% 65%;
+    --chart-3: 260 60% 55%;
+    --chart-4: 300 75% 55%;
+    --chart-5: 340 70% 55%;
 
     /* Sidebar specific colors - Dark Theme */
-    --sidebar-background: 267 47% 18%; /* Slightly darker than main background */
-    --sidebar-foreground: 280 67% 95%; 
-    --sidebar-primary: 325 57% 50%; /* Brighter primary for sidebar active items */
-    --sidebar-primary-foreground: 280 67% 99%;
-    --sidebar-accent: 325 57% 35%; /* Darker accent for sidebar hover */
-    --sidebar-accent-foreground: 280 67% 99%;
-    --sidebar-border: 280 67% 25%; 
-    --sidebar-ring: 325 57% 50%;
+    --sidebar-background: 260 30% 10%; /* Even darker for sidebar */
+    --sidebar-foreground: 260 20% 90%; 
+    --sidebar-primary: 325 80% 60%; /* Brighter pink for sidebar active items */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 325 80% 40%; /* Darker pink accent for sidebar hover */
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 260 20% 25%; 
+    --sidebar-ring: 325 80% 60%;
   }
 }
 
