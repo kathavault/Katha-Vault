@@ -1,5 +1,4 @@
 
-
 export type StoryChapter = {
   id: string;
   title: string;
@@ -48,4 +47,28 @@ export type NavItem = {
   label?: string;
   disabled?: boolean;
   external?: boolean;
+};
+
+// Chat specific types
+export type ChatMessage = {
+  id: string;
+  senderId: string;
+  text: string;
+  timestamp: string; // ISO string
+  isCurrentUser?: boolean; // Helper for styling
+};
+
+export type ChatUser = {
+  id: string;
+  username: string;
+  avatarUrl: string;
+};
+
+export type ChatConversation = {
+  id: string;
+  participant: ChatUser;
+  lastMessage: string;
+  lastMessageTimestamp: string; // ISO string
+  unreadCount?: number;
+  messages: ChatMessage[];
 };
