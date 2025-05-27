@@ -102,7 +102,7 @@ export default function SearchPage() {
     setHasSearchedStories(true);
     const searchTermLower = storySearchTerm.toLowerCase();
     const filtered = publishedStories.filter(story => { // Search within published stories
-      const termMatch = storySearchTermLower
+      const termMatch = searchTermLower
         ? story.title.toLowerCase().includes(searchTermLower) ||
           story.author.toLowerCase().includes(searchTermLower) ||
           story.tags.some(tag => tag.toLowerCase().includes(searchTermLower)) ||
@@ -115,14 +115,14 @@ export default function SearchPage() {
   };
   
   useEffect(() => {
-    if (storySearchTerm.trim() || filterGenre !== 'all') {
-      performStorySearch();
-    } else if (!storySearchTerm.trim() && filterGenre === 'all' && hasSearchedStories ) {
-      setStoryResults([]);
-      setHasSearchedStories(false);
+    // Trigger search if there's a search term or a filter is active (other than 'all')
+    // or if a search has been performed previously and now the term/filter is cleared.
+    if (storySearchTerm.trim() || filterGenre !== 'all' || (hasSearchedStories && !storySearchTerm.trim() && filterGenre === 'all')) {
+        performStorySearch();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterGenre, storySearchTerm]);
+  }, [filterGenre, storySearchTerm, hasSearchedStories]); // Added hasSearchedStories to dependencies
+
 
   const handleUserSearch = () => {
     if (!userSearchTerm.trim()) {
@@ -263,3 +263,4 @@ export default function SearchPage() {
     </div>
   );
 }
+
