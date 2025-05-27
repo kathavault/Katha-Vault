@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Send } from 'lucide-react'; // Added Send icon
 
 function AppSidebar() {
   const pathname = usePathname();
@@ -73,6 +73,9 @@ function AppSidebar() {
 }
 
 function AppHeader() {
+  const pathname = usePathname();
+  const isHomePage = pathname === '/';
+
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
       <div className="md:hidden">
@@ -85,6 +88,14 @@ function AppHeader() {
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {isHomePage && (
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/chat"> {/* Placeholder link for chat */}
+              <Send className="h-5 w-5" />
+              <span className="sr-only">Chat</span>
+            </Link>
+          </Button>
+        )}
         <ThemeToggleButton />
         <Button asChild>
             <Link href="/signup"> {/* Placeholder link */}

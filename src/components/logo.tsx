@@ -1,16 +1,16 @@
 import Link from 'next/link';
 import { siteConfig } from '@/config/site';
-import { cn } from '@/lib/utils'; // Added this import
+import { cn } from '@/lib/utils';
 
 // New X-in-a-circle SVG logo
 const XCircleLogo = ({ className }: { className?: string }) => (
-  <svg 
-    className={cn("h-7 w-7 shrink-0", className)} 
-    viewBox="0 0 24 24" 
-    fill="none" 
+  <svg
+    className={cn("h-7 w-7 shrink-0", className)}
+    viewBox="0 0 24 24"
+    fill="none"
     xmlns="http://www.w3.org/2000/svg"
     stroke="currentColor" // Will inherit text-primary
-    strokeWidth="2"
+    strokeWidth="2.5" // Increased stroke width for a thicker X
   >
     <circle cx="12" cy="12" r="10" />
     <line x1="15" y1="9" x2="9" y2="15" />

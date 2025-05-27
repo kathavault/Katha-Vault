@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { UserProfile } from '@/types'; // Assuming Story type is not directly needed here unless for specific rendering
+import type { UserProfile } from '@/types'; 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,15 +26,14 @@ const mockUser: UserProfile = {
   submittedStories: [
     { storyId: 's1', title: 'My First Space Opera (Draft)' },
   ],
-  followers: 1250, // Mock data
-  following: 180,  // Mock data
+  followers: 1250, 
+  following: 180,  
 };
 
 export default function AccountPage() {
   const [joinedDate, setJoinedDate] = useState('');
 
   useEffect(() => {
-    // Generate join date only on client to avoid hydration mismatch
     setJoinedDate(new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString());
   }, []);
 
@@ -56,16 +55,15 @@ export default function AccountPage() {
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
-              <Link href="/account/edit-profile"> {/* Placeholder link */}
+              <Link href="/account/edit-profile"> 
                 <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link href="/account/settings"> {/* Placeholder link */}
+              <Link href="/account/settings"> 
                 <Settings className="mr-2 h-4 w-4" /> Account Settings
               </Link>
             </DropdownMenuItem>
-            {/* Add more options like Privacy, Notifications, etc. */}
           </DropdownMenuContent>
         </DropdownMenu>
       </header>
@@ -95,7 +93,7 @@ export default function AccountPage() {
             </div>
           </div>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/account/edit-profile"> {/* Placeholder link */}
+            <Link href="/account/edit-profile"> 
               <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
             </Link>
           </Button>

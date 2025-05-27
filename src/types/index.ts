@@ -22,7 +22,7 @@ export type Story = {
   views?: number;
   isTrending?: boolean;
   isCurated?: boolean;
-  category?: 'Trending' | 'Novel' | 'ShortStory' | 'Curated'; // Added category
+  category?: 'Trending' | 'Novel' | 'ShortStory' | 'Curated' | 'Romance' | 'SciFi' | string; // Made category more flexible
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
   dataAihint?: string; // Optional for StoryCard
