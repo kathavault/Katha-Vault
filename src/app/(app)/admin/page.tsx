@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
-  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon, Eraser
+  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon, UserCog, ServerCog, Palette, ToggleLeft
 } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import {
@@ -25,7 +25,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -34,19 +33,29 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"; // Removed DialogTrigger as it's used with <Dialog> directly
+  DialogTrigger, // Added DialogTrigger
+  DialogClose
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import Image from 'next/image';
-import type { Story, StoryChapter } from '@/types'; // Using global types
+import type { Story, StoryChapter, UserProfile } from '@/types'; // Using global types
 import { mockStories as initialMockStories } from '@/lib/mock-data'; // Import shared mock data
+import { Switch } from "@/components/ui/switch"; // Added Switch
 
 // Type for form data, closely related to the global Story type
 type StoryFormDataFields = Omit<Story, 'id' | 'chapters' | 'createdAt' | 'updatedAt' | 'authorId' | 'isTrending' | 'isCurated'> & { id?: string };
 type ChapterFormData = Omit<StoryChapter, 'id' | 'order'>;
+
+// Mock users for Admin Panel User Management dialog
+const mockAdminUsers: Pick<UserProfile, 'id' | 'username' | 'email'>[] = [
+    { id: 'adminUser1', username: 'StorySeeker92', email: 'story.seeker@example.com' },
+    { id: 'adminUser2', username: 'ReaderRiley', email: 'riley@example.com' },
+    { id: 'adminUser3', username: 'AuthorAlex', email: 'alex@example.com' },
+];
 
 
 export default function AdminPage() {
@@ -67,6 +76,12 @@ export default function AdminPage() {
   const [currentChapterData, setCurrentChapterData] = useState<ChapterFormData>({ title: '', content: '' });
   const [chapterToDelete, setChapterToDelete] = useState<{storyId: string, chapterId: string} | null>(null);
 
+  // State for new dialogs
+  const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
+  const [isSiteSettingsDialogOpen, setIsSiteSettingsDialogOpen] = useState(false);
+  const [mockSiteName, setMockSiteName] = useState("Katha Vault");
+  const [mockMaintenanceMode, setMockMaintenanceMode] = useState(false);
+
 
   useEffect(() => {
     const lowerSearchTerm = searchTerm.toLowerCase();
@@ -76,19 +91,10 @@ export default function AdminPage() {
   }, [searchTerm, stories]);
   
   useEffect(() => {
-    stories.forEach(updatedStory => {
-      const indexInGlobal = initialMockStories.findIndex(s => s.id === updatedStory.id);
-      if (indexInGlobal !== -1) {
-        initialMockStories[indexInGlobal] = { ...initialMockStories[indexInGlobal], ...updatedStory };
-      } else {
-        initialMockStories.push(updatedStory);
-      }
-    });
-    for (let i = initialMockStories.length - 1; i >= 0; i--) {
-        if (!stories.find(s => s.id === initialMockStories[i].id)) {
-            initialMockStories.splice(i, 1);
-        }
-    }
+    // Update initialMockStories when stories state changes to simulate persistence for other pages
+    const storiesMap = new Map(stories.map(s => [s.id, s]));
+    initialMockStories.length = 0; // Clear the original array
+    storiesMap.forEach(story => initialMockStories.push(story)); // Repopulate with current state
   }, [stories]);
 
 
@@ -109,14 +115,13 @@ export default function AdminPage() {
   const handleSaveStory = (formData: StoryFormDataFields & {id?: string}) => {
     const fullFormData: Partial<Story> = {
         ...formData,
-        chapters: formData.id ? stories.find(s => s.id === formData.id)?.chapters || [] : [],
         authorId: formData.authorId || `author-${Date.now()}`,
         createdAt: formData.id ? stories.find(s => s.id === formData.id)?.createdAt || new Date().toISOString() : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     };
 
     if (formData.id) { 
-        setStories(prevStories => prevStories.map(s => s.id === formData.id ? { ...s, ...fullFormData } as Story : s)); 
+        setStories(prevStories => prevStories.map(s => s.id === formData.id ? { ...s, ...fullFormData, chapters: s.chapters } as Story : s)); 
         toast({ title: "Story Updated (Simulated)", description: `"${formData.title}" has been updated.` });
         setIsEditStoryDialogOpen(false);
         setEditingStory(null);
@@ -222,7 +227,7 @@ export default function AdminPage() {
                 </div>
                 <div>
                     <Label htmlFor="story-category">Category</Label>
-                    <Select value={category} onValueChange={(value) => setCategory(value as Story['category'])}>
+                     <Select value={category} onValueChange={(value) => setCategory(value as Story['category'])}>
                         <SelectTrigger id="story-category">
                             <SelectValue placeholder="Select category" />
                         </SelectTrigger>
@@ -233,7 +238,6 @@ export default function AdminPage() {
                             <SelectItem value="Romance">Romance</SelectItem>
                             <SelectItem value="SciFi">Sci-Fi</SelectItem>
                             <SelectItem value="General">General</SelectItem>
-                            {/* Add more categories as needed */}
                         </SelectContent>
                     </Select>
                 </div>
@@ -575,26 +579,119 @@ export default function AdminPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> User Management</CardTitle>
-            <CardDescription>View, edit, or suspend user accounts. (Placeholder)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => toast({title:"Placeholder", description: "User management not yet implemented."})} className="w-full">Manage Users</Button>
-          </CardContent>
-        </Card>
+        <Dialog open={isUserManagementDialogOpen} onOpenChange={setIsUserManagementDialogOpen}>
+            <DialogTrigger asChild>
+                <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><UserCog className="h-5 w-5" /> User Management</CardTitle>
+                        <CardDescription>View, edit, or suspend user accounts.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button className="w-full">Manage Users</Button>
+                    </CardContent>
+                </Card>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>User Management (Simulated)</DialogTitle>
+                    <DialogDescription>
+                        This is a placeholder for user management. Actions here are simulated.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-3 py-4 max-h-96 overflow-y-auto">
+                    {mockAdminUsers.map(user => (
+                        <Card key={user.id} className="p-3">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-semibold">{user.username}</p>
+                                    <p className="text-xs text-muted-foreground">{user.email}</p>
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4"/></Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => toast({ title: "Simulated Action", description: `Edit user ${user.username}`})}>
+                                            <Edit className="mr-2 h-4 w-4"/> Edit User
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => toast({ title: "Simulated Action", description: `Suspend user ${user.username}`})}>
+                                            <ShieldCheck className="mr-2 h-4 w-4"/> Suspend User
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Close</Button>
+                    </DialogClose>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" /> Site Settings</CardTitle>
-            <CardDescription>Configure general site parameters. (Placeholder)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => toast({title:"Placeholder", description:"Site settings not yet implemented."})} className="w-full">Site Settings</Button>
-          </CardContent>
-        </Card>
+        <Dialog open={isSiteSettingsDialogOpen} onOpenChange={setIsSiteSettingsDialogOpen}>
+            <DialogTrigger asChild>
+                 <Card className="cursor-pointer hover:shadow-md transition-shadow">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><ServerCog className="h-5 w-5" /> Site Settings</CardTitle>
+                        <CardDescription>Configure general site parameters.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <Button className="w-full">Site Settings</Button>
+                    </CardContent>
+                </Card>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Site Settings (Simulated)</DialogTitle>
+                    <DialogDescription>
+                        Manage global site settings here. Changes are simulated.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="site-name">Site Name</Label>
+                        <Input id="site-name" value={mockSiteName} onChange={(e) => setMockSiteName(e.target.value)} />
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                        <div className="space-y-0.5">
+                            <Label htmlFor="maintenance-mode" className="text-base">
+                                Maintenance Mode
+                            </Label>
+                            <p className="text-sm text-muted-foreground">
+                                Temporarily make the site unavailable to users.
+                            </p>
+                        </div>
+                        <Switch
+                            id="maintenance-mode"
+                            checked={mockMaintenanceMode}
+                            onCheckedChange={setMockMaintenanceMode}
+                        />
+                    </div>
+                    <div className="space-y-2">
+                         <Label>Theme Options (Placeholder)</Label>
+                         <div className="flex items-center space-x-2">
+                            <Button variant="outline" size="sm"><Palette className="mr-2 h-4 w-4" /> Light</Button>
+                            <Button variant="outline" size="sm"><Palette className="mr-2 h-4 w-4" /> Dark</Button>
+                            <Button variant="outline" size="sm"><ToggleLeft className="mr-2 h-4 w-4" /> System</Button>
+                         </div>
+                    </div>
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                    </DialogClose>
+                     <Button onClick={() => toast({ title: "Site Settings Saved (Simulated)", description: `Site Name: ${mockSiteName}, Maintenance: ${mockMaintenanceMode ? 'On' : 'Off'}`})}>
+                        Save Changes
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
 }
+
+      
