@@ -7,30 +7,105 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Settings as SettingsIcon, Bell, Palette, ShieldCheck, LogOut, Save, UserCog, VenetianMask, Mail, KeyRound, Ban } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Palette, ShieldCheck, LogOut, Save, UserCog, VenetianMask, Mail, KeyRound, Ban, UserX, Trash2 } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { useForm, SubmitHandler } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+
+const emailChangeSchema = z.object({
+  newEmail: z.string().email("Invalid email address."),
+  confirmNewEmail: z.string().email("Invalid email address."),
+}).refine(data => data.newEmail === data.confirmNewEmail, {
+  message: "Emails don't match",
+  path: ["confirmNewEmail"],
+});
+type EmailChangeFormData = z.infer<typeof emailChangeSchema>;
+
+const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required."),
+  newPassword: z.string().min(8, "New password must be at least 8 characters."),
+  confirmNewPassword: z.string().min(8, "Confirm password must be at least 8 characters."),
+}).refine(data => data.newPassword === data.confirmNewPassword, {
+  message: "New passwords don't match",
+  path: ["confirmNewPassword"],
+});
+type PasswordChangeFormData = z.infer<typeof passwordChangeSchema>;
+
 
 export default function AccountSettingsPage() {
+  const router = useRouter();
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
-  const [darkModeSystem, setDarkModeSystem] = useState(true);
+  const [darkModeSystem, setDarkModeSystem] = useState(true); // Visual placeholder
   const [isProfilePrivate, setIsProfilePrivate] = useState(false);
 
+  const [isChangeEmailDialogOpen, setIsChangeEmailDialogOpen] = useState(false);
+  const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false);
+  const [isBlockedAccountsDialogOpen, setIsBlockedAccountsDialogOpen] = useState(false);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
+
+  const mockBlockedUsers = [{id: 'userBlock1', name: 'TroubleMakerX'}, {id: 'userBlock2', name: 'SpamBot007'}];
+
+  const emailForm = useForm<EmailChangeFormData>({ resolver: zodResolver(emailChangeSchema) });
+  const passwordForm = useForm<PasswordChangeFormData>({ resolver: zodResolver(passwordChangeSchema) });
+
   const handleSaveChanges = () => {
-    // In a real app, you'd save these settings to a backend.
-    console.log("Settings saved:", { emailNotifications, pushNotifications, darkModeSystem, isProfilePrivate });
+    console.log("Settings saved (simulated):", { emailNotifications, pushNotifications, darkModeSystem, isProfilePrivate });
     toast({
       title: "Settings Saved",
-      description: "Your preferences have been updated.",
+      description: "Your preferences have been updated (simulated).",
     });
   };
 
-  const handlePlaceholderClick = (featureName: string) => {
-    toast({
-        title: "Feature Placeholder",
-        description: `${featureName} functionality is not yet implemented.`,
-    });
+  const handleChangeEmailSubmit: SubmitHandler<EmailChangeFormData> = (data) => {
+    console.log("Change email request (simulated):", data.newEmail);
+    toast({ title: "Email Change Requested", description: "A confirmation link has been sent to your new email (simulated)." });
+    emailForm.reset();
+    setIsChangeEmailDialogOpen(false);
+  };
+
+  const handleChangePasswordSubmit: SubmitHandler<PasswordChangeFormData> = (data) => {
+    console.log("Password change attempt (simulated). New password:", data.newPassword);
+    toast({ title: "Password Changed", description: "Your password has been updated (simulated)." });
+    passwordForm.reset();
+    setIsChangePasswordDialogOpen(false);
+  };
+  
+  const handleUnblockUser = (userId: string, userName: string) => {
+     toast({ title: "User Unblocked (Simulated)", description: `${userName} has been unblocked.` });
+     // In a real app, you'd update the blocked users list here
+  };
+
+  const handleLogout = () => {
+    console.log("Logout initiated (simulated)");
+    toast({ title: "Logged Out", description: "You have been successfully logged out (simulated)." });
+    setIsLogoutConfirmOpen(false);
+    router.push('/'); // Redirect to home page
   };
 
   return (
@@ -40,7 +115,7 @@ export default function AccountSettingsPage() {
         <h1 className="text-3xl font-bold text-primary">Account Settings</h1>
       </header>
       <p className="text-muted-foreground">
-        Manage your notification preferences, theme settings, account security, and privacy.
+        Manage your notification preferences, theme settings, account security, and privacy. Actions are simulated.
       </p>
 
       <Card>
@@ -122,22 +197,129 @@ export default function AccountSettingsPage() {
                 onCheckedChange={setIsProfilePrivate}
                 />
             </div>
-            <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Change Email")}>
-                <Mail className="mr-2 h-4 w-4" /> Change Email Address
+
+            <Dialog open={isChangeEmailDialogOpen} onOpenChange={setIsChangeEmailDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full justify-start">
+                    <Mail className="mr-2 h-4 w-4" /> Change Email Address
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Change Email Address</DialogTitle>
+                  <DialogDescription>Enter your new email address. This is a simulated action.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={emailForm.handleSubmit(handleChangeEmailSubmit)} className="space-y-4 py-2">
+                  <div>
+                    <Label htmlFor="newEmail">New Email</Label>
+                    <Input id="newEmail" type="email" {...emailForm.register("newEmail")} />
+                    {emailForm.formState.errors.newEmail && <p className="text-destructive text-sm mt-1">{emailForm.formState.errors.newEmail.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="confirmNewEmail">Confirm New Email</Label>
+                    <Input id="confirmNewEmail" type="email" {...emailForm.register("confirmNewEmail")} />
+                    {emailForm.formState.errors.confirmNewEmail && <p className="text-destructive text-sm mt-1">{emailForm.formState.errors.confirmNewEmail.message}</p>}
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsChangeEmailDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit">Request Change</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isChangePasswordDialogOpen} onOpenChange={setIsChangePasswordDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="w-full justify-start">
+                    <KeyRound className="mr-2 h-4 w-4" /> Change Password
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Change Password</DialogTitle>
+                  <DialogDescription>Enter your current and new password. This is a simulated action.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={passwordForm.handleSubmit(handleChangePasswordSubmit)} className="space-y-4 py-2">
+                   <div>
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Input id="currentPassword" type="password" {...passwordForm.register("currentPassword")} />
+                    {passwordForm.formState.errors.currentPassword && <p className="text-destructive text-sm mt-1">{passwordForm.formState.errors.currentPassword.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <Input id="newPassword" type="password" {...passwordForm.register("newPassword")} />
+                     {passwordForm.formState.errors.newPassword && <p className="text-destructive text-sm mt-1">{passwordForm.formState.errors.newPassword.message}</p>}
+                  </div>
+                  <div>
+                    <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
+                    <Input id="confirmNewPassword" type="password" {...passwordForm.register("confirmNewPassword")} />
+                    {passwordForm.formState.errors.confirmNewPassword && <p className="text-destructive text-sm mt-1">{passwordForm.formState.errors.confirmNewPassword.message}</p>}
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsChangePasswordDialogOpen(false)}>Cancel</Button>
+                    <Button type="submit">Change Password</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={isBlockedAccountsDialogOpen} onOpenChange={setIsBlockedAccountsDialogOpen}>
+                <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start">
+                        <Ban className="mr-2 h-4 w-4" /> Blocked Accounts
+                    </Button>
+                </DialogTrigger>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Blocked Accounts</DialogTitle>
+                        <DialogDescription>Manage users you've blocked. Unblocking is simulated.</DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4 space-y-3 max-h-60 overflow-y-auto">
+                        {mockBlockedUsers.length > 0 ? mockBlockedUsers.map(user => (
+                            <div key={user.id} className="flex items-center justify-between p-2 border rounded-md">
+                                <span className="text-sm font-medium">{user.name}</span>
+                                <Button variant="outline" size="sm" onClick={() => handleUnblockUser(user.id, user.name)}>
+                                    <UserX className="mr-1 h-3 w-3" /> Unblock
+                                </Button>
+                            </div>
+                        )) : (
+                            <p className="text-sm text-muted-foreground text-center">You haven't blocked any users.</p>
+                        )}
+                    </div>
+                    <DialogFooter>
+                        <DialogClose asChild>
+                             <Button variant="outline">Close</Button>
+                        </DialogClose>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Button variant="outline" className="w-full justify-start" asChild>
+                <Link href="/privacy-policy">
+                    <VenetianMask className="mr-2 h-4 w-4" /> Privacy Policy
+                </Link>
             </Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Change Password")}>
-                <KeyRound className="mr-2 h-4 w-4" /> Change Password
-            </Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Blocked Accounts")}>
-                <Ban className="mr-2 h-4 w-4" /> Blocked Accounts
-            </Button>
-            <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Privacy Policy")}>
-                <VenetianMask className="mr-2 h-4 w-4" /> Privacy Policy
-            </Button>
-             <Button variant="destructive" className="w-full justify-start" onClick={() => handlePlaceholderClick("Log Out")}>
-                <LogOut className="mr-2 h-4 w-4" />
-                Log Out
-            </Button>
+
+            <AlertDialog open={isLogoutConfirmOpen} onOpenChange={setIsLogoutConfirmOpen}>
+                <AlertDialogTrigger asChild>
+                     <Button variant="destructive" className="w-full justify-start">
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Log Out
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you sure you want to log out?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action will log you out of your account (simulated).
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleLogout} className="bg-destructive hover:bg-destructive/90">Log Out</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </CardContent>
       </Card>
 
@@ -152,3 +334,5 @@ export default function AccountSettingsPage() {
     </div>
   );
 }
+
+    
