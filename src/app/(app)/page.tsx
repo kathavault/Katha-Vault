@@ -47,11 +47,16 @@ const StorySection: React.FC<StorySectionProps> = ({ title, stories, showSeeAll 
 export default function HomePage() {
   const publishedStories = mockStories.filter(story => story.publishedStatus === 'Published');
 
-  const trendingStories = publishedStories.filter(story => story.category === 'Trending');
+  // Sort trending stories by views in descending order
+  const trendingStories = publishedStories
+    .filter(story => story.category === 'Trending')
+    .sort((a, b) => (b.views || 0) - (a.views || 0));
+    
   const novelStories = publishedStories.filter(story => story.category === 'Novel');
   const shortStories = publishedStories.filter(story => story.category === 'ShortStory');
   const romanceStories = publishedStories.filter(story => story.category === 'Romance');
   const scifiStories = publishedStories.filter(story => story.category === 'SciFi');
+  const generalStories = publishedStories.filter(story => story.category === 'General' || !story.category);
 
 
   return (
@@ -83,6 +88,7 @@ export default function HomePage() {
       <StorySection title="Short Stories & Quick Reads" stories={shortStories} showSeeAll categorySlug="shortstory"/>
       <StorySection title="Romance Reads" stories={romanceStories} showSeeAll icon={Heart} categorySlug="romance"/>
       <StorySection title="Sci-Fi Adventures" stories={scifiStories} showSeeAll icon={Atom} categorySlug="scifi"/>
+      {generalStories.length > 0 && <StorySection title="More Stories" stories={generalStories} showSeeAll categorySlug="general"/>}
       
     </div>
   );

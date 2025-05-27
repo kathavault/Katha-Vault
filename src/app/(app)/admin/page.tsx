@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
-  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon, Eraser // Added Eraser
+  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon, Eraser
 } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import {
@@ -34,8 +34,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"; // Removed DialogTrigger as it's used with <Dialog> directly
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,16 +45,11 @@ import type { Story, StoryChapter } from '@/types'; // Using global types
 import { mockStories as initialMockStories } from '@/lib/mock-data'; // Import shared mock data
 
 // Type for form data, closely related to the global Story type
-type StoryFormDataFields = Omit<Story, 'id' | 'chapters' | 'createdAt' | 'updatedAt' | 'authorId' | 'isTrending' | 'isCurated' | 'category'> & { id?: string };
+type StoryFormDataFields = Omit<Story, 'id' | 'chapters' | 'createdAt' | 'updatedAt' | 'authorId' | 'isTrending' | 'isCurated'> & { id?: string };
 type ChapterFormData = Omit<StoryChapter, 'id' | 'order'>;
 
 
 export default function AdminPage() {
-  // Use a deep copy of initialMockStories to allow modifications without affecting the imported module directly
-  // This is important if multiple components might import and modify it, though for this simulation,
-  // direct modification of the imported array (if not copied) is how changes "persist" across page views.
-  // For simplicity in this simulation, we'll allow direct modification of the imported array by simply setting it as initial state.
-  // In a real app, this would come from a backend and state management would be more robust.
   const [stories, setStories] = useState<Story[]>(() => JSON.parse(JSON.stringify(initialMockStories)));
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredStories, setFilteredStories] = useState<Story[]>(stories);
@@ -81,27 +75,20 @@ export default function AdminPage() {
     );
   }, [searchTerm, stories]);
   
-  // Effect to update the globally imported mockStories array when local `stories` state changes.
-  // This simulates "saving" to the shared data source.
   useEffect(() => {
-    // Find stories in initialMockStories and update them or add new ones.
-    // This is a bit simplistic and could be improved for robust merging.
     stories.forEach(updatedStory => {
       const indexInGlobal = initialMockStories.findIndex(s => s.id === updatedStory.id);
       if (indexInGlobal !== -1) {
         initialMockStories[indexInGlobal] = { ...initialMockStories[indexInGlobal], ...updatedStory };
       } else {
-        // If story doesn't exist, add it (applies to newly added stories)
         initialMockStories.push(updatedStory);
       }
     });
-    // Handle deletions from global array
     for (let i = initialMockStories.length - 1; i >= 0; i--) {
         if (!stories.find(s => s.id === initialMockStories[i].id)) {
             initialMockStories.splice(i, 1);
         }
     }
-
   }, [stories]);
 
 
@@ -122,27 +109,25 @@ export default function AdminPage() {
   const handleSaveStory = (formData: StoryFormDataFields & {id?: string}) => {
     const fullFormData: Partial<Story> = {
         ...formData,
-        // Ensure chapters aren't overwritten if not managed by this form
         chapters: formData.id ? stories.find(s => s.id === formData.id)?.chapters || [] : [],
-        // Mock other fields if not in form
         authorId: formData.authorId || `author-${Date.now()}`,
         createdAt: formData.id ? stories.find(s => s.id === formData.id)?.createdAt || new Date().toISOString() : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
     };
 
-
-    if (formData.id) { // Editing existing story
+    if (formData.id) { 
         setStories(prevStories => prevStories.map(s => s.id === formData.id ? { ...s, ...fullFormData } as Story : s)); 
         toast({ title: "Story Updated (Simulated)", description: `"${formData.title}" has been updated.` });
         setIsEditStoryDialogOpen(false);
         setEditingStory(null);
-    } else { // Adding new story
+    } else { 
         const newStory: Story = {
             ...fullFormData,
             id: `story-${Date.now()}`,
-            chapters: [], // New stories start with no chapters
-            publishedStatus: 'Draft', // Default for new stories
-            status: 'Ongoing', // Default narrative status
+            chapters: [], 
+            publishedStatus: formData.publishedStatus || 'Draft',
+            status: 'Ongoing', 
+            category: formData.category || 'General',
         } as Story;
         setStories(prevStories => [newStory, ...prevStories]);
         toast({ title: "Story Added (Simulated)", description: `"${formData.title}" has been added as a draft.` });
@@ -157,6 +142,7 @@ export default function AdminPage() {
     const [genre, setGenre] = useState(story?.genre || '');
     const [tags, setTags] = useState(story?.tags?.join(', ') || '');
     const [publishedStatus, setPublishedStatus] = useState<Story['publishedStatus']>(story?.publishedStatus || 'Draft');
+    const [category, setCategory] = useState<Story['category']>(story?.category || 'General');
     const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
     const [coverImagePreview, setCoverImagePreview] = useState<string | null>(story?.coverImage || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -175,8 +161,6 @@ export default function AdminPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // In a real app, coverImageFile would be uploaded and coverImageUrl would be the URL from the server.
-        // For this simulation, we use the Data URI preview as the coverImageUrl.
         onSave({ 
             id: story?.id, 
             title, 
@@ -185,7 +169,8 @@ export default function AdminPage() {
             coverImage: coverImagePreview || `https://placehold.co/300x450?text=${encodeURIComponent(title.substring(0,10))}`, 
             genre, 
             tags: tags.split(',').map(t => t.trim()).filter(t => t),
-            publishedStatus
+            publishedStatus,
+            category
         });
     };
 
@@ -221,18 +206,37 @@ export default function AdminPage() {
                 <Label htmlFor="story-tags">Tags (comma-separated)</Label>
                 <Input id="story-tags" value={tags} onChange={e => setTags(e.target.value)} />
             </div>
-             <div>
-                <Label htmlFor="story-publishedStatus">Publication Status</Label>
-                <Select value={publishedStatus} onValueChange={(value) => setPublishedStatus(value as Story['publishedStatus'])}>
-                    <SelectTrigger id="story-publishedStatus">
-                        <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="Draft">Draft</SelectItem>
-                        <SelectItem value="Review">Review</SelectItem>
-                        <SelectItem value="Published">Published</SelectItem>
-                    </SelectContent>
-                </Select>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <Label htmlFor="story-publishedStatus">Publication Status</Label>
+                    <Select value={publishedStatus} onValueChange={(value) => setPublishedStatus(value as Story['publishedStatus'])}>
+                        <SelectTrigger id="story-publishedStatus">
+                            <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Draft">Draft</SelectItem>
+                            <SelectItem value="Review">Review</SelectItem>
+                            <SelectItem value="Published">Published</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label htmlFor="story-category">Category</Label>
+                    <Select value={category} onValueChange={(value) => setCategory(value as Story['category'])}>
+                        <SelectTrigger id="story-category">
+                            <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="Trending">Trending</SelectItem>
+                            <SelectItem value="Novel">Novel</SelectItem>
+                            <SelectItem value="ShortStory">Short Story</SelectItem>
+                            <SelectItem value="Romance">Romance</SelectItem>
+                            <SelectItem value="SciFi">Sci-Fi</SelectItem>
+                            <SelectItem value="General">General</SelectItem>
+                            {/* Add more categories as needed */}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
             <DialogFooter className="pt-4">
                 <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
@@ -344,20 +348,9 @@ export default function AdminPage() {
             <CardDescription>Add, edit, or delete stories and manage their chapters and status. Changes are simulated locally.</CardDescription>
           </div>
           <div className="flex gap-2 w-full md:w-auto">
-            <Dialog open={isAddStoryDialogOpen} onOpenChange={setIsAddStoryDialogOpen}>
-                <DialogTrigger asChild>
-                    <Button size="sm" className="w-full md:w-auto">
-                        <BookPlus className="mr-2 h-4 w-4" /> Add New Story
-                    </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px]">
-                    <DialogHeader>
-                        <DialogTitle>Add New Story</DialogTitle>
-                        <DialogDescription>Fill in the details for the new story. It will be added as a 'Draft'.</DialogDescription>
-                    </DialogHeader>
-                    <StoryForm onSave={handleSaveStory} onCancel={() => setIsAddStoryDialogOpen(false)} />
-                </DialogContent>
-            </Dialog>
+            <Button size="sm" className="w-full md:w-auto" onClick={() => setIsAddStoryDialogOpen(true)}>
+              <BookPlus className="mr-2 h-4 w-4" /> Add New Story
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -450,6 +443,16 @@ export default function AdminPage() {
         </CardContent>
       </Card>
         
+      <Dialog open={isAddStoryDialogOpen} onOpenChange={setIsAddStoryDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add New Story</DialogTitle>
+            <DialogDescription>Fill in the details for the new story. It will be added as a 'Draft'.</DialogDescription>
+          </DialogHeader>
+          <StoryForm onSave={handleSaveStory} onCancel={() => setIsAddStoryDialogOpen(false)} />
+        </DialogContent>
+      </Dialog>
+
       {editingStory && (
         <Dialog open={isEditStoryDialogOpen} onOpenChange={(isOpen) => {
             setIsEditStoryDialogOpen(isOpen);

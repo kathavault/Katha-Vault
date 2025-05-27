@@ -11,8 +11,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import Image from "next/image";
 import { 
-  ChevronLeft, ChevronRight, Settings2, Minus, Plus, Sun, Moon, Bookmark, Share2, MessageCircle, Star, Send, ThumbsUp, ThumbsDown, AlertTriangle // Added AlertTriangle
-} from 'lucide-react';
+  ChevronLeft, ChevronRight, Settings2, Minus, Plus, Sun, Moon, Bookmark, Share2, MessageCircle, Star, Send, ThumbsUp, ThumbsDown, AlertTriangle, Loader2 as LoaderIcon // Renamed Loader2 to LoaderIcon
+} from 'lucide-react'; 
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { mockStories } from '@/lib/mock-data'; // Import shared mock data
+import { cn } from "@/lib/utils"; // Import cn utility
 
 
 export default function ReadingPage() {
@@ -55,7 +56,7 @@ export default function ReadingPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" /> 
+        <LoaderIcon className="h-10 w-10 animate-spin text-primary" /> 
         <p className="ml-2">Loading story...</p>
       </div>
     );
@@ -130,9 +131,6 @@ export default function ReadingPage() {
   const readingAreaClasses = readingTheme === 'light' 
     ? 'bg-gray-100 text-gray-800' 
     : 'bg-gray-900 text-gray-200';
-  // Loader2 for loading state
-  const Loader2 = ({className}: {className?: string}) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("animate-spin", className)}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>;
-
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto">
@@ -233,7 +231,7 @@ export default function ReadingPage() {
             </header>
             
             <ScrollArea className="h-auto max-h-[calc(100vh-300px)] md:max-h-[calc(100vh-250px)]"> 
-              <article className="p-4 md:p-6 prose prose-sm sm:prose lg:prose-lg max-w-none" style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}>
+              <article className="p-4 md:p-6 prose prose-sm sm:prose lg:prose-lg max-w-none no-select" style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}>
                 {currentChapter.content.split('\n').map((paragraph, index) => (
                   paragraph.trim() !== "" && <p key={index} className="mb-4">{paragraph}</p>
                 ))}
@@ -316,7 +314,3 @@ export default function ReadingPage() {
     </div>
   );
 }
-
-// Helper cn function if not globally available or for avoiding import issues in snippets
-const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(' ');
-
