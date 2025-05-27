@@ -3,206 +3,18 @@ import { StoryCard } from '@/components/story-card';
 import type { Story } from '@/types';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Sparkles, TrendingUp, Heart, Atom } from 'lucide-react'; // Added Heart and Atom icons
-
-const mockStories: Story[] = [
-  {
-    id: '1',
-    title: 'The Whispers of Chronos',
-    author: 'Eleanor Vance',
-    authorId: 'author1',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Chronos', 
-    description: 'A thrilling journey through time as a historian uncovers a device that can alter history.',
-    tags: ['sci-fi', 'time travel', 'adventure'],
-    chapters: [{ id: 'c1', title: 'The Discovery', content: '...', order: 1 }],
-    genre: 'Science Fiction',
-    status: 'Completed',
-    rating: 4.8,
-    views: 25000,
-    isTrending: true,
-    isCurated: true,
-    category: 'Trending',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-    dataAihint: "futuristic city"
-  },
-  {
-    id: '2',
-    title: 'Beneath the Emerald Canopy',
-    author: 'Marcus Stone',
-    authorId: 'author2',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Canopy',
-    description: 'Explorers venture deep into an uncharted jungle, finding more than just exotic flora and fauna.',
-    tags: ['fantasy', 'exploration', 'magic'],
-    chapters: [{ id: 'c1', title: 'The Summons', content: '...', order: 1 }],
-    genre: 'Fantasy',
-    status: 'Ongoing',
-    rating: 4.5,
-    views: 18000,
-    isTrending: true,
-    category: 'Trending',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 60).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2).toISOString(),
-    dataAihint: "lush jungle"
-  },
-  {
-    id: '3',
-    title: 'The Alchemist of Moonhaven',
-    author: 'Seraphina Gold',
-    authorId: 'author3',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Moonhaven',
-    description: 'In a city powered by moonlight, a young alchemist seeks a forbidden truth.',
-    tags: ['steampunk', 'mystery', 'alchemy'],
-    chapters: [{ id: 'c1', title: 'First Transmutation', content: '...', order: 1 }],
-    genre: 'Steampunk',
-    status: 'Completed',
-    rating: 4.2,
-    views: 12000,
-    isCurated: true,
-    category: 'Novel',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 90).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
-    dataAihint: "mystical city"
-  },
-  {
-    id: '4',
-    title: 'Echoes of the Void',
-    author: 'Orion Nebula',
-    authorId: 'author4',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Void',
-    description: 'A lone astronaut confronts an ancient cosmic entity at the edge of known space.',
-    tags: ['space opera', 'horror', 'existential'],
-    chapters: [{ id: 'c1', title: 'The Signal', content: '...', order: 1 }],
-    genre: 'Space Opera',
-    status: 'Ongoing',
-    rating: 4.9,
-    views: 35000,
-    isTrending: false, // Changed to false to have variety
-    isCurated: true,
-    category: 'SciFi', // New category
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-    dataAihint: "galaxy stars"
-  },
-  {
-    id: '5',
-    title: 'The Last Cyberpunk',
-    author: 'Nova Byte',
-    authorId: 'author5',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Cyber',
-    description: 'In a neon-drenched city, one hacker fights for freedom.',
-    tags: ['cyberpunk', 'dystopian', 'action'],
-    chapters: [{ id: 'c1', title: 'The Glitch', content: '...', order: 1 }],
-    genre: 'Cyberpunk',
-    status: 'Ongoing',
-    rating: 4.6,
-    views: 22000,
-    isTrending: true,
-    category: 'Trending',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
-    updatedAt: new Date().toISOString(),
-    dataAihint: "neon city"
-  },
-  {
-    id: '6',
-    title: 'A Stitch in Time',
-    author: 'Penelope Weave',
-    authorId: 'author6',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Stitch',
-    description: 'A short story about a magical tailor who can mend fate.',
-    tags: ['short story', 'urban fantasy', 'magic'],
-    chapters: [{ id: 'c1', title: 'The Golden Thread', content: '...', order: 1 }],
-    genre: 'Fantasy',
-    status: 'Completed',
-    rating: 4.3,
-    views: 9000,
-    category: 'ShortStory',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 40).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
-    dataAihint: "magic thread"
-  },
-   {
-    id: '7',
-    title: 'The Clockwork Heart',
-    author: 'Cogsworth Tinkerton',
-    authorId: 'author7',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Clockwork',
-    description: 'A short tale of love and machinery in a Victorian-inspired world.',
-    tags: ['short story', 'steampunk', 'romance'],
-    chapters: [{ id: 'c1', title: 'The Unveiling', content: '...', order: 1 }],
-    genre: 'Steampunk',
-    status: 'Completed',
-    rating: 4.7,
-    views: 15000,
-    category: 'ShortStory',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
-    dataAihint: "gears heart"
-  },
-  {
-    id: '8',
-    title: 'Love in the Lavender Fields',
-    author: 'Flora Bloom',
-    authorId: 'author8',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Love',
-    description: 'A heartwarming romance blooms amidst picturesque lavender fields.',
-    tags: ['romance', 'contemporary', 'heartwarming'],
-    chapters: [{ id: 'c1', title: 'The Chance Encounter', content: '...', order: 1 }],
-    genre: 'Romance',
-    status: 'Completed',
-    rating: 4.9,
-    views: 32000,
-    category: 'Romance', // New category
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 45).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString(),
-    dataAihint: "lavender field"
-  },
-  {
-    id: '9',
-    title: 'Stars Beyond Reach',
-    author: 'Astro Explorer',
-    authorId: 'author9',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Stars',
-    description: 'A gripping sci-fi novel about humanity\'s first interstellar journey.',
-    tags: ['sci-fi', 'space exploration', 'adventure'],
-    chapters: [{ id: 'c1', title: 'Launch Day', content: '...', order: 1 }],
-    genre: 'Science Fiction',
-    status: 'Ongoing',
-    rating: 4.7,
-    views: 28000,
-    category: 'SciFi', // New category
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 15).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
-    dataAihint: "distant planet"
-  },
-  {
-    id: '10',
-    title: 'Secrets of the Silk Kimono',
-    author: 'Yuki Tanaka',
-    authorId: 'author10',
-    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Kimono',
-    description: 'A forbidden love story set in feudal Japan, woven with mystery and tradition.',
-    tags: ['romance', 'historical', 'mystery'],
-    chapters: [{ id: 'c1', title: 'The Cherry Blossom Festival', content: '...', order: 1 }],
-    genre: 'Romance',
-    status: 'Completed',
-    rating: 4.6,
-    views: 19500,
-    category: 'Romance',
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 120).toISOString(),
-    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30).toISOString(),
-    dataAihint: "japanese temple"
-  },
-];
+import { Sparkles, TrendingUp, Heart, Atom, ChevronRight } from 'lucide-react';
+import { mockStories } from '@/lib/mock-data'; // Import shared mock data
 
 interface StorySectionProps {
   title: string;
   stories: Story[];
   showSeeAll?: boolean;
   icon?: React.ElementType;
+  categorySlug?: string;
 }
 
-const StorySection: React.FC<StorySectionProps> = ({ title, stories, showSeeAll = false, icon: Icon }) => {
+const StorySection: React.FC<StorySectionProps> = ({ title, stories, showSeeAll = false, icon: Icon, categorySlug }) => {
   if (stories.length === 0) return null;
   return (
     <section>
@@ -213,7 +25,7 @@ const StorySection: React.FC<StorySectionProps> = ({ title, stories, showSeeAll 
         </h2>
         {showSeeAll && (
            <Button variant="link" asChild className="text-sm text-primary hover:text-primary/80">
-            <Link href={`/library?category=${title.toLowerCase().replace(/\s+/g, '-')}`}>
+            <Link href={`/library?category=${categorySlug || title.toLowerCase().replace(/\s+/g, '-')}`}>
               See All <ChevronRight className="h-4 w-4 ml-1" />
             </Link>
           </Button>
@@ -221,24 +33,25 @@ const StorySection: React.FC<StorySectionProps> = ({ title, stories, showSeeAll 
       </div>
       <div className="flex overflow-x-auto space-x-4 pb-4 -mx-1 px-1">
         {stories.map((story) => (
-          <div key={story.id} className="flex-shrink-0 w-64 sm:w-72"> {/* Adjust width as needed */}
+          <div key={story.id} className="flex-shrink-0 w-64 sm:w-72">
             <StoryCard story={story} />
           </div>
         ))}
+         {stories.length === 0 && <p className="text-muted-foreground">No stories in this section yet.</p>}
       </div>
     </section>
   );
 };
 
-// ChevronRight icon for "See All" link (if not already imported elsewhere)
-import { ChevronRight } from 'lucide-react';
 
 export default function HomePage() {
-  const trendingStories = mockStories.filter(story => story.category === 'Trending');
-  const novelStories = mockStories.filter(story => story.category === 'Novel');
-  const shortStories = mockStories.filter(story => story.category === 'ShortStory');
-  const romanceStories = mockStories.filter(story => story.category === 'Romance');
-  const scifiStories = mockStories.filter(story => story.category === 'SciFi');
+  const publishedStories = mockStories.filter(story => story.publishedStatus === 'Published');
+
+  const trendingStories = publishedStories.filter(story => story.category === 'Trending');
+  const novelStories = publishedStories.filter(story => story.category === 'Novel');
+  const shortStories = publishedStories.filter(story => story.category === 'ShortStory');
+  const romanceStories = publishedStories.filter(story => story.category === 'Romance');
+  const scifiStories = publishedStories.filter(story => story.category === 'SciFi');
 
 
   return (
@@ -259,17 +72,17 @@ export default function HomePage() {
           </Link>
         </Button>
          <Button variant="outline" size="lg" asChild className="ml-4 px-10 py-6 text-lg">
-          <Link href="/chat"> {/* Changed from /suggestions to /chat */}
+          <Link href="/chat">
             <Sparkles className="mr-2 h-5 w-5" /> Get AI Assistance
           </Link>
         </Button>
       </section>
 
-      <StorySection title="Trending Now" stories={trendingStories} showSeeAll icon={TrendingUp}/>
-      <StorySection title="Full-Length Novels" stories={novelStories} showSeeAll />
-      <StorySection title="Short Stories & Quick Reads" stories={shortStories} showSeeAll />
-      <StorySection title="Romance Reads" stories={romanceStories} showSeeAll icon={Heart} />
-      <StorySection title="Sci-Fi Adventures" stories={scifiStories} showSeeAll icon={Atom} />
+      <StorySection title="Trending Now" stories={trendingStories} showSeeAll icon={TrendingUp} categorySlug="trending"/>
+      <StorySection title="Full-Length Novels" stories={novelStories} showSeeAll categorySlug="novel"/>
+      <StorySection title="Short Stories & Quick Reads" stories={shortStories} showSeeAll categorySlug="shortstory"/>
+      <StorySection title="Romance Reads" stories={romanceStories} showSeeAll icon={Heart} categorySlug="romance"/>
+      <StorySection title="Sci-Fi Adventures" stories={scifiStories} showSeeAll icon={Atom} categorySlug="scifi"/>
       
     </div>
   );

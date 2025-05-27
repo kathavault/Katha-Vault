@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
-  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon
+  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon, Eraser // Added Eraser
 } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import {
@@ -25,7 +25,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Added AlertDialogTrigger here
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -41,50 +41,34 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import Image from 'next/image'; // For image preview
+import Image from 'next/image';
+import type { Story, StoryChapter } from '@/types'; // Using global types
+import { mockStories as initialMockStories } from '@/lib/mock-data'; // Import shared mock data
 
-interface AdminStoryChapter {
-  id: string;
-  title: string;
-  content: string;
-}
-interface AdminStory {
-  id: string;
-  title: string;
-  author: string;
-  description: string;
-  coverImageUrl: string; // Can be a URL or Data URI
-  genre: string;
-  tags: string[];
-  status: 'Published' | 'Draft' | 'Review';
-  chapters: AdminStoryChapter[];
-}
-
-const mockAdminStories: AdminStory[] = [
-  { id: '1', title: 'The Whispers of Chronos', author: 'Eleanor Vance', description: 'A thrilling journey through time.', coverImageUrl: 'https://placehold.co/300x450/B4317B/F7F2FA?text=Chronos', genre: 'Sci-Fi', tags: ['time travel', 'adventure'], status: 'Published', chapters: [{id: 'c1', title: 'The Attic Anomaly', content: 'Chapter 1 content...'}, {id: 'c2', title: 'Echoes of Tomorrow', content: 'Chapter 2 content...'}] },
-  { id: '2', title: 'Beneath the Emerald Canopy', author: 'Marcus Stone', description: 'Into the wild green yonder.', coverImageUrl: 'https://placehold.co/300x450/2A9D8F/FFFFFF?text=Canopy', genre: 'Fantasy', tags: ['jungle', 'magic'], status: 'Draft', chapters: [{id: 'c1', title: 'The Summons', content: 'Chapter 1 content...'}] },
-  { id: '3', title: 'The Alchemist of Moonhaven', author: 'Seraphina Gold', description: 'Secrets in a moonlit city.', coverImageUrl: 'https://placehold.co/300x450/C7A2E8/FFFFFF?text=Moonhaven', genre: 'Steampunk', tags: ['alchemy', 'mystery'], status: 'Published', chapters: [{id: 'c1', title: 'First Transmutation', content: 'Chapter 1 content...'}, {id: 'c2', title: 'City of Gears', content: 'Chapter 2 content...'}] },
-  { id: '4', title: 'Echoes of the Void', author: 'Orion Nebula', description: 'Cosmic horrors await.', coverImageUrl: 'https://placehold.co/300x450/4A4E69/FFFFFF?text=Void', genre: 'Space Opera', tags: ['horror', 'space'], status: 'Review', chapters: [{id: 'c1', title: 'The Signal', content: '...'}, {id: 'c2', title: 'Deep Space Anomaly', content: '...'}, {id: 'c3', title: 'Contact', content: '...'}] },
-];
-
-type StoryFormDataFields = Omit<AdminStory, 'id' | 'chapters'> & { id?: string, status: AdminStory['status'] };
-type ChapterFormData = Omit<AdminStoryChapter, 'id'>;
+// Type for form data, closely related to the global Story type
+type StoryFormDataFields = Omit<Story, 'id' | 'chapters' | 'createdAt' | 'updatedAt' | 'authorId' | 'isTrending' | 'isCurated' | 'category'> & { id?: string };
+type ChapterFormData = Omit<StoryChapter, 'id' | 'order'>;
 
 
 export default function AdminPage() {
-  const [stories, setStories] = useState<AdminStory[]>(mockAdminStories);
+  // Use a deep copy of initialMockStories to allow modifications without affecting the imported module directly
+  // This is important if multiple components might import and modify it, though for this simulation,
+  // direct modification of the imported array (if not copied) is how changes "persist" across page views.
+  // For simplicity in this simulation, we'll allow direct modification of the imported array by simply setting it as initial state.
+  // In a real app, this would come from a backend and state management would be more robust.
+  const [stories, setStories] = useState<Story[]>(() => JSON.parse(JSON.stringify(initialMockStories)));
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredStories, setFilteredStories] = useState<AdminStory[]>(mockAdminStories);
+  const [filteredStories, setFilteredStories] = useState<Story[]>(stories);
 
   const [isAddStoryDialogOpen, setIsAddStoryDialogOpen] = useState(false);
   const [isEditStoryDialogOpen, setIsEditStoryDialogOpen] = useState(false);
-  const [editingStory, setEditingStory] = useState<AdminStory | null>(null);
+  const [editingStory, setEditingStory] = useState<Story | null>(null);
   
   const [isManageChaptersDialogOpen, setIsManageChaptersDialogOpen] = useState(false);
-  const [storyForChapterManagement, setStoryForChapterManagement] = useState<AdminStory | null>(null);
+  const [storyForChapterManagement, setStoryForChapterManagement] = useState<Story | null>(null);
 
   const [isEditChapterDialogOpen, setIsEditChapterDialogOpen] = useState(false);
-  const [editingChapter, setEditingChapter] = useState<AdminStoryChapter | null>(null);
+  const [editingChapter, setEditingChapter] = useState<StoryChapter | null>(null);
   const [editingChapterIndex, setEditingChapterIndex] = useState<number | null>(null);
   const [currentChapterData, setCurrentChapterData] = useState<ChapterFormData>({ title: '', content: '' });
   const [chapterToDelete, setChapterToDelete] = useState<{storyId: string, chapterId: string} | null>(null);
@@ -96,52 +80,91 @@ export default function AdminPage() {
       stories.filter(story => story.title.toLowerCase().includes(lowerSearchTerm) || story.author.toLowerCase().includes(lowerSearchTerm))
     );
   }, [searchTerm, stories]);
+  
+  // Effect to update the globally imported mockStories array when local `stories` state changes.
+  // This simulates "saving" to the shared data source.
+  useEffect(() => {
+    // Find stories in initialMockStories and update them or add new ones.
+    // This is a bit simplistic and could be improved for robust merging.
+    stories.forEach(updatedStory => {
+      const indexInGlobal = initialMockStories.findIndex(s => s.id === updatedStory.id);
+      if (indexInGlobal !== -1) {
+        initialMockStories[indexInGlobal] = { ...initialMockStories[indexInGlobal], ...updatedStory };
+      } else {
+        // If story doesn't exist, add it (applies to newly added stories)
+        initialMockStories.push(updatedStory);
+      }
+    });
+    // Handle deletions from global array
+    for (let i = initialMockStories.length - 1; i >= 0; i--) {
+        if (!stories.find(s => s.id === initialMockStories[i].id)) {
+            initialMockStories.splice(i, 1);
+        }
+    }
+
+  }, [stories]);
+
 
   const handleDeleteStory = (storyId: string) => {
     setStories(prevStories => prevStories.filter(story => story.id !== storyId));
     toast({
       title: "Story Deleted (Simulated)",
-      description: `Story with ID ${storyId} has been removed from this view. No actual data was deleted.`,
+      description: `Story with ID ${storyId} has been removed from this view. Changes reflected in shared mock data.`,
       variant: "default"
     });
   };
 
-  const handleOpenEditDialog = (story: AdminStory) => {
+  const handleOpenEditDialog = (story: Story) => {
     setEditingStory(story);
     setIsEditStoryDialogOpen(true);
   };
   
-  const handleSaveStory = (formData: StoryFormDataFields) => {
+  const handleSaveStory = (formData: StoryFormDataFields & {id?: string}) => {
+    const fullFormData: Partial<Story> = {
+        ...formData,
+        // Ensure chapters aren't overwritten if not managed by this form
+        chapters: formData.id ? stories.find(s => s.id === formData.id)?.chapters || [] : [],
+        // Mock other fields if not in form
+        authorId: formData.authorId || `author-${Date.now()}`,
+        createdAt: formData.id ? stories.find(s => s.id === formData.id)?.createdAt || new Date().toISOString() : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+
+
     if (formData.id) { // Editing existing story
-        setStories(prevStories => prevStories.map(s => s.id === formData.id ? { ...s, ...formData, chapters: s.chapters } : s)); 
+        setStories(prevStories => prevStories.map(s => s.id === formData.id ? { ...s, ...fullFormData } as Story : s)); 
         toast({ title: "Story Updated (Simulated)", description: `"${formData.title}" has been updated.` });
         setIsEditStoryDialogOpen(false);
         setEditingStory(null);
     } else { // Adding new story
-        const newStory: AdminStory = {
-            ...formData,
+        const newStory: Story = {
+            ...fullFormData,
             id: `story-${Date.now()}`,
             chapters: [], // New stories start with no chapters
-        };
+            publishedStatus: 'Draft', // Default for new stories
+            status: 'Ongoing', // Default narrative status
+        } as Story;
         setStories(prevStories => [newStory, ...prevStories]);
         toast({ title: "Story Added (Simulated)", description: `"${formData.title}" has been added as a draft.` });
         setIsAddStoryDialogOpen(false);
     }
   };
   
-  const StoryForm: React.FC<{story?: AdminStory | null, onSave: (data: StoryFormDataFields) => void, onCancel: () => void}> = ({ story, onSave, onCancel }) => {
+  const StoryForm: React.FC<{story?: Story | null, onSave: (data: StoryFormDataFields & {id?:string}) => void, onCancel: () => void}> = ({ story, onSave, onCancel }) => {
     const [title, setTitle] = useState(story?.title || '');
     const [author, setAuthor] = useState(story?.author || '');
     const [description, setDescription] = useState(story?.description || '');
     const [genre, setGenre] = useState(story?.genre || '');
     const [tags, setTags] = useState(story?.tags?.join(', ') || '');
-    const [status, setStatus] = useState<AdminStory['status']>(story?.status || 'Draft');
-    const [coverImagePreview, setCoverImagePreview] = useState<string | null>(story?.coverImageUrl || null);
+    const [publishedStatus, setPublishedStatus] = useState<Story['publishedStatus']>(story?.publishedStatus || 'Draft');
+    const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
+    const [coverImagePreview, setCoverImagePreview] = useState<string | null>(story?.coverImage || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            setCoverImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setCoverImagePreview(reader.result as string);
@@ -152,15 +175,17 @@ export default function AdminPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        // In a real app, coverImageFile would be uploaded and coverImageUrl would be the URL from the server.
+        // For this simulation, we use the Data URI preview as the coverImageUrl.
         onSave({ 
             id: story?.id, 
             title, 
             author, 
             description, 
-            coverImageUrl: coverImagePreview || `https://placehold.co/300x450?text=${encodeURIComponent(title.substring(0,10))}`, 
+            coverImage: coverImagePreview || `https://placehold.co/300x450?text=${encodeURIComponent(title.substring(0,10))}`, 
             genre, 
             tags: tags.split(',').map(t => t.trim()).filter(t => t),
-            status
+            publishedStatus
         });
     };
 
@@ -186,7 +211,7 @@ export default function AdminPage() {
                         <Image src={coverImagePreview} alt="Cover preview" layout="fill" objectFit="cover" data-ai-hint="book cover preview"/>
                     </div>
                 )}
-                 <p className="text-xs text-muted-foreground mt-1">Upload an image or leave blank for an auto-generated placeholder if adding a new story.</p>
+                 <p className="text-xs text-muted-foreground mt-1">Upload an image. If not provided, a placeholder will be used for new stories.</p>
             </div>
             <div>
                 <Label htmlFor="story-genre">Genre</Label>
@@ -197,9 +222,9 @@ export default function AdminPage() {
                 <Input id="story-tags" value={tags} onChange={e => setTags(e.target.value)} />
             </div>
              <div>
-                <Label htmlFor="story-status">Status</Label>
-                <Select value={status} onValueChange={(value) => setStatus(value as AdminStory['status'])}>
-                    <SelectTrigger id="story-status">
+                <Label htmlFor="story-publishedStatus">Publication Status</Label>
+                <Select value={publishedStatus} onValueChange={(value) => setPublishedStatus(value as Story['publishedStatus'])}>
+                    <SelectTrigger id="story-publishedStatus">
                         <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -217,31 +242,31 @@ export default function AdminPage() {
     );
   };
 
-  const handleOpenChapterManagement = (storyToManage: AdminStory) => {
-    setStoryForChapterManagement(JSON.parse(JSON.stringify(storyToManage))); // Deep copy to avoid direct state mutation issues
+  const handleOpenChapterManagement = (storyToManage: Story) => {
+    setStoryForChapterManagement(JSON.parse(JSON.stringify(storyToManage))); 
     setIsManageChaptersDialogOpen(true);
   };
 
   const handleAddChapter = () => {
     if (!storyForChapterManagement) return;
-    const newChapter: AdminStoryChapter = {
+    const newChapter: StoryChapter = {
       id: `chap-${Date.now()}`,
       title: `New Chapter ${storyForChapterManagement.chapters.length + 1}`,
-      content: "Start writing content here..."
+      content: "Start writing content here...",
+      order: storyForChapterManagement.chapters.length + 1,
     };
     const updatedStory = {
       ...storyForChapterManagement,
       chapters: [...storyForChapterManagement.chapters, newChapter]
     };
     setStoryForChapterManagement(updatedStory);
-    // Also update the main stories list
     setStories(prevStories => 
       prevStories.map(s => s.id === updatedStory.id ? updatedStory : s)
     );
     toast({title: "Chapter Added (Locally)", description: `"${newChapter.title}" added to "${updatedStory.title}".`})
   };
 
-  const handleOpenEditChapterDialog = (chapter: AdminStoryChapter, index: number) => {
+  const handleOpenEditChapterDialog = (chapter: StoryChapter, index: number) => {
     setEditingChapter(chapter);
     setEditingChapterIndex(index);
     setCurrentChapterData({ title: chapter.title, content: chapter.content });
@@ -252,7 +277,7 @@ export default function AdminPage() {
     if (!storyForChapterManagement || editingChapterIndex === null || !editingChapter) return;
 
     const updatedChapters = [...storyForChapterManagement.chapters];
-    updatedChapters[editingChapterIndex] = { ...editingChapter, ...currentChapterData };
+    updatedChapters[editingChapterIndex] = { ...editingChapter, ...currentChapterData, order: editingChapter.order };
     
     const updatedStory = {
       ...storyForChapterManagement,
@@ -301,7 +326,7 @@ export default function AdminPage() {
 
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8 p-4 md:p-6">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <ShieldCheck className="h-10 w-10 text-primary" />
@@ -313,29 +338,26 @@ export default function AdminPage() {
       </header>
       
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-2">
           <div>
             <CardTitle className="flex items-center gap-2"><BookText className="h-6 w-6" /> Story Management</CardTitle>
-            <CardDescription>Add, edit, or delete stories and manage their chapters and status.</CardDescription>
+            <CardDescription>Add, edit, or delete stories and manage their chapters and status. Changes are simulated locally.</CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full md:w-auto">
             <Dialog open={isAddStoryDialogOpen} onOpenChange={setIsAddStoryDialogOpen}>
                 <DialogTrigger asChild>
-                    <Button size="sm">
+                    <Button size="sm" className="w-full md:w-auto">
                         <BookPlus className="mr-2 h-4 w-4" /> Add New Story
                     </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[600px]">
                     <DialogHeader>
                         <DialogTitle>Add New Story</DialogTitle>
-                        <DialogDescription>Fill in the details for the new story. Click save when you're done.</DialogDescription>
+                        <DialogDescription>Fill in the details for the new story. It will be added as a 'Draft'.</DialogDescription>
                     </DialogHeader>
                     <StoryForm onSave={handleSaveStory} onCancel={() => setIsAddStoryDialogOpen(false)} />
                 </DialogContent>
             </Dialog>
-            <Button onClick={() => toast({title: "Placeholder Action", description:"Global image upload needs backend."})} variant="outline" size="sm">
-              <ImageUp className="mr-2 h-4 w-4" /> Upload Global Cover
-            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -360,23 +382,23 @@ export default function AdminPage() {
                 <Card key={story.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 gap-4">
                   <div className="flex items-center gap-4 flex-grow">
                      <Image 
-                        src={story.coverImageUrl || `https://placehold.co/80x120?text=${encodeURIComponent(story.title.substring(0,1))}`} 
+                        src={story.coverImage || `https://placehold.co/80x120?text=${encodeURIComponent(story.title.substring(0,1))}`} 
                         alt={story.title} 
                         width={80}
                         height={120}
-                        className="w-16 h-24 object-cover rounded-sm"
+                        className="w-16 h-24 object-cover rounded-sm shadow-md"
                         data-ai-hint="book cover admin"
                       />
                     <div className="flex-grow">
                       <h3 className="font-semibold">{story.title}</h3>
                       <p className="text-sm text-muted-foreground">By {story.author} - {story.chapters.length} Chapters</p>
                       <Badge variant={
-                        story.status === 'Published' ? 'default' : story.status === 'Draft' ? 'secondary' : 'outline'
+                        story.publishedStatus === 'Published' ? 'default' : story.publishedStatus === 'Draft' ? 'secondary' : 'outline'
                       } className={`text-xs font-medium mt-1 ${
-                        story.status === 'Published' ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-700 dark:text-green-100 dark:border-green-500' :
-                        story.status === 'Draft' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-700 dark:text-yellow-100 dark:border-yellow-500' :
+                        story.publishedStatus === 'Published' ? 'bg-green-100 text-green-700 border-green-300 dark:bg-green-700 dark:text-green-100 dark:border-green-500' :
+                        story.publishedStatus === 'Draft' ? 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-700 dark:text-yellow-100 dark:border-yellow-500' :
                         'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-700 dark:text-blue-100 dark:border-blue-500'
-                      }`}>{story.status}</Badge>
+                      }`}>{story.publishedStatus}</Badge>
                     </div>
                   </div>
                   <DropdownMenu>
@@ -392,9 +414,6 @@ export default function AdminPage() {
                         </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => handleOpenChapterManagement(story)}>
                         <BookKey className="mr-2 h-4 w-4" /> Manage Chapters
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toast({title:"Placeholder", description:`Trigger file input for ${story.title} here. Requires backend.`})}>
-                        <ImageUp className="mr-2 h-4 w-4" /> Change Cover Image
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                        <AlertDialog>
@@ -454,7 +473,7 @@ export default function AdminPage() {
           <DialogContent className="sm:max-w-[700px]">
             <DialogHeader>
               <DialogTitle>Manage Chapters for: {storyForChapterManagement.title}</DialogTitle>
-              <DialogDescription>Add, edit, or remove chapters for this story. Changes are local.</DialogDescription>
+              <DialogDescription>Add, edit, or remove chapters for this story. Changes are local and simulated.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto p-1 mt-4">
               {storyForChapterManagement.chapters.length > 0 ? (
@@ -470,7 +489,7 @@ export default function AdminPage() {
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                           <Button variant="destructive" size="sm" onClick={() => confirmRemoveChapter(storyForChapterManagement.id, chapter.id)}>
+                           <Button variant="destructive" size="sm" onClick={() => confirmRemoveChapter(storyForChapterManagement!.id, chapter.id)}>
                              <Trash2 className="h-3 w-3 mr-1 sm:mr-2" /> <span className="hidden sm:inline">Remove</span>
                            </Button>
                         </AlertDialogTrigger>
@@ -508,7 +527,7 @@ export default function AdminPage() {
         </Dialog>
       )}
 
-      {isEditChapterDialogOpen && editingChapter && (
+      {isEditChapterDialogOpen && editingChapter && storyForChapterManagement && (
         <Dialog open={isEditChapterDialogOpen} onOpenChange={(isOpen) => {
             setIsEditChapterDialogOpen(isOpen);
             if (!isOpen) {
@@ -519,7 +538,7 @@ export default function AdminPage() {
             <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                     <DialogTitle>Edit Chapter: {editingChapter.title}</DialogTitle>
-                    <DialogDescription>Modify the chapter title and content below.</DialogDescription>
+                    <DialogDescription>Modify the chapter title and content below. Changes are local and simulated.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     <div>
@@ -552,12 +571,11 @@ export default function AdminPage() {
         </Dialog>
       )}
 
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Users className="h-5 w-5" /> User Management</CardTitle>
-            <CardDescription>View, edit, or suspend user accounts.</CardDescription>
+            <CardDescription>View, edit, or suspend user accounts. (Placeholder)</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => toast({title:"Placeholder", description: "User management not yet implemented."})} className="w-full">Manage Users</Button>
@@ -567,7 +585,7 @@ export default function AdminPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Settings className="h-5 w-5" /> Site Settings</CardTitle>
-            <CardDescription>Configure general site parameters.</CardDescription>
+            <CardDescription>Configure general site parameters. (Placeholder)</CardDescription>
           </CardHeader>
           <CardContent>
             <Button onClick={() => toast({title:"Placeholder", description:"Site settings not yet implemented."})} className="w-full">Site Settings</Button>
@@ -577,5 +595,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
-

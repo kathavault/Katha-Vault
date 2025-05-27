@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, SendHorizontal, Smile, Search as SearchIcon, Loader2, Pencil, Save } from 'lucide-react';
+import { MessageSquare, SendHorizontal, Smile, Search as SearchIcon, Loader2, Pencil, Save, MoreVertical, Trash2, Eraser } from 'lucide-react';
 import { format, formatDistanceToNowStrict } from 'date-fns';
 import { kathaVaultAiChat, type KathaVaultAiInput, type KathaVaultAiOutput } from '@/ai/flows/katha-vault-ai-flow';
 import {
@@ -21,6 +21,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { toast } from '@/hooks/use-toast';
 
@@ -34,7 +51,7 @@ const mockCurrentUser: ChatUser = {
 const kathaVaultAiUser: ChatUser = {
   id: 'kathaVaultAi',
   username: 'Katha Vault AI',
-  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Default, will be overridden by localStorage if set
+  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV',
   dataAihint: 'brand logo K',
 };
 
@@ -65,10 +82,13 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const [aiCustomNickname, setAiCustomNickname] = useState<string>('');
-  const [aiCustomAvatarDataUri, setAiCustomAvatarDataUri] = useState<string>(''); // Store Data URI
+  const [aiCustomAvatarDataUri, setAiCustomAvatarDataUri] = useState<string>('');
   const [isEditingAiProfile, setIsEditingAiProfile] = useState(false);
   const [tempNickname, setTempNickname] = useState('');
   const [tempAvatarDataUri, setTempAvatarDataUri] = useState<string>('');
+
+  const [conversationToClear, setConversationToClear] = useState<string | null>(null);
+  const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
 
 
   useEffect(() => {
@@ -197,7 +217,6 @@ export default function ChatPage() {
       };
       reader.readAsDataURL(file);
     } else {
-      // Optionally reset to default or keep current if selection is cancelled
       setTempAvatarDataUri(aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl); 
     }
   };
@@ -216,6 +235,35 @@ export default function ChatPage() {
     toast({ title: "AI Profile Updated", description: "Katha Vault AI's appearance has been updated for you." });
   };
 
+  const handleConfirmClearChat = (convoId: string) => {
+    setConversationToClear(convoId);
+  };
+
+  const handleClearChat = () => {
+    if (!conversationToClear) return;
+    setConversations(prev => prev.map(c => 
+      c.id === conversationToClear 
+      ? { ...c, messages: [], lastMessage: "Chat cleared", lastMessageTimestamp: new Date().toISOString() } 
+      : c
+    ));
+    toast({ title: "Chat Cleared", description: "The conversation messages have been removed." });
+    setConversationToClear(null);
+  };
+
+  const handleConfirmDeleteChat = (convoId: string) => {
+    setConversationToDelete(convoId);
+  };
+
+  const handleDeleteChat = () => {
+    if (!conversationToDelete) return;
+    setConversations(prev => prev.filter(c => c.id !== conversationToDelete));
+    if (selectedConversationId === conversationToDelete) {
+      setSelectedConversationId(null);
+    }
+    toast({ title: "Chat Deleted", description: "The conversation has been removed." });
+    setConversationToDelete(null);
+  };
+
 
   if (isLoadingInitialData) {
     return (
@@ -232,7 +280,6 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-[calc(100vh-var(--header-height,100px))] border rounded-lg shadow-lg bg-card">
-      {/* Conversations Sidebar */}
       <aside className="w-1/3 border-r flex flex-col">
         <CardHeader className="p-4 border-b">
           <div className="flex justify-between items-center">
@@ -245,39 +292,56 @@ export default function ChatPage() {
         </CardHeader>
         <ScrollArea className="flex-grow">
           {conversations.map(convo => (
-            <Button
-              key={convo.id}
-              variant={selectedConversationId === convo.id ? "secondary" : "ghost"}
-              className="w-full h-auto justify-start p-3 rounded-none border-b"
-              onClick={() => setSelectedConversationId(convo.id)}
-            >
-              <Avatar className="h-10 w-10 mr-3">
-                <AvatarImage 
-                  src={convo.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : convo.participant.avatarUrl} 
-                  alt={convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username} 
-                  data-ai-hint={convo.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : convo.participant.dataAihint || "user avatar"}
-                />
-                <AvatarFallback>
-                  {(convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username).substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-grow text-left overflow-hidden">
-                <div className="flex justify-between items-center">
-                  <p className="font-semibold truncate">
-                    {convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username}
-                  </p>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">
-                    {formatDisplayTimestamp(convo.lastMessageTimestamp)}
-                  </span>
+            <div key={convo.id} className="relative group">
+              <Button
+                variant={selectedConversationId === convo.id ? "secondary" : "ghost"}
+                className="w-full h-auto justify-start p-3 rounded-none border-b"
+                onClick={() => setSelectedConversationId(convo.id)}
+              >
+                <Avatar className="h-10 w-10 mr-3">
+                  <AvatarImage 
+                    src={convo.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : convo.participant.avatarUrl} 
+                    alt={convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username} 
+                    data-ai-hint={convo.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : convo.participant.dataAihint || "user avatar"}
+                  />
+                  <AvatarFallback>
+                    {(convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username).substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-grow text-left overflow-hidden">
+                  <div className="flex justify-between items-center">
+                    <p className="font-semibold truncate">
+                      {convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username}
+                    </p>
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      {formatDisplayTimestamp(convo.lastMessageTimestamp)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <p className="text-sm text-muted-foreground truncate">{convo.lastMessage}</p>
+                    {convo.unreadCount && convo.unreadCount > 0 ? (
+                       <Badge variant="default" className="h-5 px-1.5 text-xs">{convo.unreadCount}</Badge>
+                    ) : null}
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <p className="text-sm text-muted-foreground truncate">{convo.lastMessage}</p>
-                  {convo.unreadCount && convo.unreadCount > 0 ? (
-                     <Badge variant="default" className="h-5 px-1.5 text-xs">{convo.unreadCount}</Badge>
-                  ) : null}
-                </div>
-              </div>
-            </Button>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="absolute top-1/2 right-2 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 h-7 w-7">
+                    <MoreVertical className="h-4 w-4" />
+                    <span className="sr-only">Conversation options</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handleConfirmClearChat(convo.id)}>
+                    <Eraser className="mr-2 h-4 w-4" /> Clear Chat
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleConfirmDeleteChat(convo.id)} className="text-destructive focus:text-destructive">
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ))}
         </ScrollArea>
       </aside>
@@ -384,7 +448,6 @@ export default function ChatPage() {
                         dataAihint: displayedAiDataAihint
                     };
                 } else {
-                    // Should not happen with current AI-only setup, but good for future
                     participantToDisplay = selectedConversation.participant;
                 }
 
@@ -461,13 +524,45 @@ export default function ChatPage() {
           <div className="flex-grow flex items-center justify-center text-muted-foreground">
             <div className="text-center">
               <MessageSquare className="h-16 w-16 mx-auto mb-4" />
-              <p className="text-lg">Select a chat to start messaging</p>
-              <p className="text-sm">Or, if no chats loaded, something went wrong.</p>
+              <p className="text-lg">No chat selected</p>
+              {conversations.length > 0 && <p className="text-sm">Select a conversation to start messaging.</p>}
+              {conversations.length === 0 && <p className="text-sm">You currently have no active conversations.</p>}
             </div>
           </div>
         )}
       </main>
+
+      {/* AlertDialog for Clear Chat */}
+      <AlertDialog open={!!conversationToClear} onOpenChange={(open) => !open && setConversationToClear(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to clear this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              All messages in this conversation will be permanently removed. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConversationToClear(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleClearChat} className="bg-destructive hover:bg-destructive/90">Clear Chat</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog for Delete Chat */}
+      <AlertDialog open={!!conversationToDelete} onOpenChange={(open) => !open && setConversationToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This conversation will be permanently removed from your chat list. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConversationToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteChat} className="bg-destructive hover:bg-destructive/90">Delete Chat</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-

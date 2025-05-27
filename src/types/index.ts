@@ -17,7 +17,8 @@ export type Story = {
   tags: string[];
   chapters: StoryChapter[];
   genre: string;
-  status: 'Ongoing' | 'Completed';
+  status: 'Ongoing' | 'Completed'; // Narrative status
+  publishedStatus: 'Published' | 'Draft' | 'Review'; // Admin publication status
   rating?: number; 
   views?: number;
   isTrending?: boolean;
@@ -74,3 +75,4 @@ export type ChatConversation = {
   unreadCount?: number;
   messages: ChatMessage[];
 };
+

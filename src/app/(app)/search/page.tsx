@@ -12,62 +12,9 @@ import { Search as SearchIcon, Filter, Info, UserPlus, Users } from "lucide-reac
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { mockStories } from '@/lib/mock-data'; // Import shared mock data
 
-// Mock data - replace with actual data fetching
-const mockStories: Story[] = [
-   {
-    id: '1',
-    title: 'The Whispers of Chronos',
-    author: 'Eleanor Vance',
-    authorId: 'author1',
-    coverImage: 'https://placehold.co/300x450/B4317B/F7F2FA?text=Chronos',
-    description: 'A thrilling journey through time.',
-    tags: ['sci-fi', 'time travel', 'adventure'],
-    chapters: [{ id: 'c1', title: 'The Discovery', content: '...', order: 1 }],
-    genre: 'Science Fiction',
-    status: 'Completed',
-    rating: 4.8,
-    views: 25000,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    dataAihint: "futuristic city"
-  },
-  {
-    id: '2',
-    title: 'Beneath the Emerald Canopy',
-    author: 'Marcus Stone',
-    authorId: 'author2',
-    coverImage: 'https://placehold.co/300x450/B4317B/F7F2FA?text=Canopy',
-    description: 'Explorers venture deep into an uncharted jungle.',
-    tags: ['fantasy', 'exploration', 'magic'],
-    chapters: [{ id: 'c1', title: 'The Summons', content: '...', order: 1 }],
-    genre: 'Fantasy',
-    status: 'Ongoing',
-    rating: 4.5,
-    views: 18000,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    dataAihint: "lush jungle"
-  },
-   {
-    id: '3',
-    title: 'The Alchemist of Moonhaven',
-    author: 'Seraphina Gold',
-    authorId: 'author3',
-    coverImage: 'https://placehold.co/300x450/B4317B/F7F2FA?text=Moonhaven',
-    description: 'In a city powered by moonlight, a young alchemist seeks a forbidden truth.',
-    tags: ['steampunk', 'mystery', 'alchemy'],
-    chapters: [{ id: 'c1', title: 'First Transmutation', content: '...', order: 1 }],
-    genre: 'Steampunk',
-    status: 'Completed',
-    rating: 4.2,
-    views: 12000,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    dataAihint: "mystical city"
-  },
-];
-
+// Mock user data - this would typically come from a backend
 const mockUsers: UserProfile[] = [
   {
     id: 'user001',
@@ -94,7 +41,7 @@ const mockUsers: UserProfile[] = [
     submittedStories: [],
   },
   {
-    id: 'author1',
+    id: 'author1', // Corresponds to Eleanor Vance from mockStories
     username: 'Eleanor Vance',
     email: 'eleanor@example.com',
     avatarUrl: 'https://placehold.co/100x100/B4317B/FFFFFF?text=EV',
@@ -108,7 +55,6 @@ const mockUsers: UserProfile[] = [
 ];
 
 
-// User Card Component (simplified for search results)
 const UserSearchCard: React.FC<{ user: UserProfile }> = ({ user }) => (
   <Card className="shadow-md hover:shadow-lg transition-shadow">
     <CardHeader className="flex flex-row items-center gap-4 p-4">
@@ -145,6 +91,8 @@ export default function SearchPage() {
   const [hasSearchedStories, setHasSearchedStories] = useState(false);
   const [hasSearchedUsers, setHasSearchedUsers] = useState(false);
 
+  const publishedStories = mockStories.filter(s => s.publishedStatus === 'Published');
+
   const performStorySearch = () => {
     if (!storySearchTerm.trim() && filterGenre === 'all') {
       setStoryResults([]);
@@ -153,7 +101,7 @@ export default function SearchPage() {
     }
     setHasSearchedStories(true);
     const searchTermLower = storySearchTerm.toLowerCase();
-    const filtered = mockStories.filter(story => {
+    const filtered = publishedStories.filter(story => { // Search within published stories
       const termMatch = storySearchTermLower
         ? story.title.toLowerCase().includes(searchTermLower) ||
           story.author.toLowerCase().includes(searchTermLower) ||
@@ -166,17 +114,15 @@ export default function SearchPage() {
     setStoryResults(filtered);
   };
   
-  // Trigger search when filter changes, if a search term exists or if it's not the 'all' filter
   useEffect(() => {
     if (storySearchTerm.trim() || filterGenre !== 'all') {
       performStorySearch();
     } else if (!storySearchTerm.trim() && filterGenre === 'all' && hasSearchedStories ) {
-      // If search term is cleared and filter is all, clear results if a search had been made
       setStoryResults([]);
       setHasSearchedStories(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterGenre, storySearchTerm]); // Added storySearchTerm to dependency array
+  }, [filterGenre, storySearchTerm]);
 
   const handleUserSearch = () => {
     if (!userSearchTerm.trim()) {
@@ -231,11 +177,12 @@ export default function SearchPage() {
                 <SelectItem value="Fantasy">Fantasy</SelectItem>
                 <SelectItem value="Steampunk">Steampunk</SelectItem>
                 <SelectItem value="Mystery">Mystery</SelectItem>
-                 <SelectItem value="Romance">Romance</SelectItem>
+                <SelectItem value="Romance">Romance</SelectItem>
                 <SelectItem value="Thriller">Thriller</SelectItem>
                 <SelectItem value="Historical">Historical Fiction</SelectItem>
                 <SelectItem value="Horror">Horror</SelectItem>
                 <SelectItem value="Cyberpunk">Cyberpunk</SelectItem>
+                 <SelectItem value="Space Opera">Space Opera</SelectItem>
               </SelectContent>
             </Select>
             <Button onClick={performStorySearch} className="w-full sm:w-auto">
@@ -256,15 +203,15 @@ export default function SearchPage() {
           {hasSearchedStories && storyResults.length === 0 && (
             <Alert className="mt-6">
                 <Info className="h-5 w-5" />
-                <AlertTitle>No Stories Found</AlertTitle>
-                <AlertDescription>Try different keywords or filters.</AlertDescription>
+                <AlertTitle>No Published Stories Found</AlertTitle>
+                <AlertDescription>Try different keywords or filters. Only published stories are shown.</AlertDescription>
             </Alert>
           )}
           {!hasSearchedStories && (
             <Alert variant="default" className="mt-6">
                 <Info className="h-5 w-5" />
                 <AlertTitle>Search for Stories</AlertTitle>
-                <AlertDescription>Enter a term or select a filter to start.</AlertDescription>
+                <AlertDescription>Enter a term or select a filter to find published stories.</AlertDescription>
             </Alert>
           )}
         </TabsContent>
