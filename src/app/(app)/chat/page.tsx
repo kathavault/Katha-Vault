@@ -1,17 +1,28 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, ChangeEvent, FormEvent } from 'react';
 import type { ChatConversation, ChatMessage, ChatUser } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, SendHorizontal, Smile, Search as SearchIcon, Loader2 } from 'lucide-react';
+import { MessageSquare, SendHorizontal, Smile, Search as SearchIcon, Loader2, Pencil, Save } from 'lucide-react';
 import { format, formatDistanceToNowStrict } from 'date-fns';
 import { kathaVaultAiChat, type KathaVaultAiInput, type KathaVaultAiOutput } from '@/ai/flows/katha-vault-ai-flow';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { toast } from '@/hooks/use-toast';
 
 const mockCurrentUser: ChatUser = {
   id: 'currentUser',
@@ -23,14 +34,18 @@ const mockCurrentUser: ChatUser = {
 const kathaVaultAiUser: ChatUser = {
   id: 'kathaVaultAi',
   username: 'Katha Vault AI',
-  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Purple avatar for AI, KV initials
-  dataAihint: 'brand logo K', // Updated data-ai-hint
+  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV',
+  dataAihint: 'brand logo K',
 };
 
-const generateInitialConversationsData = (): ChatConversation[] => [
+const generateInitialConversationsData = (customAiName?: string | null, customAiAvatar?: string | null): ChatConversation[] => [
   {
     id: 'convoWithAi',
-    participant: kathaVaultAiUser,
+    participant: {
+      ...kathaVaultAiUser,
+      username: customAiName || kathaVaultAiUser.username,
+      avatarUrl: customAiAvatar || kathaVaultAiUser.avatarUrl,
+    },
     lastMessage: "Hello! How can I help you with Katha Vault stories today?",
     lastMessageTimestamp: new Date().toISOString(),
     unreadCount: 0,
@@ -49,14 +64,38 @@ export default function ChatPage() {
   const [aiError, setAiError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  const [aiCustomNickname, setAiCustomNickname] = useState<string>('');
+  const [aiCustomAvatarUrl, setAiCustomAvatarUrl] = useState<string>('');
+  const [isEditingAiProfile, setIsEditingAiProfile] = useState(false);
+  const [tempNickname, setTempNickname] = useState('');
+  const [tempAvatarUrl, setTempAvatarUrl] = useState('');
+
+
   useEffect(() => {
-    const mockData = generateInitialConversationsData();
+    const storedNickname = localStorage.getItem('kathaAiNickname');
+    const storedAvatarUrl = localStorage.getItem('kathaAiAvatarUrl');
+    if (storedNickname) setAiCustomNickname(storedNickname);
+    if (storedAvatarUrl) setAiCustomAvatarUrl(storedAvatarUrl);
+
+    const mockData = generateInitialConversationsData(storedNickname, storedAvatarUrl);
     setConversations(mockData);
     if (mockData.length > 0) {
       setSelectedConversationId(mockData[0].id);
     }
     setIsLoadingInitialData(false);
   }, []);
+
+  useEffect(() => {
+    // Update conversation participant if AI profile changes
+    setConversations(prevConvos => 
+      prevConvos.map(convo => 
+        convo.participant.id === kathaVaultAiUser.id 
+        ? { ...convo, participant: { ...convo.participant, username: aiCustomNickname || kathaVaultAiUser.username, avatarUrl: aiCustomAvatarUrl || kathaVaultAiUser.avatarUrl } }
+        : convo
+      )
+    );
+  }, [aiCustomNickname, aiCustomAvatarUrl]);
+
 
   const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
@@ -76,7 +115,6 @@ export default function ChatPage() {
       timestamp: new Date().toISOString(),
     };
 
-    // Optimistically update UI with user's message
     setConversations(prevConvos =>
       prevConvos.map(convo =>
         convo.id === selectedConversation.id
@@ -90,7 +128,7 @@ export default function ChatPage() {
       )
     );
     const userInput = currentMessage.trim();
-    setCurrentMessage(''); // Clear input after sending
+    setCurrentMessage('');
     
     if (selectedConversation.participant.id === kathaVaultAiUser.id) {
       setIsAiResponding(true);
@@ -109,7 +147,7 @@ export default function ChatPage() {
               ? {
                   ...convo,
                   messages: [...convo.messages, aiMessage],
-                  lastMessage: aiMessage.text.substring(0, 50) + (aiMessage.text.length > 50 ? "..." : ""), // Truncate for last message preview
+                  lastMessage: aiMessage.text.substring(0, 50) + (aiMessage.text.length > 50 ? "..." : ""),
                   lastMessageTimestamp: aiMessage.timestamp,
                 }
               : convo
@@ -145,6 +183,22 @@ export default function ChatPage() {
     }
   };
 
+  const handleOpenEditAiProfileDialog = () => {
+    setTempNickname(aiCustomNickname || kathaVaultAiUser.username);
+    setTempAvatarUrl(aiCustomAvatarUrl || kathaVaultAiUser.avatarUrl);
+    setIsEditingAiProfile(true);
+  };
+
+  const handleSaveAiProfile = (e: FormEvent) => {
+    e.preventDefault();
+    setAiCustomNickname(tempNickname);
+    setAiCustomAvatarUrl(tempAvatarUrl);
+    localStorage.setItem('kathaAiNickname', tempNickname);
+    localStorage.setItem('kathaAiAvatarUrl', tempAvatarUrl);
+    setIsEditingAiProfile(false);
+    toast({ title: "AI Profile Updated", description: "Katha Vault AI's appearance has been updated for you." });
+  };
+
 
   if (isLoadingInitialData) {
     return (
@@ -155,6 +209,10 @@ export default function ChatPage() {
     );
   }
 
+  const displayedAiName = aiCustomNickname || kathaVaultAiUser.username;
+  const displayedAiAvatar = aiCustomAvatarUrl || kathaVaultAiUser.avatarUrl;
+  const displayedAiDataAihint = kathaVaultAiUser.dataAihint; // Base hint, as custom avatar is a URL
+
   return (
     <div className="flex h-[calc(100vh-var(--header-height,100px))] border rounded-lg shadow-lg bg-card">
       {/* Conversations Sidebar */}
@@ -162,7 +220,6 @@ export default function ChatPage() {
         <CardHeader className="p-4 border-b">
           <div className="flex justify-between items-center">
             <CardTitle className="text-xl">Chats</CardTitle>
-            {/* Removed new message button as AI is the only chat for now */}
           </div>
           <div className="relative mt-2">
             <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -178,12 +235,20 @@ export default function ChatPage() {
               onClick={() => setSelectedConversationId(convo.id)}
             >
               <Avatar className="h-10 w-10 mr-3">
-                <AvatarImage src={convo.participant.avatarUrl} alt={convo.participant.username} data-ai-hint={convo.participant.dataAihint || "user avatar"}/>
-                <AvatarFallback>{convo.participant.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                <AvatarImage 
+                  src={convo.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : convo.participant.avatarUrl} 
+                  alt={convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username} 
+                  data-ai-hint={convo.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : convo.participant.dataAihint || "user avatar"}
+                />
+                <AvatarFallback>
+                  {(convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username).substring(0, 2).toUpperCase()}
+                </AvatarFallback>
               </Avatar>
               <div className="flex-grow text-left overflow-hidden">
                 <div className="flex justify-between items-center">
-                  <p className="font-semibold truncate">{convo.participant.username}</p>
+                  <p className="font-semibold truncate">
+                    {convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username}
+                  </p>
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {formatDisplayTimestamp(convo.lastMessageTimestamp)}
                   </span>
@@ -207,29 +272,100 @@ export default function ChatPage() {
             <CardHeader className="p-4 border-b flex flex-row items-center justify-between space-x-3">
               <div className="flex items-center space-x-3">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={selectedConversation.participant.avatarUrl} alt={selectedConversation.participant.username} data-ai-hint={selectedConversation.participant.dataAihint || "user avatar chat"}/>
-                  <AvatarFallback>{selectedConversation.participant.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+                  <AvatarImage 
+                    src={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : selectedConversation.participant.avatarUrl} 
+                    alt={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username}
+                    data-ai-hint={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : selectedConversation.participant.dataAihint || "user avatar chat"}
+                  />
+                  <AvatarFallback>
+                    {(selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username).substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-semibold text-lg">{selectedConversation.participant.username}</p>
+                  <p className="font-semibold text-lg">
+                    {selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username}
+                  </p>
                   {selectedConversation.participant.id === kathaVaultAiUser.id && (
                     <p className="text-xs text-muted-foreground">AI Assistant</p>
                   )}
                 </div>
               </div>
-              {/* Removed dropdown menu for AI chat */}
+              {selectedConversation.participant.id === kathaVaultAiUser.id && (
+                <Dialog open={isEditingAiProfile} onOpenChange={setIsEditingAiProfile}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="icon" onClick={handleOpenEditAiProfileDialog}>
+                      <Pencil className="h-4 w-4" />
+                      <span className="sr-only">Edit AI Profile</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <form onSubmit={handleSaveAiProfile}>
+                      <DialogHeader>
+                        <DialogTitle>Customize Katha Vault AI</DialogTitle>
+                        <DialogDescription>
+                          Personalize how the AI appears to you. These changes are local to your browser.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="ai-nickname" className="text-right">
+                            Nickname
+                          </Label>
+                          <Input
+                            id="ai-nickname"
+                            value={tempNickname}
+                            onChange={(e) => setTempNickname(e.target.value)}
+                            className="col-span-3"
+                            placeholder={kathaVaultAiUser.username}
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="ai-avatar-url" className="text-right">
+                            Avatar URL
+                          </Label>
+                          <Input
+                            id="ai-avatar-url"
+                            type="url"
+                            value={tempAvatarUrl}
+                            onChange={(e) => setTempAvatarUrl(e.target.value)}
+                            className="col-span-3"
+                            placeholder={kathaVaultAiUser.avatarUrl}
+                          />
+                        </div>
+                      </div>
+                      <DialogFooter>
+                        <Button type="submit"><Save className="mr-2 h-4 w-4"/>Save Changes</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              )}
             </CardHeader>
             
             <ScrollArea className="flex-grow p-4 space-y-4">
               {selectedConversation.messages.map(msg => {
                 const isCurrentUserMsg = msg.senderId === mockCurrentUser.id;
-                const participantToDisplay = isCurrentUserMsg ? mockCurrentUser : selectedConversation.participant;
+                
+                let participantToDisplay: ChatUser;
+                if (isCurrentUserMsg) {
+                    participantToDisplay = mockCurrentUser;
+                } else if (msg.senderId === kathaVaultAiUser.id) {
+                    participantToDisplay = {
+                        ...kathaVaultAiUser,
+                        username: displayedAiName,
+                        avatarUrl: displayedAiAvatar,
+                        dataAihint: displayedAiDataAihint
+                    };
+                } else {
+                    participantToDisplay = selectedConversation.participant;
+                }
+
                 return (
                   <div key={msg.id} className={`flex items-end gap-2 ${isCurrentUserMsg ? 'justify-end' : 'justify-start'}`}>
                     {!isCurrentUserMsg && (
                       <Avatar className="h-8 w-8 self-start">
                          <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "user avatar small"}/>
-                         <AvatarFallback>{participantToDisplay.username.substring(0,1)}</AvatarFallback>
+                         <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
                     )}
                     <div className={`max-w-[70%] p-3 rounded-xl ${isCurrentUserMsg ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted text-muted-foreground rounded-bl-none'}`}>
@@ -241,7 +377,7 @@ export default function ChatPage() {
                      {isCurrentUserMsg && (
                       <Avatar className="h-8 w-8 self-start">
                          <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "current user avatar"}/>
-                         <AvatarFallback>{participantToDisplay.username.substring(0,1)}</AvatarFallback>
+                         <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
                       </Avatar>
                     )}
                   </div>
@@ -250,8 +386,8 @@ export default function ChatPage() {
               {isAiResponding && (
                 <div className="flex items-end gap-2 justify-start">
                     <Avatar className="h-8 w-8 self-start">
-                        <AvatarImage src={kathaVaultAiUser.avatarUrl} alt={kathaVaultAiUser.username} data-ai-hint="brand logo K small"/>
-                        <AvatarFallback>{kathaVaultAiUser.username.substring(0,1)}</AvatarFallback>
+                        <AvatarImage src={displayedAiAvatar} alt={displayedAiName} data-ai-hint={displayedAiDataAihint || "brand logo K small"}/>
+                        <AvatarFallback>{displayedAiName.substring(0,1).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="max-w-[70%] p-3 rounded-xl bg-muted text-muted-foreground rounded-bl-none">
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -261,8 +397,8 @@ export default function ChatPage() {
               {aiError && (
                  <div className="flex items-end gap-2 justify-start">
                     <Avatar className="h-8 w-8 self-start">
-                        <AvatarImage src={kathaVaultAiUser.avatarUrl} alt={kathaVaultAiUser.username} />
-                        <AvatarFallback>{kathaVaultAiUser.username.substring(0,1)}</AvatarFallback>
+                        <AvatarImage src={displayedAiAvatar} alt={displayedAiName} data-ai-hint={displayedAiDataAihint}/>
+                        <AvatarFallback>{displayedAiName.substring(0,1).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="max-w-[70%] p-3 rounded-xl bg-destructive/20 text-destructive-foreground rounded-bl-none">
                         <p className="text-sm">{aiError}</p>
@@ -274,14 +410,14 @@ export default function ChatPage() {
 
             <div className="p-4 border-t bg-background">
               <div className="flex items-center gap-2">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary">
+                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary" onClick={() => toast({title: "Emoji Picker", description: "Emoji picker functionality is not yet implemented."})}>
                   <Smile className="h-5 w-5" />
                   <span className="sr-only">Add emoji</span>
                 </Button>
                 <Input
                   placeholder="Type a message..."
                   value={currentMessage}
-                  onChange={(e) => setCurrentMessage(e.target.value)}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && !isAiResponding && handleSendMessage()}
                   className="flex-grow"
                   disabled={isAiResponding}
@@ -306,4 +442,3 @@ export default function ChatPage() {
     </div>
   );
 }
-
