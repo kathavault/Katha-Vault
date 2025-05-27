@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Settings as SettingsIcon, Bell, Palette, ShieldCheck, LogOut, Save, UserCog, VenetianMask, Mail, KeyRound, SlashCircle } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Palette, ShieldCheck, LogOut, Save, UserCog, VenetianMask, Mail, KeyRound, Ban } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -71,7 +71,7 @@ export default function AccountSettingsPage() {
               id="push-notifications"
               checked={pushNotifications}
               onCheckedChange={setPushNotifications}
-              disabled 
+              disabled
             />
           </div>
         </CardContent>
@@ -102,7 +102,7 @@ export default function AccountSettingsPage() {
             </p>
         </CardContent>
       </Card>
-      
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -129,7 +129,7 @@ export default function AccountSettingsPage() {
                 <KeyRound className="mr-2 h-4 w-4" /> Change Password
             </Button>
             <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Blocked Accounts")}>
-                <SlashCircle className="mr-2 h-4 w-4" /> Blocked Accounts
+                <Ban className="mr-2 h-4 w-4" /> Blocked Accounts
             </Button>
             <Button variant="outline" className="w-full justify-start" onClick={() => handlePlaceholderClick("Privacy Policy")}>
                 <VenetianMask className="mr-2 h-4 w-4" /> Privacy Policy
