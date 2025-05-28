@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, LogIn } from 'lucide-react'; 
+import { Send, LogIn } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -89,23 +89,24 @@ function AppHeader() {
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
       <div className="md:hidden">
-        {isClient ? <SidebarTrigger /> : <div className="h-7 w-7" /> } 
+        {isClient ? <SidebarTrigger /> : <div className="h-7 w-7" /> }
       </div>
       <div className="flex-1 md:flex md:justify-center">
         <div className="md:absolute md:left-1/2 md:-translate-x-1/2">
           <Link href="/">
-            <Logo collapsed={true}/> 
+            <Logo collapsed={true}/>
           </Link>
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {isClient && isHomePage ? ( 
+        {isClient && isHomePage ? (
           <Link href="/chat" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative")}>
             <Send className="h-5 w-5" />
             <span className="sr-only">Chat</span>
           </Link>
         ) : (
-          <div className="h-10 w-10" /> 
+          // Consistent placeholder for SSR if chat button isn't rendered or on non-home pages
+          <div className="h-10 w-10" />
         )}
         <ThemeToggleButton />
         {isClient ? (
@@ -117,8 +118,9 @@ function AppHeader() {
             <span>Sign In</span>
           </Link>
         ) : (
+          // Basic link for SSR, full page reload if JS disabled
           <a
-            href="/auth/login" // Basic link for SSR, full page reload if JS disabled
+            href="/auth/login"
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 bg-primary text-primary-foreground"
           >
             <LogIn className="mr-2 h-4 w-4" />
