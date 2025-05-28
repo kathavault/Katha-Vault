@@ -39,6 +39,7 @@ export default function AccountPage() {
   const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
+    // Defer date generation to client-side to avoid hydration mismatch
     setJoinedDate(new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString());
   }, []);
 
@@ -77,12 +78,16 @@ export default function AccountPage() {
   const handleLikePost = (postId: string) => {
     // This is a placeholder. In a real app, you'd update the backend.
     // For UI simulation, the UserPostCard manages its own local like count.
-    toast({ title: "Liked! (Simulated)", description: `You liked a post.` });
+    setTimeout(() => {
+        toast({ title: "Liked! (Simulated)", description: `You liked a post.` });
+    }, 0);
   };
 
   const handleCommentOnPost = (postId: string, commentText: string) => {
     // Placeholder for actual comment submission
-    toast({ title: "Comment Added! (Simulated)", description: `Your comment: "${commentText}"` });
+    setTimeout(() => {
+        toast({ title: "Comment Added! (Simulated)", description: `Your comment: "${commentText}"` });
+    }, 0);
   };
 
 
