@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import Image from "next/image";
 import {
-  ChevronLeft, ChevronRight, Settings2, Minus, Plus, Sun, Moon, Bookmark, Share2, MessageCircle, Star, Send, ThumbsUp, ThumbsDown, AlertTriangle, Loader2 as LoaderIcon, LogIn
+  ChevronLeft, ChevronRight, Settings2, Minus, Plus, Sun, Moon, Bookmark, Share2, MessageCircle, Star, Send, ThumbsUp, ThumbsDown, AlertTriangle, Loader2 as LoaderIcon, LogIn, BookOpenText
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -21,6 +21,7 @@ import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { mockStories } from '@/lib/mock-data';
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress"; // Added Progress import
 
 
 export default function ReadingPage() {
@@ -29,6 +30,7 @@ export default function ReadingPage() {
   const storyId = params.storyId as string;
 
   const [story, setStory] = useState<Story | null>(null);
+  const [displayViews, setDisplayViews] = useState<number | undefined>(undefined);
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16);
   const [readingTheme, setReadingTheme] = useState<'light' | 'dark'>('dark');
@@ -36,6 +38,7 @@ export default function ReadingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [storyNotFound, setStoryNotFound] = useState(false);
   const [userRating, setUserRating] = useState(0);
+  const [readingProgress, setReadingProgress] = useState(0);
 
   // Simulate authentication state - for a real app, this would come from context/session
   const [isUserAuthenticated, setIsUserAuthenticated] = useState(false); // Default to false
@@ -46,9 +49,11 @@ export default function ReadingPage() {
 
     if (foundStory && foundStory.publishedStatus === 'Published') {
       setStory(foundStory);
+      setDisplayViews(foundStory.views ? foundStory.views + 1 : 1); // Simulate view increment
       setStoryNotFound(false);
     } else {
       setStory(null);
+      setDisplayViews(undefined);
       setStoryNotFound(true);
     }
     setCurrentChapterIndex(0);
@@ -59,6 +64,15 @@ export default function ReadingPage() {
     // For simulation, we're keeping it simple. You could add a mock login button elsewhere
     // that sets this to true to see the content.
   }, [storyId]);
+
+  useEffect(() => {
+    if (story && story.chapters.length > 0) {
+      const progress = ((currentChapterIndex + 1) / story.chapters.length) * 100;
+      setReadingProgress(progress);
+    } else {
+      setReadingProgress(0);
+    }
+  }, [currentChapterIndex, story]);
 
   const handleRatingSubmit = (rating: number) => {
     setUserRating(rating);
@@ -99,12 +113,7 @@ export default function ReadingPage() {
     );
   }
 
-  if (!story) {
-    // This case should ideally be covered by storyNotFound or isLoading
-    return <p className="text-center mt-10">An unexpected error occurred while loading the story.</p>;
-  }
-
-  // Simulated Authentication Check
+  // If user is not authenticated, show login prompt
   if (!isUserAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center p-4">
@@ -114,14 +123,24 @@ export default function ReadingPage() {
           <AlertDescription className="mt-2 text-base">
             You need to be logged in to read this story. Please log in to continue.
           </AlertDescription>
-          <Button asChild className="mt-6 w-full sm:w-auto">
+          <Button asChild className="mt-6 w-full sm:w-auto" onClick={() => setIsUserAuthenticated(true)}> 
+            {/* TEMPORARY: Button to simulate login for easier testing. Remove for production. */}
+            <span className="cursor-pointer"><LogIn className="mr-2 h-4 w-4" /> Simulate Login & Read</span>
+          </Button>
+          <Button asChild className="mt-2 w-full sm:w-auto" variant="outline">
             <Link href="/auth/login">
-              <LogIn className="mr-2 h-4 w-4" /> Go to Login
+              <LogIn className="mr-2 h-4 w-4" /> Go to Login Page
             </Link>
           </Button>
         </Alert>
       </div>
     );
+  }
+
+
+  if (!story) {
+    // This case should ideally be covered by storyNotFound or isLoading
+    return <p className="text-center mt-10">An unexpected error occurred while loading the story.</p>;
   }
 
 
@@ -181,8 +200,15 @@ export default function ReadingPage() {
           </div>
         </CardHeader>
         <CardContent className="p-4 pt-0">
-          <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Chapters</h4>
-          <ScrollArea className="h-[calc(100vh-450px)] pr-2">
+          <div className="mb-3">
+            <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
+                <span>Reading Progress</span>
+                <span>{Math.round(readingProgress)}%</span>
+            </div>
+            <Progress value={readingProgress} className="h-2" />
+          </div>
+          <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Chapters ({story.chapters.length})</h4>
+          <ScrollArea className="h-[calc(100vh-520px)] pr-2"> {/* Adjusted height */}
             <ul className="space-y-1">
               {story.chapters.map((chap, index) => (
                 <li key={chap.id}>
@@ -192,7 +218,8 @@ export default function ReadingPage() {
                     className="w-full justify-start text-left h-auto py-2"
                     onClick={() => handleChapterSelect(chap.id)}
                   >
-                    {chap.title}
+                    <BookOpenText className="mr-2 h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{chap.title}</span>
                   </Button>
                 </li>
               ))}
@@ -212,7 +239,7 @@ export default function ReadingPage() {
                         <div className="flex items-center gap-2 mt-2">
                             <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />
                             <span className={`font-semibold ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>{story.rating?.toFixed(1)}</span>
-                            <span className={`text-xs ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>({story.views} views)</span>
+                            <span className={`text-xs ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>({displayViews?.toLocaleString() || story.views?.toLocaleString()} views)</span>
                         </div>
                         <div className="mt-3">
                           <p className={`text-sm font-medium ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'} mb-1`}>Rate this story:</p>
@@ -258,7 +285,10 @@ export default function ReadingPage() {
             <header className="p-4 border-b flex items-center justify-between sticky top-[60px] z-10 bg-inherit rounded-t-lg ${readingTheme === 'light' ? 'border-gray-300' : 'border-gray-700'}">
               <div>
                 <h2 className="text-xl font-semibold">{currentChapter.title}</h2>
-                <div className="lg:hidden mt-1">
+                 <div className="mt-1">
+                    <Progress value={readingProgress} className={`h-1.5 w-full md:w-64 ${readingTheme === 'light' ? 'bg-gray-300 [&>div]:bg-primary' : 'bg-gray-700 [&>div]:bg-primary'}`} />
+                </div>
+                <div className="lg:hidden mt-2">
                     <Select onValueChange={handleChapterSelect} defaultValue={currentChapter.id}>
                         <SelectTrigger className={`w-[200px] h-9 text-xs ${readingTheme === 'light' ? 'bg-white border-gray-300' : 'bg-gray-800 border-gray-600'}`}>
                             <SelectValue placeholder="Select Chapter" />
