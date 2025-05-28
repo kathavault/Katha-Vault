@@ -15,14 +15,12 @@ export function ThemeToggleButton() {
   }, []);
 
   if (!mounted) {
-    // Render a consistent placeholder or one of the icons during SSR and initial client render
-    // This avoids the icon switching before hydration completes.
-    // You can choose to always render Sun, or a generic icon, or null/placeholder.
-    // For consistency, let's render what it would be if theme was 'light' by default.
+    // Render a very simple, consistent placeholder during SSR and initial client render.
+    // This div should have similar dimensions to the Button to avoid layout shift.
     return (
-      <Button variant="ghost" size="icon" aria-label="Toggle theme" disabled>
-        <Moon className="h-5 w-5" />
-      </Button>
+      <div className="inline-flex items-center justify-center h-10 w-10" aria-label="Toggle theme">
+        <Moon className="h-5 w-5" /> {/* Consistently render Moon icon initially */}
+      </div>
     );
   }
 
