@@ -16,7 +16,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Button, buttonVariants } from '@/components/ui/button'; // Added buttonVariants import
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -24,7 +24,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
 import { LogIn, Send } from 'lucide-react';
-import { cn } from "@/lib/utils"; // Added cn import
+import { cn } from "@/lib/utils";
+import { useState, useEffect } from 'react'; // Added imports
 
 function AppSidebar() {
   const pathname = usePathname();
@@ -78,6 +79,12 @@ function AppSidebar() {
 function AppHeader() {
   const pathname = usePathname();
   const isHomePage = pathname === '/';
+  const [isClient, setIsClient] = useState(false); // Added state
+
+  useEffect(() => { // Added effect
+    setIsClient(true);
+  }, []);
+
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
@@ -102,13 +109,25 @@ function AppHeader() {
           </Button>
         )}
         <ThemeToggleButton />
-        <Link
-          href="/auth/login"
-          className={cn(buttonVariants({ variant: "default", size: "default" }))}
-        >
-          <LogIn className="mr-2 h-4 w-4" />
-          <span>Login</span>
-        </Link>
+        {isClient ? (
+          <Link
+            href="/auth/login"
+            className={cn(buttonVariants({ variant: "default", size: "default" }))}
+          >
+            <LogIn className="mr-2 h-4 w-4" />
+            <span>Login</span>
+          </Link>
+        ) : (
+          // Basic placeholder for SSR and initial client render to avoid hydration mismatch on className
+          // Using basic classes that affect layout similarly to buttonVariants default.
+          <a
+            href="/auth/login"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 bg-primary text-primary-foreground"
+          >
+            <LogIn className="mr-2 h-4 w-4" />
+            <span>Login</span>
+          </a>
+        )}
       </div>
     </header>
   );
