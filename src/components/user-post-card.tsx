@@ -175,8 +175,8 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   const handleReplyToComment = (commentId: string, username: string) => {
     setTimeout(() => {
       toast({
-        title: "Reply (Placeholder)",
-        description: `Replying to ${username}'s comment. Full reply functionality requires further development.`,
+        title: "Reply to Comment",
+        description: `Simulated: Replying to ${username}'s comment. A reply input would open here.`,
       });
     }, 0);
   };
@@ -192,6 +192,7 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   };
 
   const commentsToDisplay = showAllComments ? displayedComments : displayedComments.slice(0, 2);
+  const canCurrentUserModerate = post.userId === mockCurrentUserForPostCard.id;
 
   return (
     <Card className="w-full shadow-md hover:shadow-lg transition-shadow">
@@ -303,6 +304,7 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
             )}
             {commentsToDisplay.map(comment => {
               const commentLikeState = commentLikes[comment.id] || { count: 0, liked: false };
+              const canDeleteThisComment = canCurrentUserModerate || comment.userId === mockCurrentUserForPostCard.id;
               return (
                 <div key={comment.id} className="flex items-start space-x-2 text-xs group">
                     <Avatar className="h-6 w-6">
@@ -333,7 +335,7 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
                             >
                                 <MessageSquareReply className="mr-1 h-3 w-3" /> Reply
                             </Button>
-                            {comment.userId === mockCurrentUserForPostCard.id && (
+                            {canDeleteThisComment && (
                                 <AlertDialog open={commentToDeleteId === comment.id} onOpenChange={(open) => !open && setCommentToDeleteId(null)}>
                                     <AlertDialogTrigger asChild>
                                         <Button 
@@ -372,3 +374,4 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
     </Card>
   );
 }
+
