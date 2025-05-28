@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation'; // Added useRouter
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
@@ -76,6 +76,7 @@ function AppSidebar() {
 
 function AppHeader() {
   const pathname = usePathname();
+  const router = useRouter(); // Initialize router
   const isHomePage = pathname === '/';
 
   return (
@@ -97,16 +98,13 @@ function AppHeader() {
             <Link href="/chat">
               <Send className="h-5 w-5" />
               <span className="sr-only">Chat</span>
-              {/* Static placeholder for notification, real notifications need backend */}
             </Link>
           </Button>
         )}
         <ThemeToggleButton />
-        <Button asChild>
-            <Link href="/auth/login">
-                <LogIn className="mr-2 h-4 w-4 md:hidden" />
-                <span className="hidden md:inline">Login</span>
-            </Link>
+        <Button onClick={() => router.push('/auth/login')}>
+            <LogIn className="mr-2 h-4 w-4 md:hidden" />
+            <span className="hidden md:inline">Login</span>
         </Button>
       </div>
     </header>
