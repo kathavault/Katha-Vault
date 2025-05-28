@@ -46,11 +46,8 @@ import Image from 'next/image';
 import type { Story, StoryChapter, UserProfile } from '@/types';
 import { mockStories as initialMockStories } from '@/lib/mock-data';
 import { Switch } from "@/components/ui/switch";
-import dynamic from 'next/dynamic';
-import 'react-quill/dist/quill.snow.css'; // Import Quill styles
-
-// Dynamically import ReactQuill to avoid SSR issues
-const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
+// Rich Text Editor (ReactQuill) is removed due to runtime errors.
+// Placeholder styling buttons also removed for simplicity with plain textarea.
 
 type StoryFormDataFields = Omit<Story, 'id' | 'chapters' | 'createdAt' | 'updatedAt' | 'authorId' | 'isTrending' | 'isCurated'> & { id?: string };
 type ChapterFormData = Omit<StoryChapter, 'id' | 'order'>;
@@ -77,7 +74,7 @@ export default function AdminPage() {
   const [isEditChapterDialogOpen, setIsEditChapterDialogOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState<StoryChapter | null>(null);
   const [editingChapterIndex, setEditingChapterIndex] = useState<number | null>(null);
-  const [currentChapterData, setCurrentChapterData] = useState<ChapterFormData>({ title: '', content: '' });
+  const [currentChapterData, setCurrentChapterData] = useState<ChapterFormData>({ title: '', content: '' }); // content is plain text
   const [chapterToDelete, setChapterToDelete] = useState<{storyId: string, chapterId: string} | null>(null);
 
   const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
@@ -98,12 +95,9 @@ export default function AdminPage() {
   }, [searchTerm, stories]);
 
   useEffect(() => {
-    // This effect is to simulate persistence for the purpose of this prototype.
-    // In a real app, data would be fetched from a backend.
-    // Here, we update the initialMockStories in-memory if stories state changes.
     const storiesMap = new Map(stories.map(s => [s.id, s]));
-    initialMockStories.length = 0; // Clear the original array
-    storiesMap.forEach(story => initialMockStories.push(story)); // Repopulate with current state
+    initialMockStories.length = 0; 
+    storiesMap.forEach(story => initialMockStories.push(story)); 
   }, [stories]);
 
 
@@ -127,22 +121,22 @@ export default function AdminPage() {
         authorId: formData.authorId || `author-${Date.now()}`,
         createdAt: formData.id ? stories.find(s => s.id === formData.id)?.createdAt || new Date().toISOString() : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        isTrending: formData.category === 'Trending', // Assuming category is 'Trending' for isTrending flag
+        isTrending: formData.category === 'Trending', 
         publishedStatus: formData.publishedStatus || 'Draft',
         category: formData.category || 'General',
     };
 
-    if (formData.id) { // Editing existing story
+    if (formData.id) { 
         setStories(prevStories => prevStories.map(s => s.id === formData.id ? { ...s, ...fullFormData, chapters: s.chapters } as Story : s));
         toast({ title: "Story Updated (Simulated)", description: `"${formData.title}" has been updated.` });
         setIsEditStoryDialogOpen(false);
         setEditingStory(null);
-    } else { // Adding new story
+    } else { 
         const newStory: Story = {
             ...fullFormData,
             id: `story-${Date.now()}`,
             chapters: [],
-            status: 'Ongoing', // Default status for new stories
+            status: 'Ongoing', 
             views: 0,
             rating: 0,
         } as Story;
@@ -186,7 +180,7 @@ export default function AdminPage() {
             tags: tags.split(',').map(t => t.trim()).filter(t => t),
             publishedStatus,
             category,
-            authorId: story?.authorId || 'new-author', // Placeholder
+            authorId: story?.authorId || 'new-author', 
         });
     };
 
@@ -270,7 +264,7 @@ export default function AdminPage() {
   };
 
   const handleOpenChapterManagement = (storyToManage: Story) => {
-    setStoryForChapterManagement(JSON.parse(JSON.stringify(storyToManage))); // Deep clone for isolated editing
+    setStoryForChapterManagement(JSON.parse(JSON.stringify(storyToManage))); 
     setIsManageChaptersDialogOpen(true);
   };
   
@@ -278,18 +272,6 @@ export default function AdminPage() {
     chapterData: ChapterFormData;
     onChapterDataChange: (field: keyof ChapterFormData, value: string) => void;
   }> = ({ chapterData, onChapterDataChange }) => {
-    
-    // Modules for ReactQuill toolbar
-    const quillModules = {
-      toolbar: [
-        [{ 'header': [1, 2, 3, false] }],
-        ['bold', 'italic', 'underline', 'strike'],
-        [{'list': 'ordered'}, {'list': 'bullet'}],
-        ['link'],
-        ['clean']
-      ],
-    };
-  
     return (
       <div className="space-y-4 py-4">
         <div>
@@ -302,16 +284,14 @@ export default function AdminPage() {
         </div>
         <div>
           <Label htmlFor="chapter-content-edit">Chapter Content</Label>
-          {typeof window !== 'undefined' && ReactQuill && (
-            <ReactQuill
-              theme="snow"
-              value={chapterData.content}
-              onChange={(html) => onChapterDataChange('content', html)}
-              modules={quillModules}
+           <Textarea
+              id="chapter-content-edit"
+              value={chapterData.content} // Assuming content is plain text
+              onChange={(e) => onChapterDataChange('content', e.target.value)}
+              rows={10}
               placeholder="Write your chapter content here..."
               className="bg-background text-foreground min-h-[200px] border border-input rounded-md"
             />
-          )}
         </div>
       </div>
     );
@@ -321,24 +301,23 @@ export default function AdminPage() {
   const handleAddChapter = () => {
     if (!storyForChapterManagement) return;
     const newChapter: StoryChapter = {
-      id: `chap-${Date.now()}-${Math.random().toString(16).slice(2)}`, // More unique ID
+      id: `chap-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       title: `New Chapter ${storyForChapterManagement.chapters.length + 1}`,
-      content: "<p>Start writing content here...</p>", // Default content as HTML
+      content: "Start writing content here...", // Default content as plain text
       order: storyForChapterManagement.chapters.length + 1,
     };
     const updatedStory = {
       ...storyForChapterManagement,
       chapters: [...storyForChapterManagement.chapters, newChapter]
     };
-    setStoryForChapterManagement(updatedStory); // Update the dialog's story state
-    // No direct save to main `stories` state here, only on "Save Chapters" from ManageChaptersDialog
-    toast({title: "Chapter Added (Locally)", description: `"${newChapter.title}" added to "${updatedStory.title}". Save changes in the story to persist.`})
+    setStoryForChapterManagement(updatedStory); 
+    toast({title: "Chapter Added (Locally)", description: `"${newChapter.title}" added to "${updatedStory.title}". Save story to persist.`})
   };
 
   const handleOpenEditChapterDialog = (chapter: StoryChapter, index: number) => {
     setEditingChapter(chapter);
     setEditingChapterIndex(index);
-    setCurrentChapterData({ title: chapter.title, content: chapter.content }); // Initialize with existing content
+    setCurrentChapterData({ title: chapter.title, content: chapter.content }); 
     setIsEditChapterDialogOpen(true);
   };
   
@@ -354,16 +333,14 @@ export default function AdminPage() {
       chapters: updatedChapters
     };
   
-    setStoryForChapterManagement(updatedStory); // This updates the state for the "Manage Chapters" dialog
+    setStoryForChapterManagement(updatedStory); 
     
-    // To persist to the main list, we need to save the entire story from "Manage Chapters" dialog or Edit Story
     toast({title: "Chapter Saved (Locally)", description: `Changes to "${currentChapterData.title}" locally staged. Save story to persist.`});
     setIsEditChapterDialogOpen(false);
     setEditingChapter(null);
     setEditingChapterIndex(null);
   };
   
-  // Call this when closing the "Manage Chapters" dialog if changes should be saved
   const handleSaveStoryWithChapterChanges = () => {
     if (!storyForChapterManagement) return;
     setStories(prevStories =>
@@ -389,7 +366,7 @@ export default function AdminPage() {
 
     const updatedChapters = storyForChapterManagement.chapters.filter(
       (chapter) => chapter.id !== chapterToDelete.chapterId
-    ).map((chap, index) => ({ ...chap, order: index + 1 })); // Re-order chapters
+    ).map((chap, index) => ({ ...chap, order: index + 1 })); 
 
     const updatedStory = {
       ...storyForChapterManagement,
@@ -397,7 +374,6 @@ export default function AdminPage() {
     };
 
     setStoryForChapterManagement(updatedStory);
-    // No direct save to main `stories` state here, only on "Save Chapters" from ManageChaptersDialog
     toast({title: "Chapter Removed (Locally)", description: `Chapter "${chapterToRemove?.title || 'N/A'}" removed locally. Save story to persist.`});
     setChapterToDelete(null);
   };
@@ -547,8 +523,6 @@ export default function AdminPage() {
        {storyForChapterManagement && (
         <Dialog open={isManageChaptersDialogOpen} onOpenChange={(isOpen) => {
           if (!isOpen) {
-             // Ask user if they want to save changes before closing
-             // For simplicity here, we just close. A real app might prompt to save.
              setStoryForChapterManagement(null); 
           }
           setIsManageChaptersDialogOpen(isOpen);
@@ -564,7 +538,7 @@ export default function AdminPage() {
                   <Card key={chapter.id} className="p-3 flex justify-between items-center">
                     <div className="flex-grow overflow-hidden">
                       <p className="font-medium truncate">Chapter {chapter.order}: {chapter.title}</p>
-                      <p className="text-xs text-muted-foreground truncate" dangerouslySetInnerHTML={{ __html: chapter.content.substring(0,80) + '...' }} />
+                      <p className="text-xs text-muted-foreground truncate">{chapter.content.substring(0,80) + '...'}</p>
                     </div>
                     <div className="flex gap-2 shrink-0 ml-2">
                       <Button variant="outline" size="sm" onClick={() => handleOpenEditChapterDialog(chapter, index)}>

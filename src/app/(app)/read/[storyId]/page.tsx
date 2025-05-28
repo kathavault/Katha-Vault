@@ -309,8 +309,10 @@ export default function ReadingPage() {
                     readingTheme === 'light' ? 'prose-gray' : 'prose-invert'
                   )}
                   style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
-                  dangerouslySetInnerHTML={{ __html: currentChapter.content }}
-                />
+                >
+                  {/* Render plain text, newlines will be preserved by whitespace-pre-wrap or similar */}
+                  <div className="whitespace-pre-wrap">{currentChapter.content}</div>
+                </article>
             </ScrollArea>
 
             <footer className={`p-4 border-t flex items-center justify-between sticky bottom-0 bg-inherit rounded-b-lg ${readingTheme === 'light' ? 'border-gray-300' : 'border-gray-700'}`}>
