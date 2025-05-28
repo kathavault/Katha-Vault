@@ -10,12 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
-import { LogIn, Mail, Lock, Loader2 } from "lucide-react"; // Added Loader2
-import { auth } from "@/lib/firebase"; // Import Firebase auth instance
+import { LogIn, Mail, Lock, Loader2 } from "lucide-react"; 
+import { auth } from "@/lib/firebase"; 
 import { signInWithEmailAndPassword, FirebaseError } from "firebase/auth";
 import { useRouter } from 'next/navigation';
 
-// Placeholder for social icons
 const GoogleIcon = () => <Mail className="mr-2 h-4 w-4" />; 
 const FacebookIcon = () => <Mail className="mr-2 h-4 w-4" />; 
 
@@ -41,31 +40,33 @@ export default function LoginPage() {
   const onSubmit: SubmitHandler<LoginFormData> = async (data) => {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
-      // User signed in
+      
       if (!userCredential.user.emailVerified) {
         toast({
           title: "Email Not Verified",
           description: "Please verify your email address before logging in. Check your inbox for a verification link.",
           variant: "destructive",
         });
-        // Optionally sign the user out if email verification is mandatory for login
-        // await auth.signOut(); 
+        // await auth.signOut(); // Optionally sign out
         return;
       }
       
+      // Store minimal user info to indicate logged-in state
+      localStorage.setItem('currentUser', JSON.stringify({ email: userCredential.user.email }));
+
       toast({
         title: "Login Successful!",
         description: `Welcome back, ${userCredential.user.email}!`,
         variant: "default"
       });
-      router.push('/'); // Redirect to home page after successful login
+      router.push('/'); 
     } catch (error) {
       let errorMessage = "An unexpected error occurred during login.";
        if (error instanceof FirebaseError) {
         switch (error.code) {
           case "auth/user-not-found":
           case "auth/wrong-password":
-          case "auth/invalid-credential": // For newer Firebase SDK versions
+          case "auth/invalid-credential": 
             errorMessage = "Invalid email or password. Please try again.";
             break;
           case "auth/invalid-email":
@@ -169,7 +170,10 @@ export default function LoginPage() {
 
             <p className="mt-2 text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
-              <Link href="/auth/signup" className="font-medium text-primary hover:underline">
+              <Link 
+                href="/auth/signup" 
+                className="font-medium text-primary hover:underline"
+              >
                 Sign Up
               </Link>
             </p>

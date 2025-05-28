@@ -18,12 +18,12 @@ import {
 } from '@/components/ui/sidebar';
 import { buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, UserPlus } from 'lucide-react'; // Changed LogIn to UserPlus
+import { Send, LogIn, UserCircle2 } from 'lucide-react'; 
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -76,7 +76,11 @@ function AppSidebar() {
   );
 }
 
-function AppHeader() {
+interface AppHeaderProps {
+  isAuthenticated: boolean;
+}
+
+function AppHeader({ isAuthenticated }: AppHeaderProps) {
   const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
 
@@ -105,26 +109,37 @@ function AppHeader() {
             <span className="sr-only">Chat</span>
           </Link>
         ) : (
-          // Consistent placeholder for SSR if chat button isn't rendered or on non-home pages
-          <div className="h-10 w-10" />
+          <div className="h-10 w-10" /> // Placeholder for SSR or non-home pages
         )}
         <ThemeToggleButton />
         {isClient ? (
-          <Link
-            href="/auth/signup" // Changed to /auth/signup
-            className={cn(buttonVariants({ variant: "default", size: "default" }))}
-          >
-            <UserPlus className="mr-2 h-4 w-4" /> {/* Changed to UserPlus */}
-            <span>Sign Up</span> {/* Changed text to Sign Up */}
-          </Link>
+          isAuthenticated ? (
+            <Link href="/account">
+              <div className="relative cursor-pointer">
+                <Avatar className="h-9 w-9 border">
+                  <AvatarImage src="https://placehold.co/40x40/B4317B/FFFFFF?text=U" alt="User Account" data-ai-hint="user initial" />
+                  <AvatarFallback>U</AvatarFallback>
+                </Avatar>
+                <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-background" />
+              </div>
+            </Link>
+          ) : (
+            <Link
+              href="/auth/login"
+              className={cn(buttonVariants({ variant: "default", size: "default" }))}
+            >
+              <LogIn className="mr-2 h-4 w-4" />
+              <span>Sign In</span>
+            </Link>
+          )
         ) : (
-          // Basic link for SSR, full page reload if JS disabled
+          // Basic placeholder for SSR and initial client render
           <a
-            href="/auth/signup" // Changed to /auth/signup
+            href="/auth/login"
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 bg-primary text-primary-foreground"
           >
-            <UserPlus className="mr-2 h-4 w-4" /> {/* Changed to UserPlus */}
-            <span>Sign Up</span> {/* Changed text to Sign Up */}
+            <LogIn className="mr-2 h-4 w-4" />
+            <span>Sign In</span>
           </a>
         )}
       </div>
@@ -134,11 +149,20 @@ function AppHeader() {
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const pathname = usePathname(); // To re-check on route change
+
+  useEffect(() => {
+    // Check localStorage for user data to determine auth state
+    const user = localStorage.getItem('currentUser');
+    setIsAuthenticated(!!user);
+  }, [pathname]); // Re-run when pathname changes, ensuring updates after login/logout redirects
+
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset>
-        <AppHeader />
+        <AppHeader isAuthenticated={isAuthenticated} />
         <main className="flex-1 p-4 sm:p-6 pb-20 md:pb-6">
           {children}
         </main>

@@ -60,8 +60,8 @@ type PasswordChangeFormData = z.infer<typeof passwordChangeSchema>;
 export default function AccountSettingsPage() {
   const router = useRouter();
   const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(false); // State for push notifications
-  const [darkModeSystem, setDarkModeSystem] = useState(true); // Visual placeholder
+  const [pushNotifications, setPushNotifications] = useState(false);
+  const [darkModeSystem, setDarkModeSystem] = useState(true); 
   const [isProfilePrivate, setIsProfilePrivate] = useState(false);
 
   const [isChangeEmailDialogOpen, setIsChangeEmailDialogOpen] = useState(false);
@@ -98,14 +98,16 @@ export default function AccountSettingsPage() {
   
   const handleUnblockUser = (userId: string, userName: string) => {
      toast({ title: "User Unblocked (Simulated)", description: `${userName} has been unblocked.` });
-     // In a real app, you'd update the blocked users list here
   };
 
   const handleLogout = () => {
     console.log("Logout initiated (simulated)");
+    localStorage.removeItem('currentUser'); // Clear simulated login state
     toast({ title: "Logged Out", description: "You have been successfully logged out (simulated)." });
     setIsLogoutConfirmOpen(false);
-    router.push('/'); // Redirect to home page
+    router.push('/'); 
+    // Force a reload to ensure header updates, or use a global state manager
+    setTimeout(() => window.location.reload(), 100); 
   };
 
   return (
@@ -168,7 +170,7 @@ export default function AccountSettingsPage() {
                 id="dark-mode-system"
                 checked={darkModeSystem}
                 onCheckedChange={setDarkModeSystem}
-                disabled // Theme is handled by ThemeProvider, this is a visual placeholder
+                disabled 
                 />
             </div>
             <p className="text-sm text-muted-foreground px-4">
