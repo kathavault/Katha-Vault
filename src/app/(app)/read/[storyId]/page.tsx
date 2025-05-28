@@ -1,27 +1,37 @@
 
 "use client";
 
-import { useState, useEffect, FormEvent } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import type { Story, StoryChapter } from '@/types';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import Image from "next/image";
-import {
-  ChevronLeft, ChevronRight, Settings2, Minus, Plus, Sun, Moon, Bookmark, Share2, MessageCircle, Star, Send, ThumbsUp, ThumbsDown, AlertTriangle, Loader2 as LoaderIcon, LogIn, BookOpenText
-} from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from '@/components/ui/badge';
+import type { Story, StoryChapter, PostComment } from '@/types'; // Added PostComment
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from "@/components/ui/progress";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import Link from 'next/link';
-import { mockStories } from '@/lib/mock-data';
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
+import { mockStories } from '@/lib/mock-data';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertTriangle, Bookmark, BookOpenText, ChevronLeft, ChevronRight, Loader2 as LoaderIcon, LogIn, MessageCircle, Minus, Moon, Plus, Send, Share2, Star, Sun, ThumbsDown, ThumbsUp
+} from 'lucide-react';
+import Image from "next/image";
+import Link from 'next/link';
+import { useParams, useRouter } from 'next/navigation';
+import { FormEvent, useEffect, useState } from 'react';
+import { format, formatDistanceToNowStrict } from 'date-fns';
+
+
+// Mock current user for comments - in a real app, this would come from auth context
+const mockCurrentUserForComments = {
+  id: 'currentUserReader',
+  username: 'StoryReader',
+  avatarUrl: 'https://placehold.co/40x40/2E86C1/FFFFFF?text=SR',
+  dataAihint: 'user initial',
+};
 
 
 export default function ReadingPage() {
@@ -34,7 +44,11 @@ export default function ReadingPage() {
   const [currentChapterIndex, setCurrentChapterIndex] = useState(0);
   const [fontSize, setFontSize] = useState(16);
   const [readingTheme, setReadingTheme] = useState<'light' | 'dark'>('dark');
+  
   const [commentText, setCommentText] = useState('');
+  const [chapterComments, setChapterComments] = useState<PostComment[]>([]); // State for chapter comments
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+
   const [isLoading, setIsLoading] = useState(true);
   const [storyNotFound, setStoryNotFound] = useState(false);
   const [userRating, setUserRating] = useState(0);
@@ -50,9 +64,20 @@ export default function ReadingPage() {
       setStory(foundStory);
       setDisplayViews(foundStory.views ? foundStory.views + 1 : 1); 
       setStoryNotFound(false);
+      // Mock initial comments for the first chapter for demonstration
+      if (foundStory.chapters && foundStory.chapters.length > 0) {
+        const initialComments: PostComment[] = [
+          { id: `chapComment1-${foundStory.chapters[0].id}`, postId: foundStory.chapters[0].id, userId: 'userBot1', username: 'BookFanatic', avatarUrl: 'https://placehold.co/40x40/7E3AF2/FFFFFF?text=BF', dataAihint: "user avatar", text: "What a great start to the story!", timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString() },
+          { id: `chapComment2-${foundStory.chapters[0].id}`, postId: foundStory.chapters[0].id, userId: 'userBot2', username: 'PageExplorer', avatarUrl: 'https://placehold.co/40x40/F28A3A/FFFFFF?text=PE', dataAihint: "user avatar", text: "Can't wait to see what happens next.", timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
+        ];
+        setChapterComments(initialComments);
+      } else {
+        setChapterComments([]);
+      }
     } else {
       setStory(null);
       setDisplayViews(undefined);
+      setChapterComments([]);
       setStoryNotFound(true);
     }
     setCurrentChapterIndex(0);
@@ -141,6 +166,8 @@ export default function ReadingPage() {
   const goToNextChapter = () => {
     if (currentChapterIndex < story.chapters.length - 1) {
       setCurrentChapterIndex(prev => prev + 1);
+      // Reset comments for the new chapter or load them if they were persisted
+      setChapterComments([]); // For simulation, reset. In real app, fetch chapter-specific comments.
       window.scrollTo(0, 0);
     }
   };
@@ -148,6 +175,7 @@ export default function ReadingPage() {
   const goToPrevChapter = () => {
     if (currentChapterIndex > 0) {
       setCurrentChapterIndex(prev => prev - 1);
+      setChapterComments([]); // For simulation, reset.
       window.scrollTo(0, 0);
     }
   };
@@ -156,6 +184,7 @@ export default function ReadingPage() {
     const chapterIdx = story.chapters.findIndex(c => c.id === chapterId);
     if (chapterIdx !== -1) {
       setCurrentChapterIndex(chapterIdx);
+      setChapterComments([]); // For simulation, reset.
       window.scrollTo(0, 0);
     }
   };
@@ -170,10 +199,35 @@ export default function ReadingPage() {
         toast({ title: "Empty Comment", description: "Please write something before submitting.", variant: "destructive"});
         return;
     }
-    console.log("Comment Submitted:", commentText);
-    toast({ title: "Comment Submitted", description: "Your comment has been (mock) submitted!"});
-    setCommentText('');
-  }
+    setIsSubmittingComment(true);
+    
+    // Simulate comment submission
+    const newComment: PostComment = {
+      id: `chapComm-${Date.now()}`,
+      postId: currentChapter.id, // Associate comment with chapter ID
+      userId: mockCurrentUserForComments.id,
+      username: mockCurrentUserForComments.username,
+      avatarUrl: mockCurrentUserForComments.avatarUrl,
+      dataAihint: mockCurrentUserForComments.dataAihint,
+      text: commentText.trim(),
+      timestamp: new Date().toISOString(),
+    };
+
+    setTimeout(() => { // Simulate network delay
+      setChapterComments(prevComments => [newComment, ...prevComments]);
+      setCommentText('');
+      setIsSubmittingComment(false);
+      toast({ title: "Comment Submitted", description: "Your comment has been added to this chapter (locally)."});
+    }, 300);
+  };
+  
+  const formatTimestampDisplay = (timestamp: string) => {
+    try {
+      return formatDistanceToNowStrict(new Date(timestamp), { addSuffix: true });
+    } catch (error) {
+      return 'just now';
+    }
+  };
 
 
   const readingAreaClasses = readingTheme === 'light'
@@ -309,10 +363,8 @@ export default function ReadingPage() {
                     readingTheme === 'light' ? 'prose-gray' : 'prose-invert'
                   )}
                   style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
-                >
-                  {/* Render plain text, newlines will be preserved by whitespace-pre-wrap or similar */}
-                  <div className="whitespace-pre-wrap">{currentChapter.content}</div>
-                </article>
+                  dangerouslySetInnerHTML={{ __html: currentChapter.content }}
+                />
             </ScrollArea>
 
             <footer className={`p-4 border-t flex items-center justify-between sticky bottom-0 bg-inherit rounded-b-lg ${readingTheme === 'light' ? 'border-gray-300' : 'border-gray-700'}`}>
@@ -340,52 +392,44 @@ export default function ReadingPage() {
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 className={`${readingTheme === 'light' ? 'bg-gray-50 border-gray-300' : 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400'}`}
+                disabled={isSubmittingComment}
               />
               <div className="flex justify-end">
-                <Button type="submit" variant="default">
-                  <Send className="mr-2 h-4 w-4" /> Submit Comment
+                <Button type="submit" variant="default" disabled={isSubmittingComment}>
+                  {isSubmittingComment ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                  {isSubmittingComment ? "Submitting..." : "Submit Comment"}
                 </Button>
               </div>
             </form>
           </CardContent>
-          <CardContent className={`mt-6 border-t pt-6 ${readingTheme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>
-             <h3 className={`text-md font-semibold mb-3 ${readingTheme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>Comments (Placeholder)</h3>
-             <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage src="https://placehold.co/40x40/7E3AF2/FFFFFF?text=U1" alt="User1" data-ai-hint="user avatar"/>
-                        <AvatarFallback>U1</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                        <p className={`text-sm font-medium ${readingTheme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>ReaderFan123</p>
-                        <p className={`text-xs ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>2 hours ago</p>
-                        <p className={`mt-1 text-sm ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>Amazing chapter! Really loved the plot twist.</p>
-                         <div className="flex items-center gap-2 mt-1">
-                            <Button variant="ghost" size="sm" className="p-1 h-auto text-xs text-muted-foreground hover:text-primary"><ThumbsUp className="h-3 w-3 mr-1"/> Like (10)</Button>
-                            <Button variant="ghost" size="sm" className="p-1 h-auto text-xs text-muted-foreground hover:text-primary"><ThumbsDown className="h-3 w-3 mr-1"/> Dislike</Button>
+          {chapterComments.length > 0 && (
+            <CardContent className={`mt-6 border-t pt-6 ${readingTheme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>
+              <h3 className={`text-md font-semibold mb-3 ${readingTheme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>Comments ({chapterComments.length})</h3>
+              <ScrollArea className="max-h-96 pr-2">
+                <div className="space-y-4">
+                  {chapterComments.map(comment => (
+                    <div key={comment.id} className="flex items-start space-x-3">
+                        <Avatar className="h-8 w-8">
+                            <AvatarImage src={comment.avatarUrl} alt={comment.username} data-ai-hint={comment.dataAihint || "user avatar comment"}/>
+                            <AvatarFallback>{comment.username.substring(0,1).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className={`flex-1 p-3 rounded-md ${readingTheme === 'light' ? 'bg-gray-100' : 'bg-gray-700/50'}`}>
+                            <div className="flex justify-between items-center">
+                                <p className={`text-sm font-medium ${readingTheme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>{comment.username}</p>
+                                <p className={`text-xs ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>{formatTimestampDisplay(comment.timestamp)}</p>
+                            </div>
+                            <p className={`mt-1 text-sm ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>{comment.text}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                                <Button variant="ghost" size="sm" className={`p-1 h-auto text-xs ${readingTheme === 'light' ? 'text-gray-600 hover:text-primary' : 'text-gray-400 hover:text-primary'}`} onClick={() => toast({title: "Like comment (placeholder)"})}><ThumbsUp className="h-3 w-3 mr-1"/> Like</Button>
+                                <Button variant="ghost" size="sm" className={`p-1 h-auto text-xs ${readingTheme === 'light' ? 'text-gray-600 hover:text-primary' : 'text-gray-400 hover:text-primary'}`} onClick={() => toast({title: "Dislike comment (placeholder)"})}><ThumbsDown className="h-3 w-3 mr-1"/> Dislike</Button>
+                            </div>
                         </div>
                     </div>
+                  ))}
                 </div>
-                 <div className="flex items-start space-x-3">
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage src="https://placehold.co/40x40/F28A3A/FFFFFF?text=U2" alt="User2" data-ai-hint="user avatar"/>
-                        <AvatarFallback>U2</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                        <p className={`text-sm font-medium ${readingTheme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>BookwormBelle</p>
-                        <p className={`text-xs ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>1 day ago</p>
-                        <p className={`mt-1 text-sm ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>I have a theory about what happens next...</p>
-                         <div className="flex items-center gap-2 mt-1">
-                            <Button variant="ghost" size="sm" className="p-1 h-auto text-xs text-muted-foreground hover:text-primary"><ThumbsUp className="h-3 w-3 mr-1"/> Like (5)</Button>
-                            <Button variant="ghost" size="sm" className="p-1 h-auto text-xs text-muted-foreground hover:text-primary"><ThumbsDown className="h-3 w-3 mr-1"/> Dislike (1)</Button>
-                        </div>
-                    </div>
-                </div>
-                <p className={`text-sm text-center p-4 ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>
-                    More comments would load here. Full comment functionality requires backend integration.
-                </p>
-             </div>
-          </CardContent>
+              </ScrollArea>
+            </CardContent>
+          )}
         </Card>
       </div>
     </div>

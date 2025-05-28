@@ -60,7 +60,7 @@ type PasswordChangeFormData = z.infer<typeof passwordChangeSchema>;
 export default function AccountSettingsPage() {
   const router = useRouter();
   const [emailNotifications, setEmailNotifications] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(false);
+  const [pushNotifications, setPushNotifications] = useState(false); // State for push notifications
   const [darkModeSystem, setDarkModeSystem] = useState(true); // Visual placeholder
   const [isProfilePrivate, setIsProfilePrivate] = useState(false);
 
@@ -140,13 +140,12 @@ export default function AccountSettingsPage() {
           <div className="flex items-center justify-between space-x-2 p-4 rounded-md border">
             <Label htmlFor="push-notifications" className="font-medium">
               Push Notifications
-              <p className="text-sm text-muted-foreground font-normal">Get real-time alerts on your device (coming soon!).</p>
+              <p className="text-sm text-muted-foreground font-normal">Get real-time alerts on your device.</p>
             </Label>
             <Switch
               id="push-notifications"
               checked={pushNotifications}
               onCheckedChange={setPushNotifications}
-              disabled
             />
           </div>
         </CardContent>
@@ -334,5 +333,3 @@ export default function AccountSettingsPage() {
     </div>
   );
 }
-
-    
