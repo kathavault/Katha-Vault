@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, LogIn } from 'lucide-react';
+import { Send, UserPlus } from 'lucide-react'; // Changed LogIn to UserPlus
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -111,20 +111,20 @@ function AppHeader() {
         <ThemeToggleButton />
         {isClient ? (
           <Link
-            href="/auth/login"
+            href="/auth/signup" // Changed to /auth/signup
             className={cn(buttonVariants({ variant: "default", size: "default" }))}
           >
-            <LogIn className="mr-2 h-4 w-4" />
-            <span>Sign In</span>
+            <UserPlus className="mr-2 h-4 w-4" /> {/* Changed to UserPlus */}
+            <span>Sign Up</span> {/* Changed text to Sign Up */}
           </Link>
         ) : (
           // Basic link for SSR, full page reload if JS disabled
           <a
-            href="/auth/login"
+            href="/auth/signup" // Changed to /auth/signup
             className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 bg-primary text-primary-foreground"
           >
-            <LogIn className="mr-2 h-4 w-4" />
-            <span>Sign In</span>
+            <UserPlus className="mr-2 h-4 w-4" /> {/* Changed to UserPlus */}
+            <span>Sign Up</span> {/* Changed text to Sign Up */}
           </a>
         )}
       </div>

@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
 import { LogIn, Mail, Lock } from "lucide-react"; // Using generic Mail for Google/Facebook placeholders
+import { cn } from "@/lib/utils"; // For styling Link
 
 // Placeholder for social icons if you want to add SVGs later
 const GoogleIcon = () => <Mail className="mr-2 h-4 w-4" />; // Placeholder
@@ -94,8 +95,8 @@ export default function LoginPage() {
               )}
             />
             <div className="text-sm text-right">
-              <Link href="/auth/forgot-password" legacyBehavior>
-                <a className="font-medium text-primary hover:underline">Forgot password?</a>
+              <Link href="/auth/forgot-password" className="font-medium text-primary hover:underline">
+                Forgot password?
               </Link>
             </div>
           </CardContent>
@@ -124,8 +125,8 @@ export default function LoginPage() {
 
             <p className="mt-2 text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
-              <Link href="/auth/signup" legacyBehavior>
-                <a className="font-medium text-primary hover:underline">Sign Up</a>
+              <Link href="/auth/signup" className="font-medium text-primary hover:underline">
+                Sign Up
               </Link>
             </p>
           </CardFooter>
