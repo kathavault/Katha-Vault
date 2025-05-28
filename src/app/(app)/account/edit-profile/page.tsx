@@ -13,20 +13,20 @@ import { toast } from "@/hooks/use-toast";
 import { UserCircle2, Save, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must be at most 50 characters").optional().or(z.literal('')),
   username: z.string().min(3, "Username must be at least 3 characters").max(30, "Username must be at most 30 characters"),
   bio: z.string().max(200, "Bio must be at most 200 characters").optional(),
   avatarUrl: z.string().url("Must be a valid URL for avatar image").optional().or(z.literal('')),
-  email: z.string().email("Invalid email address").optional(), // Assuming email might be display-only or verified elsewhere
+  email: z.string().email("Invalid email address").optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
-// Mock existing user data
-const mockExistingUser = {
+// Mock existing user data - this will be updated by localStorage if present
+let mockExistingUser = {
   name: "Katha Seeker",
   username: "StorySeeker92",
   bio: "Avid reader and aspiring author. Always on the lookout for the next great adventure within the pages of a book. Favorite genres: Sci-Fi and Fantasy.",
@@ -35,26 +35,84 @@ const mockExistingUser = {
 };
 
 export default function EditProfilePage() {
+  const [initialValues, setInitialValues] = useState(mockExistingUser);
   const [avatarPreview, setAvatarPreview] = useState(mockExistingUser.avatarUrl);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedProfile = localStorage.getItem('userProfileData');
+      if (storedProfile) {
+        try {
+          const parsedProfile = JSON.parse(storedProfile);
+          const updatedInitialValues = {
+            ...mockExistingUser, // keep email and other base fields
+            name: parsedProfile.name || mockExistingUser.name,
+            username: parsedProfile.username || mockExistingUser.username,
+            bio: parsedProfile.bio || mockExistingUser.bio,
+            avatarUrl: parsedProfile.avatarUrl || mockExistingUser.avatarUrl,
+          };
+          mockExistingUser = updatedInitialValues; // Update module-level mock
+          setInitialValues(updatedInitialValues);
+          setAvatarPreview(updatedInitialValues.avatarUrl);
+        } catch (e) {
+          console.error("Failed to parse stored profile data for edit page", e);
+          setInitialValues(mockExistingUser);
+          setAvatarPreview(mockExistingUser.avatarUrl);
+        }
+      } else {
+        setInitialValues(mockExistingUser);
+        setAvatarPreview(mockExistingUser.avatarUrl);
+      }
+    }
+  }, []);
+
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-    defaultValues: {
-      name: mockExistingUser.name,
-      username: mockExistingUser.username,
-      bio: mockExistingUser.bio,
-      avatarUrl: mockExistingUser.avatarUrl,
-      email: mockExistingUser.email,
+    values: { // Use 'values' to make form re-initialize when initialValues change
+      name: initialValues.name,
+      username: initialValues.username,
+      bio: initialValues.bio,
+      avatarUrl: initialValues.avatarUrl,
+      email: initialValues.email,
     },
   });
+  
+  useEffect(() => {
+    // Reset form with potentially updated initialValues from localStorage
+    form.reset({
+      name: initialValues.name,
+      username: initialValues.username,
+      bio: initialValues.bio,
+      avatarUrl: initialValues.avatarUrl,
+      email: initialValues.email,
+    });
+    setAvatarPreview(initialValues.avatarUrl);
+  }, [initialValues, form]);
+
 
   const onSubmit: SubmitHandler<ProfileFormData> = (data) => {
     console.log("Profile Updated:", data);
-    // Here you would typically send data to your backend
-    // And update the global user state if using a state manager
+
+    const profileToSave = {
+      name: data.name || initialValues.name, // Keep existing name if new one is empty
+      username: data.username,
+      bio: data.bio || initialValues.bio, // Keep existing bio if new one is empty
+      avatarUrl: data.avatarUrl || initialValues.avatarUrl, // Keep existing avatar if new one is empty
+      email: initialValues.email, // Email is not editable here
+    };
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('userProfileData', JSON.stringify(profileToSave));
+      // Update module-level mock for immediate reflection if page isn't reloaded
+      mockExistingUser = profileToSave;
+      setInitialValues(profileToSave); // Update state to reflect saved data
+      setAvatarPreview(profileToSave.avatarUrl); // Update preview
+    }
+
     toast({
       title: "Profile Updated!",
-      description: "Your profile has been successfully updated (simulated).",
+      description: "Your profile has been successfully updated.",
       variant: "default",
     });
   };
@@ -64,7 +122,7 @@ export default function EditProfilePage() {
     if (form.getValues("avatarUrl")?.match(/^https?:\/\/.+\..+/)) {
        setAvatarPreview(e.target.value);
     } else {
-       setAvatarPreview(""); // Clear preview if URL is invalid or empty
+       setAvatarPreview(""); 
     }
   };
 

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -59,6 +59,7 @@ type PasswordChangeFormData = z.infer<typeof passwordChangeSchema>;
 
 export default function AccountSettingsPage() {
   const router = useRouter();
+
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
   const [darkModeSystem, setDarkModeSystem] = useState(true); 
@@ -74,11 +75,29 @@ export default function AccountSettingsPage() {
   const emailForm = useForm<EmailChangeFormData>({ resolver: zodResolver(emailChangeSchema) });
   const passwordForm = useForm<PasswordChangeFormData>({ resolver: zodResolver(passwordChangeSchema) });
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedEmailNotifications = localStorage.getItem('settings_emailNotifications');
+      if (storedEmailNotifications !== null) setEmailNotifications(JSON.parse(storedEmailNotifications));
+
+      const storedPushNotifications = localStorage.getItem('settings_pushNotifications');
+      if (storedPushNotifications !== null) setPushNotifications(JSON.parse(storedPushNotifications));
+      
+      const storedIsProfilePrivate = localStorage.getItem('settings_isProfilePrivate');
+      if (storedIsProfilePrivate !== null) setIsProfilePrivate(JSON.parse(storedIsProfilePrivate));
+    }
+  }, []);
+
   const handleSaveChanges = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('settings_emailNotifications', JSON.stringify(emailNotifications));
+      localStorage.setItem('settings_pushNotifications', JSON.stringify(pushNotifications));
+      localStorage.setItem('settings_isProfilePrivate', JSON.stringify(isProfilePrivate));
+    }
     console.log("Settings saved (simulated):", { emailNotifications, pushNotifications, darkModeSystem, isProfilePrivate });
     toast({
       title: "Settings Saved",
-      description: "Your preferences have been updated (simulated).",
+      description: "Your preferences have been updated and saved locally.",
     });
   };
 
@@ -102,11 +121,13 @@ export default function AccountSettingsPage() {
 
   const handleLogout = () => {
     console.log("Logout initiated (simulated)");
-    localStorage.removeItem('currentUser'); // Clear simulated login state
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('currentUser'); 
+      localStorage.removeItem('userProfileData'); // Clear profile data too
+    }
     toast({ title: "Logged Out", description: "You have been successfully logged out (simulated)." });
     setIsLogoutConfirmOpen(false);
     router.push('/'); 
-    // Force a reload to ensure header updates, or use a global state manager
     setTimeout(() => window.location.reload(), 100); 
   };
 
@@ -117,7 +138,7 @@ export default function AccountSettingsPage() {
         <h1 className="text-3xl font-bold text-primary">Account Settings</h1>
       </header>
       <p className="text-muted-foreground">
-        Manage your notification preferences, theme settings, account security, and privacy. Actions are simulated.
+        Manage your notification preferences, theme settings, account security, and privacy. Changes are saved locally.
       </p>
 
       <Card>

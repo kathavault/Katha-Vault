@@ -15,9 +15,9 @@ import { toast } from '@/hooks/use-toast';
 import { UserPostCard } from '@/components/user-post-card';
 import { mockUserPosts as allMockPosts } from '@/lib/mock-data';
 
-const initialMockUser: UserProfile = {
+const defaultMockUser: UserProfile = {
   id: 'user123',
-  name: 'Katha Seeker', // Added name
+  name: 'Katha Seeker',
   username: 'StorySeeker92',
   email: 'story.seeker@example.com',
   avatarUrl: 'https://placehold.co/150x150/B4317B/F7F2FA?text=SS',
@@ -28,20 +28,43 @@ const initialMockUser: UserProfile = {
   ],
   favorites: ['1'],
   submittedStories: [],
-  userPosts: allMockPosts.filter(p => p.userId === 'user123'),
+  userPosts: [], // Will be populated from allMockPosts or local state
   followers: 1250,
   following: 180,
 };
 
 export default function AccountPage() {
   const [joinedDate, setJoinedDate] = useState('');
-  const [currentUser, setCurrentUser] = useState<UserProfile>(initialMockUser);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(defaultMockUser);
   const [newPostContent, setNewPostContent] = useState('');
   const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedProfile = localStorage.getItem('userProfileData');
+      if (storedProfile) {
+        try {
+          const parsedProfile = JSON.parse(storedProfile);
+          setCurrentUser(prevUser => ({
+            ...prevUser, // Keep existing followers, following, readingHistory, etc.
+            name: parsedProfile.name || prevUser.name,
+            username: parsedProfile.username || prevUser.username,
+            bio: parsedProfile.bio || prevUser.bio,
+            avatarUrl: parsedProfile.avatarUrl || prevUser.avatarUrl,
+            email: parsedProfile.email || prevUser.email, // email typically comes from auth
+          }));
+        } catch (e) {
+          console.error("Failed to parse stored profile data for account page", e);
+        }
+      }
+      // Filter user posts based on current user ID (from defaultMockUser or potentially from a future auth context)
+      setCurrentUser(prevUser => ({
+        ...prevUser,
+        userPosts: allMockPosts.filter(p => p.userId === prevUser.id)
+      }));
+    }
     setJoinedDate(new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString());
-  }, []);
+  }, []); // Runs once on mount
 
   const handleCreatePost = (e: FormEvent) => {
     e.preventDefault();
@@ -68,6 +91,8 @@ export default function AccountPage() {
         ...prevUser,
         userPosts: [newPost, ...(prevUser.userPosts || [])]
       }));
+      // Optionally, update allMockPosts if you want this to reflect elsewhere (though ideally backend handles this)
+      // allMockPosts.unshift(newPost); 
       setNewPostContent('');
       toast({ title: "Post Created!", description: "Your post is now live (simulated)." });
       setIsPosting(false);
@@ -164,7 +189,6 @@ export default function AccountPage() {
             </>
           )}
           
-          {/* Reading History Section - MOVED UP */}
           <div>
             <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" /> Reading History
@@ -186,8 +210,6 @@ export default function AccountPage() {
           </div>
           <Separator className="my-6" />
 
-
-          {/* Create Post Section */}
           <div className="mb-6">
             <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
               <PlusCircle className="h-5 w-5 text-primary" /> Create a New Post
@@ -207,7 +229,6 @@ export default function AccountPage() {
           </div>
           <Separator className="my-6" />
 
-          {/* My Posts Section */}
           <div>
             <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                My Posts
