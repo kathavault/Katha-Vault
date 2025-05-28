@@ -12,6 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { useState, FormEvent, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import Link from 'next/link'; // Added Link
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,7 +39,7 @@ import { ScrollArea } from './ui/scroll-area';
 
 // Mock current user for comments - in a real app, this would come from auth context
 const mockCurrentUserForPostCard = {
-  id: 'currentUser', // Or a dynamic ID from auth
+  id: 'user123', // This is StorySeeker92 from mock-data
   username: 'StorySeeker92',
   avatarUrl: 'https://placehold.co/40x40/E62E9A/FFFFFF?text=ME',
   dataAihint: 'user initial',
@@ -49,14 +50,14 @@ const mockLikersList = ["UserAlpha", "BookLover22", "PageTurnerPro", "ReaderX", 
 
 interface UserPostCardProps {
   post: UserPost;
-  onLike?: (postId: string) => void; // Optional: if parent needs to know
-  onComment?: (postId: string, commentText: string) => void; // Optional
+  onLike?: (postId: string) => void; 
+  onComment?: (postId: string, commentText: string) => void; 
 }
 
 export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [currentLikeCount, setCurrentLikeCount] = useState(post.likes);
-  const [displayedComments, setDisplayedComments] = useState<PostComment[]>(post.comments || []);
+  const [displayedComments, setDisplayedComments] = useState<PostComment[]>([]);
   
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
@@ -66,15 +67,15 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   const [showAllComments, setShowAllComments] = useState(false);
   const [isLikersDialogOpen, setIsLikersDialogOpen] = useState(false);
 
-  // State for comment likes (simulated)
   const [commentLikes, setCommentLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
 
   useEffect(() => {
     setCurrentLikeCount(post.likes);
-    setDisplayedComments(post.comments || []);
-    // Initialize comment likes state
+    const initialComments = post.comments || [];
+    setDisplayedComments(initialComments);
+    
     const initialCommentLikes: Record<string, { count: number; liked: boolean }> = {};
-    (post.comments || []).forEach(comment => {
+    initialComments.forEach(comment => {
       initialCommentLikes[comment.id] = { count: comment.likes || 0, liked: false };
     });
     setCommentLikes(initialCommentLikes);
@@ -91,11 +92,11 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
         }, 0);
       } else {
         setCurrentLikeCount(count => count - 1);
-        setTimeout(() => {
+         setTimeout(() => {
           toast({ title: "Post Unliked", description: `You unliked ${post.username}'s post.` });
         }, 0);
       }
-      if (onLike) onLike(post.id); // Notify parent if callback provided
+      if (onLike) onLike(post.id); 
       return newLikedState;
     });
   };
@@ -110,7 +111,7 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
     }
     setIsSubmittingComment(true);
 
-    setTimeout(() => { // Simulate network delay
+    setTimeout(() => { 
       const newComment: PostComment = {
         id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         postId: post.id,
@@ -120,16 +121,16 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
         dataAihint: mockCurrentUserForPostCard.dataAihint,
         text: commentText.trim(),
         timestamp: new Date().toISOString(),
-        likes: 0, // Initialize likes for new comment
-        replies: [], // Initialize replies
+        likes: 0, 
+        replies: [], 
       };
-      setDisplayedComments(prevComments => [newComment, ...prevComments]); // Add to beginning
+      setDisplayedComments(prevComments => [newComment, ...prevComments]); 
       setCommentLikes(prev => ({ ...prev, [newComment.id]: { count: 0, liked: false } }));
       setCommentText('');
       setShowCommentInput(false);
       setIsSubmittingComment(false);
       toast({ title: "Comment Posted!", description: "Your comment has been added locally." });
-      if (onComment) onComment(post.id, newComment.text); // Notify parent
+      if (onComment) onComment(post.id, newComment.text); 
     }, 500);
   };
 
@@ -167,7 +168,7 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
 
       return {
         ...prev,
-        [commentId]: { count: newCount, liked: newLikedState }
+        [commentId]: { count: newCount < 0 ? 0 : newCount, liked: newLikedState } // ensure count doesn't go below 0
       };
     });
   };
@@ -197,12 +198,16 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   return (
     <Card className="w-full shadow-md hover:shadow-lg transition-shadow">
       <CardHeader className="flex flex-row items-start gap-3 space-y-0 p-4">
-        <Avatar className="h-10 w-10 border">
-          <AvatarImage src={post.avatarUrl} alt={post.username} data-ai-hint={post.dataAihint || "user avatar"}/>
-          <AvatarFallback>{post.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-        </Avatar>
+        <Link href={`/profile/${post.userId}`} className="cursor-pointer">
+          <Avatar className="h-10 w-10 border">
+            <AvatarImage src={post.avatarUrl} alt={post.username} data-ai-hint={post.dataAihint || "user avatar"}/>
+            <AvatarFallback>{post.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+          </Avatar>
+        </Link>
         <div className="flex-grow">
-          <CardTitle className="text-base font-semibold">{post.username}</CardTitle>
+          <Link href={`/profile/${post.userId}`} className="cursor-pointer hover:underline">
+            <CardTitle className="text-base font-semibold">{post.username}</CardTitle>
+          </Link>
           <CardDescription className="text-xs">{formatTimestamp(post.timestamp)}</CardDescription>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
@@ -299,7 +304,7 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
       )}
       {commentsToDisplay.length > 0 && (
         <div className="px-4 pb-4 pt-2 border-t mt-2 space-y-3 max-h-60 overflow-y-auto">
-            {(showAllComments || displayedComments.length > 2) && ( // Only show title if expanding or more than 2 comments
+            {(showAllComments || displayedComments.length > 2) && ( 
                  <h4 className="text-xs font-semibold text-muted-foreground mb-1">Comments ({displayedComments.length})</h4>
             )}
             {commentsToDisplay.map(comment => {
@@ -307,13 +312,17 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
               const canDeleteThisComment = canCurrentUserModerate || comment.userId === mockCurrentUserForPostCard.id;
               return (
                 <div key={comment.id} className="flex items-start space-x-2 text-xs group">
+                  <Link href={`/profile/${comment.userId}`} className="cursor-pointer">
                     <Avatar className="h-6 w-6">
                         <AvatarImage src={comment.avatarUrl} alt={comment.username} data-ai-hint={comment.dataAihint || "user avatar small"}/>
                         <AvatarFallback>{comment.username.substring(0,1).toUpperCase()}</AvatarFallback>
                     </Avatar>
+                  </Link>
                     <div className="flex-grow bg-muted/50 p-2 rounded-md">
                         <div className="flex justify-between items-center">
+                          <Link href={`/profile/${comment.userId}`} className="cursor-pointer hover:underline">
                             <span className="font-semibold text-foreground">{comment.username}</span>
+                          </Link>
                             <span className="text-muted-foreground/80">{formatTimestamp(comment.timestamp)}</span>
                         </div>
                         <p className="text-foreground/90 mt-0.5">{comment.text}</p>
@@ -374,4 +383,3 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
     </Card>
   );
 }
-

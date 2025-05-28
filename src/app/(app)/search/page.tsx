@@ -12,67 +12,31 @@ import { Search as SearchIcon, Filter, Info, UserPlus, Users } from "lucide-reac
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mockStories } from '@/lib/mock-data'; // Import shared mock data
-
-// Mock user data - this would typically come from a backend
-const mockUsers: UserProfile[] = [
-  {
-    id: 'user001',
-    username: 'ReaderRiley',
-    email: 'riley@example.com',
-    avatarUrl: 'https://placehold.co/100x100/8E7CC3/FFFFFF?text=RR',
-    bio: 'Loves fantasy and sci-fi. Always looking for new authors.',
-    followers: 150,
-    following: 75,
-    readingHistory: [],
-    favorites: [],
-    submittedStories: [],
-  },
-  {
-    id: 'user002',
-    username: 'AuthorAlex',
-    email: 'alex@example.com',
-    avatarUrl: 'https://placehold.co/100x100/E8A87C/FFFFFF?text=AA',
-    bio: 'Aspiring novelist. Currently working on a steampunk adventure.',
-    followers: 320,
-    following: 120,
-    readingHistory: [],
-    favorites: [],
-    submittedStories: [],
-  },
-  {
-    id: 'author1', // Corresponds to Eleanor Vance from mockStories
-    username: 'Eleanor Vance',
-    email: 'eleanor@example.com',
-    avatarUrl: 'https://placehold.co/100x100/B4317B/FFFFFF?text=EV',
-    bio: 'Author of "The Whispers of Chronos". Fascinated by time and its mysteries.',
-    followers: 5000,
-    following: 10,
-    readingHistory: [],
-    favorites: [],
-    submittedStories: [{storyId: '1', title: 'The Whispers of Chronos'}],
-  },
-];
-
+import { mockStories, mockUsers as initialMockUsers } from '@/lib/mock-data'; // Import shared mock data
+import Link from 'next/link'; // Added Link
 
 const UserSearchCard: React.FC<{ user: UserProfile }> = ({ user }) => (
   <Card className="shadow-md hover:shadow-lg transition-shadow">
     <CardHeader className="flex flex-row items-center gap-4 p-4">
-      <Avatar className="h-16 w-16">
-        <AvatarImage src={user.avatarUrl} alt={user.username} data-ai-hint="user avatar"/>
-        <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
-      </Avatar>
+      <Link href={`/profile/${user.id}`} className="cursor-pointer">
+        <Avatar className="h-16 w-16">
+          <AvatarImage src={user.avatarUrl} alt={user.username} data-ai-hint="user avatar"/>
+          <AvatarFallback>{user.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+        </Avatar>
+      </Link>
       <div>
-        <CardTitle className="text-lg">{user.username}</CardTitle>
+        <Link href={`/profile/${user.id}`} className="cursor-pointer hover:underline">
+          <CardTitle className="text-lg">{user.username}</CardTitle>
+        </Link>
         <CardDescription className="text-xs">{user.bio?.substring(0, 50)}{user.bio && user.bio.length > 50 ? '...' : ''}</CardDescription>
       </div>
     </CardHeader>
     <CardContent className="p-4 pt-0 flex justify-between items-center">
       <div className="text-xs text-muted-foreground">
-        <span className="mr-2">{user.followers} Followers</span>
-        <span>{user.following} Following</span>
+        <span className="mr-2">{user.followers || 0} Followers</span>
+        <span>{user.following || 0} Following</span>
       </div>
-      <Button size="sm" variant="outline" onClick={() => console.log(`Follow request to ${user.username}`)}>
+      <Button size="sm" variant="outline" onClick={() => toast({title: "Follow (Simulated)", description: `Follow request sent to ${user.username}`})}>
         <UserPlus className="mr-2 h-4 w-4" /> Follow
       </Button>
     </CardContent>
@@ -86,7 +50,7 @@ export default function SearchPage() {
   const [filterGenre, setFilterGenre] = useState('all');
   
   const [storyResults, setStoryResults] = useState<Story[]>([]);
-  const [userResults, setUserResults] = useState<UserProfile[]>([]);
+  const [userResults, setUserResults] = useState<UserProfile[]>(initialMockUsers); // Initialize with all mock users
   
   const [hasSearchedStories, setHasSearchedStories] = useState(false);
   const [hasSearchedUsers, setHasSearchedUsers] = useState(false);
@@ -101,11 +65,11 @@ export default function SearchPage() {
     }
     setHasSearchedStories(true);
     const searchTermLower = storySearchTerm.toLowerCase();
-    const filtered = publishedStories.filter(story => { // Search within published stories
+    const filtered = publishedStories.filter(story => { 
       const termMatch = searchTermLower
         ? story.title.toLowerCase().includes(searchTermLower) ||
           story.author.toLowerCase().includes(searchTermLower) ||
-          story.tags.some(tag => tag.toLowerCase().includes(searchTermLower)) ||
+          (story.tags && story.tags.some(tag => tag.toLowerCase().includes(searchTermLower))) ||
           story.description.toLowerCase().includes(searchTermLower)
         : true;
       const genreMatch = filterGenre !== 'all' ? story.genre.toLowerCase() === filterGenre.toLowerCase() : true;
@@ -115,25 +79,24 @@ export default function SearchPage() {
   };
   
   useEffect(() => {
-    // Trigger search if there's a search term or a filter is active (other than 'all')
-    // or if a search has been performed previously and now the term/filter is cleared.
     if (storySearchTerm.trim() || filterGenre !== 'all' || (hasSearchedStories && !storySearchTerm.trim() && filterGenre === 'all')) {
         performStorySearch();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterGenre, storySearchTerm, hasSearchedStories]); // Added hasSearchedStories to dependencies
+  }, [filterGenre, storySearchTerm, hasSearchedStories]); 
 
 
   const handleUserSearch = () => {
     if (!userSearchTerm.trim()) {
-      setUserResults([]);
+      setUserResults(initialMockUsers); // Show all users if search is cleared
       setHasSearchedUsers(false);
       return;
     }
     setHasSearchedUsers(true);
     const searchTermLower = userSearchTerm.toLowerCase();
-    const filtered = mockUsers.filter(user =>
+    const filtered = initialMockUsers.filter(user =>
       user.username.toLowerCase().includes(searchTermLower) ||
+      (user.name && user.name.toLowerCase().includes(searchTermLower)) ||
       (user.email && user.email.toLowerCase().includes(searchTermLower))
     );
     setUserResults(filtered);
@@ -234,7 +197,7 @@ export default function SearchPage() {
             </Button>
           </div>
 
-          {hasSearchedUsers && userResults.length > 0 && (
+          {userResults.length > 0 && ( // Always show users, filtered or all
             <div className="mt-8">
               <h2 className="text-xl font-semibold mb-4">User Results ({userResults.length})</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -244,14 +207,14 @@ export default function SearchPage() {
               </div>
             </div>
           )}
-          {hasSearchedUsers && userResults.length === 0 && (
+          {hasSearchedUsers && userResults.length === 0 && ( // Only show this if a search was performed and yielded no results
              <Alert className="mt-6">
                 <Info className="h-5 w-5" />
                 <AlertTitle>No Users Found</AlertTitle>
                 <AlertDescription>Try different search terms.</AlertDescription>
             </Alert>
           )}
-          {!hasSearchedUsers && (
+          {!hasSearchedUsers && userResults.length === 0 && ( // If no search and no users (unlikely with mock data)
              <Alert variant="default" className="mt-6">
                 <Info className="h-5 w-5" />
                 <AlertTitle>Find People</AlertTitle>
@@ -263,4 +226,3 @@ export default function SearchPage() {
     </div>
   );
 }
-
