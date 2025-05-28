@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Heart, MessageCircle, MoreHorizontal, Trash2, Loader2 } from "lucide-react";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import {
@@ -32,6 +32,8 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
+import { ScrollArea } from './ui/scroll-area';
+
 
 // Mock current user for comments - in a real app, this would come from auth context
 const mockCurrentUserForPostCard = {
@@ -42,13 +44,15 @@ const mockCurrentUserForPostCard = {
 };
 
 // Mock likers for demonstration
-const mockLikersList = ["UserAlpha", "BookLover22", "PageTurnerPro", "ReaderX", "AnotherUser"];
+const mockLikersList = ["UserAlpha", "BookLover22", "PageTurnerPro", "ReaderX", "AnotherUser", "BookwormBelle", "SciFiFan", "FantasyGuru", "NovelNinja", "WordSmith"];
 
 interface UserPostCardProps {
   post: UserPost;
+  onLike?: (postId: string) => void; // Optional: if parent needs to know
+  onComment?: (postId: string, commentText: string) => void; // Optional
 }
 
-export function UserPostCard({ post }: UserPostCardProps) {
+export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [currentLikeCount, setCurrentLikeCount] = useState(post.likes);
   const [displayedComments, setDisplayedComments] = useState<PostComment[]>(post.comments || []);
@@ -61,6 +65,12 @@ export function UserPostCard({ post }: UserPostCardProps) {
   const [showAllComments, setShowAllComments] = useState(false);
   const [isLikersDialogOpen, setIsLikersDialogOpen] = useState(false);
 
+  // Sync with parent post prop if it changes
+  useEffect(() => {
+    setCurrentLikeCount(post.likes);
+    setDisplayedComments(post.comments || []);
+  }, [post.likes, post.comments]);
+
 
   const handleLikeToggle = () => {
     setIsLiked(prev => {
@@ -72,6 +82,7 @@ export function UserPostCard({ post }: UserPostCardProps) {
         setCurrentLikeCount(count => count - 1);
         toast({ title: "Post Unliked", description: `You unliked ${post.username}'s post.` });
       }
+      if (onLike) onLike(post.id); // Notify parent if callback provided
       return newLikedState;
     });
   };
@@ -84,7 +95,7 @@ export function UserPostCard({ post }: UserPostCardProps) {
     }
     setIsSubmittingComment(true);
 
-    setTimeout(() => {
+    setTimeout(() => { // Simulate network delay
       const newComment: PostComment = {
         id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         postId: post.id,
@@ -95,11 +106,12 @@ export function UserPostCard({ post }: UserPostCardProps) {
         text: commentText.trim(),
         timestamp: new Date().toISOString(),
       };
-      setDisplayedComments(prevComments => [newComment, ...prevComments]);
+      setDisplayedComments(prevComments => [newComment, ...prevComments]); // Add to beginning
       setCommentText('');
       setShowCommentInput(false);
       setIsSubmittingComment(false);
       toast({ title: "Comment Posted!", description: "Your comment has been added locally." });
+      if (onComment) onComment(post.id, newComment.text); // Notify parent
     }, 500);
   };
 
@@ -123,7 +135,7 @@ export function UserPostCard({ post }: UserPostCardProps) {
     }
   };
 
-  const commentsToShow = showAllComments ? displayedComments : displayedComments.slice(0, 2);
+  const commentsToDisplay = showAllComments ? displayedComments : displayedComments.slice(0, 2);
 
   return (
     <Card className="w-full shadow-md hover:shadow-lg transition-shadow">
@@ -150,7 +162,7 @@ export function UserPostCard({ post }: UserPostCardProps) {
           <Dialog open={isLikersDialogOpen} onOpenChange={setIsLikersDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="link" className="p-0 h-auto text-xs text-muted-foreground hover:text-primary">
-                {currentLikeCount} Likes
+                {currentLikeCount} Like{currentLikeCount !== 1 ? 's' : ''}
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
@@ -182,7 +194,7 @@ export function UserPostCard({ post }: UserPostCardProps) {
             </DialogContent>
           </Dialog>
           <span className="mx-1">&middot;</span>
-          {displayedComments.length > 0 && (
+          {displayedComments.length > 0 ? (
             <Button 
               variant="link" 
               className="p-0 h-auto text-xs text-muted-foreground hover:text-primary"
@@ -192,8 +204,7 @@ export function UserPostCard({ post }: UserPostCardProps) {
                 displayedComments.length > 2 ? `View all ${displayedComments.length} comments` : `${displayedComments.length} Comment${displayedComments.length !== 1 ? 's' : ''}`
               }
             </Button>
-          )}
-          {displayedComments.length === 0 && (
+          ) : (
              <span>0 Comments</span>
           )}
         </div>
@@ -227,12 +238,12 @@ export function UserPostCard({ post }: UserPostCardProps) {
           </div>
         </form>
       )}
-      {commentsToShow.length > 0 && (
+      {commentsToDisplay.length > 0 && (
         <div className="px-4 pb-4 pt-2 border-t mt-2 space-y-3 max-h-60 overflow-y-auto">
             {!showAllComments && displayedComments.length > 2 && (
                  <h4 className="text-xs font-semibold text-muted-foreground mb-1">Comments</h4>
             )}
-            {commentsToShow.map(comment => (
+            {commentsToDisplay.map(comment => (
                 <div key={comment.id} className="flex items-start space-x-2 text-xs group">
                     <Avatar className="h-6 w-6">
                         <AvatarImage src={comment.avatarUrl} alt={comment.username} data-ai-hint={comment.dataAihint || "user avatar small"}/>
@@ -245,33 +256,36 @@ export function UserPostCard({ post }: UserPostCardProps) {
                         </div>
                         <p className="text-foreground/90 mt-0.5">{comment.text}</p>
                     </div>
-                    <AlertDialog open={commentToDeleteId === comment.id} onOpenChange={(open) => !open && setCommentToDeleteId(null)}>
-                        <AlertDialogTrigger asChild>
-                            <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive"
-                                onClick={() => confirmDeleteComment(comment.id)}
-                            >
-                                <Trash2 className="h-3 w-3" />
-                                <span className="sr-only">Delete comment</span>
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This action will remove the comment locally. This cannot be undone.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setCommentToDeleteId(null)}>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDeleteComment} className="bg-destructive hover:bg-destructive/90">
-                                Delete
-                            </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                    {/* Only allow current mock user to delete their own comments - in real app, check comment.userId === authenticatedUserId */}
+                    {comment.userId === mockCurrentUserForPostCard.id && (
+                        <AlertDialog open={commentToDeleteId === comment.id} onOpenChange={(open) => !open && setCommentToDeleteId(null)}>
+                            <AlertDialogTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive"
+                                    onClick={() => confirmDeleteComment(comment.id)}
+                                >
+                                    <Trash2 className="h-3 w-3" />
+                                    <span className="sr-only">Delete comment</span>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action will remove the comment locally. This cannot be undone.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setCommentToDeleteId(null)}>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteComment} className="bg-destructive hover:bg-destructive/90">
+                                    Delete
+                                </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
                 </div>
             ))}
         </div>
@@ -280,3 +294,4 @@ export function UserPostCard({ post }: UserPostCardProps) {
   );
 }
 
+    
