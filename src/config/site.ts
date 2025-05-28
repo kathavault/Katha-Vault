@@ -1,6 +1,6 @@
 
 import type { NavItem } from '@/types';
-import { Home, Library, Search, UserCircle2, UploadCloud, Sparkles, ShieldCheck, LogIn } from 'lucide-react'; // Added LogIn
+import { Home, Library, Search, UserCircle2, Sparkles, ShieldCheck, LogIn, UserPlus } from 'lucide-react'; // Added UserPlus
 
 export const siteConfig = {
   name: 'Katha Vault',
@@ -28,11 +28,6 @@ export const siteConfig = {
       icon: Search,
     },
     {
-      title: 'Submit Story',
-      href: '/submit',
-      icon: UploadCloud,
-    },
-    {
       title: 'Suggestions',
       href: '/suggestions',
       icon: Sparkles,
@@ -48,9 +43,9 @@ export const siteConfig = {
       icon: ShieldCheck,
     },
     {
-      title: 'Sign In', // New Sign In link
-      href: '/auth/login',
-      icon: LogIn,
+      title: 'Sign Up',
+      href: '/auth/signup',
+      icon: UserPlus, // Changed to UserPlus for Sign Up
     }
   ] satisfies NavItem[],
 };

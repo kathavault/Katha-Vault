@@ -10,9 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
-import { UserPlus, Mail, Lock, User } from "lucide-react";
+import { UserPlus, Mail, Lock, User as UserIcon, Loader2 } from "lucide-react"; // Added Loader2
+import { auth } from "@/lib/firebase"; // Import Firebase auth instance
+import { createUserWithEmailAndPassword, sendEmailVerification, FirebaseError } from "firebase/auth";
+import { useRouter } from 'next/navigation';
 
-// Placeholder for social icons if you want to add SVGs later
+// Placeholder for social icons
 const GoogleIcon = () => <Mail className="mr-2 h-4 w-4" />; 
 const FacebookIcon = () => <Mail className="mr-2 h-4 w-4" />;
 
@@ -23,12 +26,13 @@ const signupSchema = z.object({
   confirmPassword: z.string().min(8, "Please confirm your password"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
-  path: ["confirmPassword"], // path of error
+  path: ["confirmPassword"], 
 });
 
 type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function SignupPage() {
+  const router = useRouter();
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -39,23 +43,53 @@ export default function SignupPage() {
     },
   });
 
-  const onSubmit: SubmitHandler<SignupFormData> = (data) => {
-    console.log("Signup attempt (simulated):", data);
-    // Simulate API call
-    toast({
-      title: "Signup Successful! (Simulated)",
-      description: "Please check your email to verify your account. (No email actually sent)",
-      variant: "default",
-    });
-    // Here you would typically redirect or await OTP verification
-    // For now, we can reset the form
-    form.reset();
+  const { formState: { isSubmitting } } = form;
+
+  const onSubmit: SubmitHandler<SignupFormData> = async (data) => {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      // User created. You can optionally update the user's profile with the username here
+      // await updateProfile(userCredential.user, { displayName: data.username });
+
+      await sendEmailVerification(userCredential.user);
+
+      toast({
+        title: "Account Created!",
+        description: "A verification email has been sent. Please check your inbox to verify your email address.",
+        variant: "default",
+      });
+      form.reset();
+      router.push('/auth/login'); // Redirect to login page after successful signup & email sent
+    } catch (error) {
+      let errorMessage = "An unexpected error occurred during sign up.";
+      if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case "auth/email-already-in-use":
+            errorMessage = "This email address is already in use by another account.";
+            break;
+          case "auth/weak-password":
+            errorMessage = "The password is too weak. Please choose a stronger password.";
+            break;
+          case "auth/invalid-email":
+            errorMessage = "The email address is not valid.";
+            break;
+          default:
+            errorMessage = `Sign up failed: ${error.message}`;
+        }
+      }
+      console.error("Signup error:", error);
+      toast({
+        title: "Sign Up Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSocialSignup = (provider: "Google" | "Facebook") => {
     toast({
         title: `${provider} Sign Up (Simulated)`,
-        description: `This would initiate ${provider} OAuth flow for sign up.`,
+        description: `This would initiate ${provider} OAuth flow for sign up. (Not implemented)`,
     });
   };
 
@@ -78,7 +112,7 @@ export default function SignupPage() {
                   <FormLabel>Username</FormLabel>
                   <FormControl>
                     <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Choose a username" {...field} className="pl-10" />
                     </div>
                   </FormControl>
@@ -136,8 +170,9 @@ export default function SignupPage() {
             />
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Signing up..." : "Sign Up"}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isSubmitting ? "Signing up..." : "Sign Up"}
             </Button>
             
             <div className="relative w-full">
@@ -160,8 +195,8 @@ export default function SignupPage() {
 
             <p className="mt-2 text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/auth/login" legacyBehavior>
-                <a className="font-medium text-primary hover:underline">Login</a>
+              <Link href="/auth/login" className="font-medium text-primary hover:underline">
+                Login
               </Link>
             </p>
           </CardFooter>

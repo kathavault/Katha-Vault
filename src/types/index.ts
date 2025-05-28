@@ -19,7 +19,7 @@ export type Story = {
   genre: string;
   status: 'Ongoing' | 'Completed'; // Narrative status
   publishedStatus: 'Published' | 'Draft' | 'Review'; // Admin publication status
-  rating?: number; 
+  rating?: number;
   views?: number;
   isTrending?: boolean;
   isCurated?: boolean;
@@ -27,6 +27,30 @@ export type Story = {
   createdAt: string; // ISO Date string
   updatedAt: string; // ISO Date string
   dataAihint?: string; // Optional for StoryCard and other images
+};
+
+export type PostComment = {
+  id: string;
+  postId: string;
+  userId: string;
+  username: string;
+  avatarUrl: string;
+  text: string;
+  timestamp: string; // ISO Date string
+  dataAihint?: string;
+};
+
+export type UserPost = {
+  id: string;
+  userId: string;
+  username: string;
+  avatarUrl: string;
+  dataAihint?: string;
+  content: string;
+  timestamp: string; // ISO Date string
+  likes: number;
+  comments: PostComment[];
+  isTrending?: boolean; // For library section
 };
 
 export type UserProfile = {
@@ -37,9 +61,10 @@ export type UserProfile = {
   bio?: string;
   readingHistory: Array<{ storyId: string; title: string; lastReadChapterId?: string; progress?: number }>;
   favorites: string[]; // Array of story IDs
-  submittedStories: Array<{ storyId: string; title: string }>;
-  followers?: number; 
-  following?: number;  
+  submittedStories: Array<{ storyId: string; title: string }>; // Kept for admin mock data compatibility, but not used by users
+  userPosts?: UserPost[]; // User's own text posts
+  followers?: number;
+  following?: number;
 };
 
 export type NavItem = {
@@ -75,4 +100,3 @@ export type ChatConversation = {
   unreadCount?: number;
   messages: ChatMessage[];
 };
-

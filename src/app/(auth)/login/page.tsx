@@ -10,12 +10,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
-import { LogIn, Mail, Lock } from "lucide-react"; // Using generic Mail for Google/Facebook placeholders
-import { cn } from "@/lib/utils"; // For styling Link
+import { LogIn, Mail, Lock, Loader2 } from "lucide-react"; // Added Loader2
+import { auth } from "@/lib/firebase"; // Import Firebase auth instance
+import { signInWithEmailAndPassword, FirebaseError } from "firebase/auth";
+import { useRouter } from 'next/navigation';
 
-// Placeholder for social icons if you want to add SVGs later
-const GoogleIcon = () => <Mail className="mr-2 h-4 w-4" />; // Placeholder
-const FacebookIcon = () => <Mail className="mr-2 h-4 w-4" />; // Placeholder
+// Placeholder for social icons
+const GoogleIcon = () => <Mail className="mr-2 h-4 w-4" />; 
+const FacebookIcon = () => <Mail className="mr-2 h-4 w-4" />; 
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -25,6 +27,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
+  const router = useRouter();
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -33,21 +36,61 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit: SubmitHandler<LoginFormData> = (data) => {
-    console.log("Login attempt (simulated):", data);
-    // Simulate API call
-    toast({
-      title: "Login Attempted (Simulated)",
-      description: "In a real app, this would check your credentials.",
-    });
-    // Here you would typically redirect on successful login
-    // router.push('/'); 
+  const { formState: { isSubmitting } } = form;
+
+  const onSubmit: SubmitHandler<LoginFormData> = async (data) => {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      // User signed in
+      if (!userCredential.user.emailVerified) {
+        toast({
+          title: "Email Not Verified",
+          description: "Please verify your email address before logging in. Check your inbox for a verification link.",
+          variant: "destructive",
+        });
+        // Optionally sign the user out if email verification is mandatory for login
+        // await auth.signOut(); 
+        return;
+      }
+      
+      toast({
+        title: "Login Successful!",
+        description: `Welcome back, ${userCredential.user.email}!`,
+        variant: "default"
+      });
+      router.push('/'); // Redirect to home page after successful login
+    } catch (error) {
+      let errorMessage = "An unexpected error occurred during login.";
+       if (error instanceof FirebaseError) {
+        switch (error.code) {
+          case "auth/user-not-found":
+          case "auth/wrong-password":
+          case "auth/invalid-credential": // For newer Firebase SDK versions
+            errorMessage = "Invalid email or password. Please try again.";
+            break;
+          case "auth/invalid-email":
+            errorMessage = "The email address is not valid.";
+            break;
+          case "auth/user-disabled":
+            errorMessage = "This user account has been disabled.";
+            break;
+          default:
+            errorMessage = `Login failed: ${error.message}`;
+        }
+      }
+      console.error("Login error:", error);
+      toast({
+        title: "Login Failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSocialLogin = (provider: "Google" | "Facebook") => {
     toast({
         title: `${provider} Login (Simulated)`,
-        description: `This would initiate ${provider} OAuth flow.`,
+        description: `This would initiate ${provider} OAuth flow. (Not implemented)`,
     });
   };
 
@@ -101,8 +144,9 @@ export default function LoginPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Logging in..." : "Login"}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isSubmitting ? "Logging in..." : "Login"}
             </Button>
             
             <div className="relative w-full">

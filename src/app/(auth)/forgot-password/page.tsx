@@ -10,7 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
-import { Mail, KeyRound, ArrowLeft } from "lucide-react";
+import { Mail, KeyRound, ArrowLeft, Loader2 } from "lucide-react"; // Added Loader2
+import { auth } from "@/lib/firebase"; // Import Firebase auth instance
+import { sendPasswordResetEmail, FirebaseError } from "firebase/auth";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -26,14 +28,40 @@ export default function ForgotPasswordPage() {
     },
   });
 
-  const onSubmit: SubmitHandler<ForgotPasswordFormData> = (data) => {
-    console.log("Forgot password request (simulated):", data);
-    toast({
-      title: "Password Reset Link Sent (Simulated)",
-      description: `If an account exists for ${data.email}, a reset link has been sent. (No email actually sent)`,
-      variant: "default",
-    });
-    form.reset();
+  const { formState: { isSubmitting } } = form;
+
+  const onSubmit: SubmitHandler<ForgotPasswordFormData> = async (data) => {
+    try {
+      await sendPasswordResetEmail(auth, data.email);
+      toast({
+        title: "Password Reset Link Sent",
+        description: `If an account exists for ${data.email}, a password reset link has been sent. Please check your inbox.`,
+        variant: "default",
+      });
+      form.reset();
+    } catch (error) {
+      let errorMessage = "An unexpected error occurred.";
+      if (error instanceof FirebaseError) {
+         switch (error.code) {
+          case "auth/user-not-found":
+            // It's common practice not to reveal if an email exists for security reasons
+            // So, show a generic message.
+            errorMessage = `If an account exists for ${data.email}, a password reset link has been sent. Please check your inbox.`;
+            break;
+          case "auth/invalid-email":
+            errorMessage = "The email address is not valid.";
+            break;
+          default:
+            errorMessage = `Failed to send reset email: ${error.message}`;
+        }
+      }
+      console.error("Forgot password error:", error);
+      toast({
+        title: "Error Sending Reset Email",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -42,7 +70,7 @@ export default function ForgotPasswordPage() {
         <CardTitle className="text-2xl flex items-center justify-center gap-2">
             <KeyRound className="h-6 w-6 text-primary" /> Forgot Your Password?
         </CardTitle>
-        <CardDescription>No worries! Enter your email and we&apos;ll (simulate) sending you a reset link.</CardDescription>
+        <CardDescription>No worries! Enter your email and we&apos;ll send you a reset link.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -65,8 +93,9 @@ export default function ForgotPasswordPage() {
             />
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? "Sending..." : "Send Reset Link"}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isSubmitting ? "Sending..." : "Send Reset Link"}
             </Button>
              <Button variant="outline" className="w-full" asChild>
                 <Link href="/auth/login">
