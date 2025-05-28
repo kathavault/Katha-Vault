@@ -21,7 +21,7 @@ import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { mockStories } from '@/lib/mock-data';
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress"; // Added Progress import
+import { Progress } from "@/components/ui/progress";
 
 
 export default function ReadingPage() {
@@ -40,8 +40,7 @@ export default function ReadingPage() {
   const [userRating, setUserRating] = useState(0);
   const [readingProgress, setReadingProgress] = useState(0);
 
-  // Simulate authentication state - for a real app, this would come from context/session
-  const [isUserAuthenticated, setIsUserAuthenticated] = useState(false); // Default to false
+  const [isUserAuthenticated, setIsUserAuthenticated] = useState(false); 
 
   useEffect(() => {
     setIsLoading(true);
@@ -49,7 +48,7 @@ export default function ReadingPage() {
 
     if (foundStory && foundStory.publishedStatus === 'Published') {
       setStory(foundStory);
-      setDisplayViews(foundStory.views ? foundStory.views + 1 : 1); // Simulate view increment
+      setDisplayViews(foundStory.views ? foundStory.views + 1 : 1); 
       setStoryNotFound(false);
     } else {
       setStory(null);
@@ -59,10 +58,6 @@ export default function ReadingPage() {
     setCurrentChapterIndex(0);
     setUserRating(0);
     setIsLoading(false);
-
-    // In a real app, you would check actual auth status here
-    // For simulation, we're keeping it simple. You could add a mock login button elsewhere
-    // that sets this to true to see the content.
   }, [storyId]);
 
   useEffect(() => {
@@ -113,7 +108,6 @@ export default function ReadingPage() {
     );
   }
 
-  // If user is not authenticated, show login prompt
   if (!isUserAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center p-4">
@@ -124,7 +118,6 @@ export default function ReadingPage() {
             You need to be logged in to read this story. Please log in to continue.
           </AlertDescription>
           <Button asChild className="mt-6 w-full sm:w-auto" onClick={() => setIsUserAuthenticated(true)}> 
-            {/* TEMPORARY: Button to simulate login for easier testing. Remove for production. */}
             <span className="cursor-pointer"><LogIn className="mr-2 h-4 w-4" /> Simulate Login & Read</span>
           </Button>
           <Button asChild className="mt-2 w-full sm:w-auto" variant="outline">
@@ -139,7 +132,6 @@ export default function ReadingPage() {
 
 
   if (!story) {
-    // This case should ideally be covered by storyNotFound or isLoading
     return <p className="text-center mt-10">An unexpected error occurred while loading the story.</p>;
   }
 
@@ -208,7 +200,7 @@ export default function ReadingPage() {
             <Progress value={readingProgress} className="h-2" />
           </div>
           <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Chapters ({story.chapters.length})</h4>
-          <ScrollArea className="h-[calc(100vh-520px)] pr-2"> {/* Adjusted height */}
+          <ScrollArea className="h-[calc(100vh-520px)] pr-2"> 
             <ul className="space-y-1">
               {story.chapters.map((chap, index) => (
                 <li key={chap.id}>
@@ -312,15 +304,13 @@ export default function ReadingPage() {
             </header>
 
             <ScrollArea className="h-auto max-h-[calc(100vh-300px)] md:max-h-[calc(100vh-250px)]">
-              <article className={cn(
-                  "p-4 md:p-6 prose prose-sm sm:prose lg:prose-lg max-w-none",
-                  "no-select"
-                )}
-                style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}>
-                {currentChapter.content.split('\n').map((paragraph, index) => (
-                  paragraph.trim() !== "" && <p key={index} className="mb-4">{paragraph}</p>
-                ))}
-              </article>
+               <article 
+                  className={cn("p-4 md:p-6 prose prose-sm sm:prose lg:prose-lg max-w-none no-select", 
+                    readingTheme === 'light' ? 'prose-gray' : 'prose-invert'
+                  )}
+                  style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
+                  dangerouslySetInnerHTML={{ __html: currentChapter.content }}
+                />
             </ScrollArea>
 
             <footer className={`p-4 border-t flex items-center justify-between sticky bottom-0 bg-inherit rounded-b-lg ${readingTheme === 'light' ? 'border-gray-300' : 'border-gray-700'}`}>
@@ -399,5 +389,3 @@ export default function ReadingPage() {
     </div>
   );
 }
-
-    

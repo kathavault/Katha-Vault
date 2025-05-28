@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
-  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon, UserCog, ServerCog, Palette, ToggleLeft, Bold, Italic, Heading1
+  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon, UserCog, ServerCog, Palette, ToggleLeft
 } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import {
@@ -46,6 +46,11 @@ import Image from 'next/image';
 import type { Story, StoryChapter, UserProfile } from '@/types';
 import { mockStories as initialMockStories } from '@/lib/mock-data';
 import { Switch } from "@/components/ui/switch";
+import dynamic from 'next/dynamic';
+import 'react-quill/dist/quill.snow.css'; // Import Quill styles
+
+// Dynamically import ReactQuill to avoid SSR issues
+const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
 type StoryFormDataFields = Omit<Story, 'id' | 'chapters' | 'createdAt' | 'updatedAt' | 'authorId' | 'isTrending' | 'isCurated'> & { id?: string };
 type ChapterFormData = Omit<StoryChapter, 'id' | 'order'>;
@@ -86,15 +91,19 @@ export default function AdminPage() {
     setFilteredStories(
       stories.filter(story =>
         story.title.toLowerCase().includes(lowerSearchTerm) ||
-        story.author.toLowerCase().includes(lowerSearchTerm)
+        story.author.toLowerCase().includes(lowerSearchTerm) ||
+        (story.category && story.category.toLowerCase().includes(lowerSearchTerm))
       )
     );
   }, [searchTerm, stories]);
 
   useEffect(() => {
+    // This effect is to simulate persistence for the purpose of this prototype.
+    // In a real app, data would be fetched from a backend.
+    // Here, we update the initialMockStories in-memory if stories state changes.
     const storiesMap = new Map(stories.map(s => [s.id, s]));
-    initialMockStories.length = 0;
-    storiesMap.forEach(story => initialMockStories.push(story));
+    initialMockStories.length = 0; // Clear the original array
+    storiesMap.forEach(story => initialMockStories.push(story)); // Repopulate with current state
   }, [stories]);
 
 
@@ -118,27 +127,27 @@ export default function AdminPage() {
         authorId: formData.authorId || `author-${Date.now()}`,
         createdAt: formData.id ? stories.find(s => s.id === formData.id)?.createdAt || new Date().toISOString() : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        isTrending: formData.category === 'Trending',
+        isTrending: formData.category === 'Trending', // Assuming category is 'Trending' for isTrending flag
+        publishedStatus: formData.publishedStatus || 'Draft',
+        category: formData.category || 'General',
     };
 
-    if (formData.id) {
+    if (formData.id) { // Editing existing story
         setStories(prevStories => prevStories.map(s => s.id === formData.id ? { ...s, ...fullFormData, chapters: s.chapters } as Story : s));
         toast({ title: "Story Updated (Simulated)", description: `"${formData.title}" has been updated.` });
         setIsEditStoryDialogOpen(false);
         setEditingStory(null);
-    } else {
+    } else { // Adding new story
         const newStory: Story = {
             ...fullFormData,
             id: `story-${Date.now()}`,
             chapters: [],
-            publishedStatus: formData.publishedStatus || 'Draft',
-            status: 'Ongoing',
-            category: formData.category || 'General',
+            status: 'Ongoing', // Default status for new stories
             views: 0,
             rating: 0,
         } as Story;
         setStories(prevStories => [newStory, ...prevStories]);
-        toast({ title: "Story Added (Simulated)", description: `"${formData.title}" has been added as a draft.` });
+        toast({ title: "Story Added (Simulated)", description: `"${formData.title}" has been added.` });
         setIsAddStoryDialogOpen(false);
     }
   };
@@ -147,18 +156,16 @@ export default function AdminPage() {
     const [title, setTitle] = useState(story?.title || '');
     const [author, setAuthor] = useState(story?.author || '');
     const [description, setDescription] = useState(story?.description || '');
+    const [coverImagePreview, setCoverImagePreview] = useState<string | null>(story?.coverImage || null);
     const [genre, setGenre] = useState(story?.genre || '');
     const [tags, setTags] = useState(story?.tags?.join(', ') || '');
     const [publishedStatus, setPublishedStatus] = useState<Story['publishedStatus']>(story?.publishedStatus || 'Draft');
     const [category, setCategory] = useState<Story['category']>(story?.category || 'General');
-    const [coverImageFile, setCoverImageFile] = useState<File | null>(null);
-    const [coverImagePreview, setCoverImagePreview] = useState<string | null>(story?.coverImage || null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setCoverImageFile(file);
             const reader = new FileReader();
             reader.onloadend = () => {
                 setCoverImagePreview(reader.result as string);
@@ -178,7 +185,8 @@ export default function AdminPage() {
             genre,
             tags: tags.split(',').map(t => t.trim()).filter(t => t),
             publishedStatus,
-            category
+            category,
+            authorId: story?.authorId || 'new-author', // Placeholder
         });
     };
 
@@ -200,9 +208,8 @@ export default function AdminPage() {
                 <Label htmlFor="story-coverImageFile">Cover Image</Label>
                 <div className="flex items-center gap-2">
                     <Input id="story-coverImageFile" type="file" accept="image/*" ref={fileInputRef} onChange={handleFileChange} className="flex-grow"/>
-                    {coverImageFile && (
+                    {coverImagePreview && (
                          <Button type="button" variant="ghost" size="sm" onClick={() => {
-                            setCoverImageFile(null);
                             setCoverImagePreview(story?.coverImage || null);
                             if(fileInputRef.current) fileInputRef.current.value = "";
                          }}>Clear</Button>
@@ -263,57 +270,110 @@ export default function AdminPage() {
   };
 
   const handleOpenChapterManagement = (storyToManage: Story) => {
-    setStoryForChapterManagement(JSON.parse(JSON.stringify(storyToManage)));
+    setStoryForChapterManagement(JSON.parse(JSON.stringify(storyToManage))); // Deep clone for isolated editing
     setIsManageChaptersDialogOpen(true);
   };
+  
+  const ChapterEditDialogContent: React.FC<{
+    chapterData: ChapterFormData;
+    onChapterDataChange: (field: keyof ChapterFormData, value: string) => void;
+  }> = ({ chapterData, onChapterDataChange }) => {
+    
+    // Modules for ReactQuill toolbar
+    const quillModules = {
+      toolbar: [
+        [{ 'header': [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{'list': 'ordered'}, {'list': 'bullet'}],
+        ['link'],
+        ['clean']
+      ],
+    };
+  
+    return (
+      <div className="space-y-4 py-4">
+        <div>
+          <Label htmlFor="chapter-title-edit">Chapter Title</Label>
+          <Input
+            id="chapter-title-edit"
+            value={chapterData.title}
+            onChange={(e) => onChapterDataChange('title', e.target.value)}
+          />
+        </div>
+        <div>
+          <Label htmlFor="chapter-content-edit">Chapter Content</Label>
+          {typeof window !== 'undefined' && ReactQuill && (
+            <ReactQuill
+              theme="snow"
+              value={chapterData.content}
+              onChange={(html) => onChapterDataChange('content', html)}
+              modules={quillModules}
+              placeholder="Write your chapter content here..."
+              className="bg-background text-foreground min-h-[200px] border border-input rounded-md"
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
+
 
   const handleAddChapter = () => {
     if (!storyForChapterManagement) return;
     const newChapter: StoryChapter = {
-      id: `chap-${Date.now()}`,
+      id: `chap-${Date.now()}-${Math.random().toString(16).slice(2)}`, // More unique ID
       title: `New Chapter ${storyForChapterManagement.chapters.length + 1}`,
-      content: "Start writing content here...",
+      content: "<p>Start writing content here...</p>", // Default content as HTML
       order: storyForChapterManagement.chapters.length + 1,
     };
     const updatedStory = {
       ...storyForChapterManagement,
       chapters: [...storyForChapterManagement.chapters, newChapter]
     };
-    setStoryForChapterManagement(updatedStory);
-    setStories(prevStories =>
-      prevStories.map(s => s.id === updatedStory.id ? updatedStory : s)
-    );
-    toast({title: "Chapter Added (Locally)", description: `"${newChapter.title}" added to "${updatedStory.title}".`})
+    setStoryForChapterManagement(updatedStory); // Update the dialog's story state
+    // No direct save to main `stories` state here, only on "Save Chapters" from ManageChaptersDialog
+    toast({title: "Chapter Added (Locally)", description: `"${newChapter.title}" added to "${updatedStory.title}". Save changes in the story to persist.`})
   };
 
   const handleOpenEditChapterDialog = (chapter: StoryChapter, index: number) => {
     setEditingChapter(chapter);
     setEditingChapterIndex(index);
-    setCurrentChapterData({ title: chapter.title, content: chapter.content });
+    setCurrentChapterData({ title: chapter.title, content: chapter.content }); // Initialize with existing content
     setIsEditChapterDialogOpen(true);
   };
-
-  const handleSaveChapter = () => {
+  
+  const handleSaveChapterInDialog = () => {
     if (!storyForChapterManagement || editingChapterIndex === null || !editingChapter) return;
-
-    const updatedChapters = [...storyForChapterManagement.chapters];
-    updatedChapters[editingChapterIndex] = { ...editingChapter, ...currentChapterData, order: editingChapter.order };
-
+  
+    const updatedChapters = storyForChapterManagement.chapters.map((chap, idx) => 
+      idx === editingChapterIndex ? { ...chap, ...currentChapterData } : chap
+    );
+  
     const updatedStory = {
       ...storyForChapterManagement,
       chapters: updatedChapters
     };
-
-    setStoryForChapterManagement(updatedStory);
-    setStories(prevStories =>
-      prevStories.map(s => s.id === updatedStory.id ? updatedStory : s)
-    );
-
-    toast({title: "Chapter Saved (Locally)", description: `Changes to "${currentChapterData.title}" saved.`});
+  
+    setStoryForChapterManagement(updatedStory); // This updates the state for the "Manage Chapters" dialog
+    
+    // To persist to the main list, we need to save the entire story from "Manage Chapters" dialog or Edit Story
+    toast({title: "Chapter Saved (Locally)", description: `Changes to "${currentChapterData.title}" locally staged. Save story to persist.`});
     setIsEditChapterDialogOpen(false);
     setEditingChapter(null);
     setEditingChapterIndex(null);
   };
+  
+  // Call this when closing the "Manage Chapters" dialog if changes should be saved
+  const handleSaveStoryWithChapterChanges = () => {
+    if (!storyForChapterManagement) return;
+    setStories(prevStories =>
+      prevStories.map(s => (s.id === storyForChapterManagement.id ? storyForChapterManagement : s))
+    );
+    toast({ title: "Story Chapters Updated", description: `Changes to chapters in "${storyForChapterManagement.title}" have been saved.` });
+    setIsManageChaptersDialogOpen(false);
+    setStoryForChapterManagement(null);
+  };
+
 
   const confirmRemoveChapter = (storyId: string, chapterId: string) => {
     setChapterToDelete({storyId, chapterId});
@@ -337,22 +397,10 @@ export default function AdminPage() {
     };
 
     setStoryForChapterManagement(updatedStory);
-    setStories(prevStories =>
-      prevStories.map(s => s.id === updatedStory.id ? updatedStory : s)
-    );
-
-    toast({title: "Chapter Removed (Locally)", description: `Chapter "${chapterToRemove?.title || 'N/A'}" removed from "${updatedStory.title}".`});
+    // No direct save to main `stories` state here, only on "Save Chapters" from ManageChaptersDialog
+    toast({title: "Chapter Removed (Locally)", description: `Chapter "${chapterToRemove?.title || 'N/A'}" removed locally. Save story to persist.`});
     setChapterToDelete(null);
   };
-
-  const handlePlaceholderStyleToolClick = (toolName: string) => {
-    toast({
-      title: "Styling Tool (Placeholder)",
-      description: `${toolName} tool is not yet implemented. Full text styling requires a rich text editor integration.`,
-      duration: 4000,
-    });
-  };
-
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 p-4 md:p-6">
@@ -376,17 +424,20 @@ export default function AdminPage() {
             <Button size="sm" className="w-full md:w-auto" onClick={() => setIsAddStoryDialogOpen(true)}>
               <BookPlus className="mr-2 h-4 w-4" /> Add New Story
             </Button>
+             <Button size="sm" variant="outline" className="w-full md:w-auto" onClick={() => toast({title: "Image Upload", description: "Global image upload placeholder."})}>
+              <ImageUp className="mr-2 h-4 w-4" /> Upload Image
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <Label htmlFor="search-stories">Search Stories by Title or Author</Label>
+            <Label htmlFor="search-stories">Search Stories by Title, Author, or Category</Label>
             <div className="relative">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="search-stories"
                 type="search"
-                placeholder="Enter story title or author..."
+                placeholder="Enter story title, author, or category..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -402,7 +453,7 @@ export default function AdminPage() {
                      <Image
                         src={story.coverImage || `https://placehold.co/80x120?text=${encodeURIComponent(story.title.substring(0,1))}`}
                         alt={story.title}
-                        width={60} // Reduced size for a more compact list
+                        width={60} 
                         height={90}
                         className="w-16 h-24 object-cover rounded-sm shadow-md"
                         data-ai-hint={story.dataAihint || "book cover admin"}
@@ -495,21 +546,25 @@ export default function AdminPage() {
 
        {storyForChapterManagement && (
         <Dialog open={isManageChaptersDialogOpen} onOpenChange={(isOpen) => {
+          if (!isOpen) {
+             // Ask user if they want to save changes before closing
+             // For simplicity here, we just close. A real app might prompt to save.
+             setStoryForChapterManagement(null); 
+          }
           setIsManageChaptersDialogOpen(isOpen);
-          if (!isOpen) setStoryForChapterManagement(null);
         }}>
           <DialogContent className="sm:max-w-[700px]">
             <DialogHeader>
               <DialogTitle>Manage Chapters for: {storyForChapterManagement.title}</DialogTitle>
-              <DialogDescription>Add, edit, or remove chapters for this story. Changes are local and simulated.</DialogDescription>
+              <DialogDescription>Add, edit, or remove chapters for this story. Changes are staged locally.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 max-h-[60vh] overflow-y-auto p-1 mt-4">
               {storyForChapterManagement.chapters.length > 0 ? (
-                storyForChapterManagement.chapters.sort((a,b) => a.order - b.order).map((chapter, index) => ( // Ensure chapters are sorted by order
+                storyForChapterManagement.chapters.sort((a,b) => a.order - b.order).map((chapter, index) => (
                   <Card key={chapter.id} className="p-3 flex justify-between items-center">
                     <div className="flex-grow overflow-hidden">
                       <p className="font-medium truncate">Chapter {chapter.order}: {chapter.title}</p>
-                      <p className="text-xs text-muted-foreground truncate">{chapter.content.substring(0,50)}...</p>
+                      <p className="text-xs text-muted-foreground truncate" dangerouslySetInnerHTML={{ __html: chapter.content.substring(0,80) + '...' }} />
                     </div>
                     <div className="flex gap-2 shrink-0 ml-2">
                       <Button variant="outline" size="sm" onClick={() => handleOpenEditChapterDialog(chapter, index)}>
@@ -545,10 +600,13 @@ export default function AdminPage() {
                 <p className="text-muted-foreground text-center py-4">No chapters yet for this story.</p>
               )}
             </div>
-            <DialogFooter className="pt-4">
-              <Button variant="outline" onClick={() => {setIsManageChaptersDialogOpen(false); setStoryForChapterManagement(null)}}>Close</Button>
-              <Button onClick={handleAddChapter}>
+            <DialogFooter className="pt-4 flex-col sm:flex-row gap-2">
+              <Button variant="outline" onClick={() => {setIsManageChaptersDialogOpen(false); setStoryForChapterManagement(null)}}>Close (Discard Local Changes)</Button>
+              <Button onClick={handleAddChapter} className="w-full sm:w-auto">
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Chapter
+              </Button>
+              <Button onClick={handleSaveStoryWithChapterChanges} className="w-full sm:w-auto">
+                 Save Story with Chapter Changes
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -557,50 +615,30 @@ export default function AdminPage() {
 
       {isEditChapterDialogOpen && editingChapter && storyForChapterManagement && (
         <Dialog open={isEditChapterDialogOpen} onOpenChange={(isOpen) => {
-            setIsEditChapterDialogOpen(isOpen);
             if (!isOpen) {
                 setEditingChapter(null);
                 setEditingChapterIndex(null);
             }
+            setIsEditChapterDialogOpen(isOpen);
         }}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[600px] md:max-w-[750px]">
                 <DialogHeader>
-                    <DialogTitle>Edit Chapter: {editingChapter.title}</DialogTitle>
+                    <DialogTitle>Edit Chapter: {currentChapterData.title}</DialogTitle>
                     <DialogDescription>Modify the chapter title and content below. Changes are local and simulated.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div>
-                        <Label htmlFor="chapter-title-edit">Chapter Title</Label>
-                        <Input
-                            id="chapter-title-edit"
-                            value={currentChapterData.title}
-                            onChange={(e) => setCurrentChapterData(prev => ({...prev, title: e.target.value}))}
-                        />
-                    </div>
-                    <div>
-                        <Label htmlFor="chapter-content-edit">Chapter Content</Label>
-                        <div className="flex items-center gap-1 p-2 border rounded-md mb-1 bg-muted">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePlaceholderStyleToolClick('Bold')}><Bold className="h-4 w-4"/></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePlaceholderStyleToolClick('Italic')}><Italic className="h-4 w-4"/></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handlePlaceholderStyleToolClick('Heading')}><Heading1 className="h-4 w-4"/></Button>
-                            {/* Add more placeholder styling buttons here as needed */}
-                        </div>
-                        <Textarea
-                            id="chapter-content-edit"
-                            value={currentChapterData.content}
-                            onChange={(e) => setCurrentChapterData(prev => ({...prev, content: e.target.value}))}
-                            rows={10}
-                            placeholder="Write your chapter content here..."
-                        />
-                    </div>
-                </div>
+                <ChapterEditDialogContent
+                  chapterData={currentChapterData}
+                  onChapterDataChange={(field, value) => {
+                    setCurrentChapterData(prev => ({ ...prev, [field]: value }));
+                  }}
+                />
                 <DialogFooter>
                     <Button variant="outline" onClick={() => {
                         setIsEditChapterDialogOpen(false);
                         setEditingChapter(null);
                         setEditingChapterIndex(null);
                     }}>Cancel</Button>
-                    <Button onClick={handleSaveChapter}>Save Chapter</Button>
+                    <Button onClick={handleSaveChapterInDialog}>Save Chapter (Locally)</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -643,7 +681,7 @@ export default function AdminPage() {
                                             <Edit className="mr-2 h-4 w-4"/> Edit User
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => toast({ title: "Simulated Action", description: `Suspend user ${user.username}`})}>
-                                            <Users className="mr-2 h-4 w-4"/> Suspend User {/* Changed Icon for Suspend */}
+                                            <Users className="mr-2 h-4 w-4"/> Suspend User
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -721,4 +759,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
