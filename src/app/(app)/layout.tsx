@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
@@ -76,7 +76,6 @@ function AppSidebar() {
 
 function AppHeader() {
   const pathname = usePathname();
-  const router = useRouter();
   const isHomePage = pathname === '/';
 
   return (
@@ -102,9 +101,11 @@ function AppHeader() {
           </Button>
         )}
         <ThemeToggleButton />
-        <Button onClick={() => router.push('/auth/login')}>
+        <Button asChild>
+          <Link href="/auth/login">
             <LogIn className="mr-2 h-4 w-4" /> {/* Icon always visible */}
             <span>Login</span> {/* Text always visible */}
+          </Link>
         </Button>
       </div>
     </header>
