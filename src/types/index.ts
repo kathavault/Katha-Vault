@@ -57,6 +57,7 @@ export type UserPost = {
 
 export type UserProfile = {
   id: string;
+  name?: string; // Added user's full name
   username: string;
   email: string;
   avatarUrl: string;

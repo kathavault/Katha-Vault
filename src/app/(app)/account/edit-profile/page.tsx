@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState } from "react";
 
 const profileSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must be at most 50 characters").optional().or(z.literal('')),
   username: z.string().min(3, "Username must be at least 3 characters").max(30, "Username must be at most 30 characters"),
   bio: z.string().max(200, "Bio must be at most 200 characters").optional(),
   avatarUrl: z.string().url("Must be a valid URL for avatar image").optional().or(z.literal('')),
@@ -26,6 +27,7 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 
 // Mock existing user data
 const mockExistingUser = {
+  name: "Katha Seeker",
   username: "StorySeeker92",
   bio: "Avid reader and aspiring author. Always on the lookout for the next great adventure within the pages of a book. Favorite genres: Sci-Fi and Fantasy.",
   avatarUrl: "https://placehold.co/150x150/B4317B/F7F2FA?text=SS",
@@ -38,6 +40,7 @@ export default function EditProfilePage() {
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
+      name: mockExistingUser.name,
       username: mockExistingUser.username,
       bio: mockExistingUser.bio,
       avatarUrl: mockExistingUser.avatarUrl,
@@ -48,9 +51,10 @@ export default function EditProfilePage() {
   const onSubmit: SubmitHandler<ProfileFormData> = (data) => {
     console.log("Profile Updated:", data);
     // Here you would typically send data to your backend
+    // And update the global user state if using a state manager
     toast({
       title: "Profile Updated!",
-      description: "Your profile has been successfully updated.",
+      description: "Your profile has been successfully updated (simulated).",
       variant: "default",
     });
   };
@@ -112,12 +116,25 @@ export default function EditProfilePage() {
 
               <FormField
                 control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl><Input placeholder="Your full name" {...field} /></FormControl>
+                    <FormDescription>This name may be displayed on your profile.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="username"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl><Input placeholder="Your unique username" {...field} /></FormControl>
-                    <FormDescription>This is your public display name.</FormDescription>
+                    <FormDescription>This is your public display name (e.g., @username).</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

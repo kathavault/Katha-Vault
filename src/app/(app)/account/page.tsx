@@ -12,11 +12,12 @@ import Link from "next/link";
 import { useState, useEffect, FormEvent } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { UserPostCard } from '@/components/user-post-card'; // New import
-import { mockUserPosts as allMockPosts } from '@/lib/mock-data'; // For simulating adding posts
+import { UserPostCard } from '@/components/user-post-card';
+import { mockUserPosts as allMockPosts } from '@/lib/mock-data';
 
 const initialMockUser: UserProfile = {
   id: 'user123',
+  name: 'Katha Seeker', // Added name
   username: 'StorySeeker92',
   email: 'story.seeker@example.com',
   avatarUrl: 'https://placehold.co/150x150/B4317B/F7F2FA?text=SS',
@@ -26,8 +27,8 @@ const initialMockUser: UserProfile = {
     { storyId: '2', title: 'Beneath the Emerald Canopy', lastReadChapterId: 'c1', progress: 20 },
   ],
   favorites: ['1'],
-  submittedStories: [], // Kept for data structure, but functionality removed
-  userPosts: allMockPosts.filter(p => p.userId === 'user123'), // Initialize with posts for StorySeeker92
+  submittedStories: [],
+  userPosts: allMockPosts.filter(p => p.userId === 'user123'),
   followers: 1250,
   following: 180,
 };
@@ -39,7 +40,6 @@ export default function AccountPage() {
   const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
-    // Defer date generation to client-side to avoid hydration mismatch
     setJoinedDate(new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString());
   }, []);
 
@@ -51,7 +51,6 @@ export default function AccountPage() {
     }
     setIsPosting(true);
 
-    // Simulate post creation
     const newPost: UserPost = {
       id: `post${Date.now()}`,
       userId: currentUser.id,
@@ -64,7 +63,7 @@ export default function AccountPage() {
       comments: [],
     };
 
-    setTimeout(() => { // Simulate network delay
+    setTimeout(() => {
       setCurrentUser(prevUser => ({
         ...prevUser,
         userPosts: [newPost, ...(prevUser.userPosts || [])]
@@ -76,20 +75,16 @@ export default function AccountPage() {
   };
   
   const handleLikePost = (postId: string) => {
-    // This is a placeholder. In a real app, you'd update the backend.
-    // For UI simulation, the UserPostCard manages its own local like count.
     setTimeout(() => {
         toast({ title: "Liked! (Simulated)", description: `You liked a post.` });
     }, 0);
   };
 
   const handleCommentOnPost = (postId: string, commentText: string) => {
-    // Placeholder for actual comment submission
     setTimeout(() => {
         toast({ title: "Comment Added! (Simulated)", description: `Your comment: "${commentText}"` });
     }, 0);
   };
-
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -130,7 +125,8 @@ export default function AccountPage() {
             <AvatarFallback className="text-3xl">{currentUser.username.substring(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-grow">
-            <CardTitle className="text-2xl">{currentUser.username}</CardTitle>
+            {currentUser.name && <CardTitle className="text-2xl">{currentUser.name}</CardTitle>}
+            <CardDescription className="text-lg text-muted-foreground -mt-1">@{currentUser.username}</CardDescription>
             <CardDescription className="flex items-center gap-2 mt-1">
               <Mail className="h-4 w-4" /> {currentUser.email}
             </CardDescription>
@@ -167,6 +163,29 @@ export default function AccountPage() {
               <Separator className="my-4" />
             </>
           )}
+          
+          {/* Reading History Section - MOVED UP */}
+          <div>
+            <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" /> Reading History
+            </h3>
+            {currentUser.readingHistory.length > 0 ? (
+              <ul className="space-y-2 text-sm">
+                {currentUser.readingHistory.map(item => (
+                  <li key={item.storyId} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
+                    <Link href={`/read/${item.storyId}`} className="text-accent-foreground hover:underline">
+                      {item.title}
+                    </Link>
+                    <span className="text-xs text-muted-foreground">Progress: {item.progress}%</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No reading history yet. Start exploring stories!</p>
+            )}
+          </div>
+          <Separator className="my-6" />
+
 
           {/* Create Post Section */}
           <div className="mb-6">
@@ -188,7 +207,6 @@ export default function AccountPage() {
           </div>
           <Separator className="my-6" />
 
-
           {/* My Posts Section */}
           <div>
             <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
@@ -205,27 +223,6 @@ export default function AccountPage() {
             )}
           </div>
 
-          <Separator className="my-6" />
-
-          <div>
-            <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary" /> Reading History
-            </h3>
-            {currentUser.readingHistory.length > 0 ? (
-              <ul className="space-y-2 text-sm">
-                {currentUser.readingHistory.map(item => (
-                  <li key={item.storyId} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">
-                    <Link href={`/read/${item.storyId}`} className="text-accent-foreground hover:underline">
-                      {item.title}
-                    </Link>
-                    <span className="text-xs text-muted-foreground">Progress: {item.progress}%</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-muted-foreground">No reading history yet. Start exploring stories!</p>
-            )}
-          </div>
         </CardContent>
       </Card>
     </div>
