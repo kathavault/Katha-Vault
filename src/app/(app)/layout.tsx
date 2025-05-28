@@ -25,7 +25,7 @@ import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
 import { LogIn, Send } from 'lucide-react';
 import { cn } from "@/lib/utils";
-import { useState, useEffect } from 'react'; // Added imports
+import { useState, useEffect } from 'react';
 
 function AppSidebar() {
   const pathname = usePathname();
@@ -79,9 +79,9 @@ function AppSidebar() {
 function AppHeader() {
   const pathname = usePathname();
   const isHomePage = pathname === '/';
-  const [isClient, setIsClient] = useState(false); // Added state
+  const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => { // Added effect
+  useEffect(() => {
     setIsClient(true);
   }, []);
 
@@ -100,7 +100,7 @@ function AppHeader() {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {isHomePage && (
+        {isHomePage && ( // Chat icon only on home page
           <Button variant="ghost" size="icon" asChild className="relative">
             <Link href="/chat">
               <Send className="h-5 w-5" />
