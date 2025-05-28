@@ -2,7 +2,7 @@
 export type StoryChapter = {
   id: string;
   title: string;
-  content: string; // Markdown or plain text
+  content: string; // HTML or plain text
   order: number;
   // chapterImageUrl?: string; // Optional: if you want small images per chapter
 };
@@ -38,6 +38,8 @@ export type PostComment = {
   text: string;
   timestamp: string; // ISO Date string
   dataAihint?: string;
+  likes?: number; // Added for UI simulation
+  replies?: PostComment[]; // Added for UI simulation
 };
 
 export type UserPost = {

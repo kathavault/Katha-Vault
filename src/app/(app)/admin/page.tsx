@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
-  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon, UserCog, ServerCog, Palette, ToggleLeft
+  ShieldCheck, Users, Settings, BookText, PlusCircle, MoreVertical, Edit, Trash2, ImageUp, BookPlus, BookKey, Search as SearchIcon, UserCog, ServerCog, Palette, ToggleLeft, Bold, Italic, Heading1
 } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import {
@@ -46,8 +46,7 @@ import Image from 'next/image';
 import type { Story, StoryChapter, UserProfile } from '@/types';
 import { mockStories as initialMockStories } from '@/lib/mock-data';
 import { Switch } from "@/components/ui/switch";
-// Rich Text Editor (ReactQuill) is removed due to runtime errors.
-// Placeholder styling buttons also removed for simplicity with plain textarea.
+
 
 type StoryFormDataFields = Omit<Story, 'id' | 'chapters' | 'createdAt' | 'updatedAt' | 'authorId' | 'isTrending' | 'isCurated'> & { id?: string };
 type ChapterFormData = Omit<StoryChapter, 'id' | 'order'>;
@@ -74,7 +73,7 @@ export default function AdminPage() {
   const [isEditChapterDialogOpen, setIsEditChapterDialogOpen] = useState(false);
   const [editingChapter, setEditingChapter] = useState<StoryChapter | null>(null);
   const [editingChapterIndex, setEditingChapterIndex] = useState<number | null>(null);
-  const [currentChapterData, setCurrentChapterData] = useState<ChapterFormData>({ title: '', content: '' }); // content is plain text
+  const [currentChapterData, setCurrentChapterData] = useState<ChapterFormData>({ title: '', content: '' }); 
   const [chapterToDelete, setChapterToDelete] = useState<{storyId: string, chapterId: string} | null>(null);
 
   const [isUserManagementDialogOpen, setIsUserManagementDialogOpen] = useState(false);
@@ -272,6 +271,14 @@ export default function AdminPage() {
     chapterData: ChapterFormData;
     onChapterDataChange: (field: keyof ChapterFormData, value: string) => void;
   }> = ({ chapterData, onChapterDataChange }) => {
+    const handlePlaceholderToolClick = (toolName: string) => {
+      toast({
+        title: `${toolName} (Placeholder)`,
+        description: "Full text styling requires a rich text editor integration.",
+        variant: "default",
+      });
+    };
+
     return (
       <div className="space-y-4 py-4">
         <div>
@@ -284,13 +291,26 @@ export default function AdminPage() {
         </div>
         <div>
           <Label htmlFor="chapter-content-edit">Chapter Content</Label>
+          {/* Placeholder Toolbar */}
+          <div className="flex items-center gap-1 p-2 border rounded-t-md bg-muted">
+            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handlePlaceholderToolClick('Bold')}>
+              <Bold className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handlePlaceholderToolClick('Italic')}>
+              <Italic className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => handlePlaceholderToolClick('Heading')}>
+              <Heading1 className="h-4 w-4" />
+            </Button>
+             {/* Add more placeholder buttons as needed */}
+          </div>
            <Textarea
               id="chapter-content-edit"
               value={chapterData.content} // Assuming content is plain text
               onChange={(e) => onChapterDataChange('content', e.target.value)}
               rows={10}
               placeholder="Write your chapter content here..."
-              className="bg-background text-foreground min-h-[200px] border border-input rounded-md"
+              className="bg-background text-foreground min-h-[200px] border border-input rounded-b-md rounded-t-none focus-visible:ring-0"
             />
         </div>
       </div>
@@ -303,7 +323,7 @@ export default function AdminPage() {
     const newChapter: StoryChapter = {
       id: `chap-${Date.now()}-${Math.random().toString(16).slice(2)}`,
       title: `New Chapter ${storyForChapterManagement.chapters.length + 1}`,
-      content: "Start writing content here...", // Default content as plain text
+      content: "Start writing content here...", 
       order: storyForChapterManagement.chapters.length + 1,
     };
     const updatedStory = {
