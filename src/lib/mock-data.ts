@@ -16,8 +16,8 @@ export const mockStories: Story[] = [
         { id: 'c1_3', title: 'Chapter 3: The Chronos Protocol', content: 'The organization known only as "Veridian" had been tracking temporal disturbances...', order: 3 },
     ],
     genre: 'Science Fiction',
-    status: 'Completed', // Narrative status
-    publishedStatus: 'Published', // Publication status
+    status: 'Completed', 
+    publishedStatus: 'Published', 
     rating: 4.8,
     views: 25000,
     isTrending: true,
@@ -81,28 +81,126 @@ export const mockStories: Story[] = [
     chapters: [{ id: 'c4_1', title: 'The Signal', content: 'The long-range sensors picked up an anomaly unlike anything ever recorded.', order: 1 }],
     genre: 'Space Opera',
     status: 'Ongoing',
-    publishedStatus: 'Published', // Changed from Draft for testing display
+    publishedStatus: 'Published', 
     rating: 4.9,
     views: 35000,
     isTrending: true,
     isCurated: true,
-    category: 'SciFi',
+    category: 'SciFi', // Changed from Novel to SciFi for section variety
     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
     updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 1).toISOString(),
     dataAihint: "galaxy stars"
   },
+   {
+    id: '5',
+    title: 'The Last Cyberpunk',
+    author: 'Nova Byte',
+    authorId: 'author5',
+    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Cyber',
+    description: 'In a neon-drenched city, one hacker fights for freedom.',
+    tags: ['cyberpunk', 'dystopian', 'action'],
+    chapters: [{ id: 'c5_1', title: 'The Glitch', content: 'The neon signs flickered, casting long shadows. A new directive flashed across her retinal display...', order: 1 }],
+    genre: 'Cyberpunk',
+    status: 'Ongoing',
+    publishedStatus: 'Published',
+    rating: 4.6,
+    views: 22000,
+    isTrending: true,
+    category: 'SciFi',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 5).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 0).toISOString(),
+    dataAihint: "neon city"
+  },
+  {
+    id: '6',
+    title: 'A Stitch in Time',
+    author: 'Penelope Weave',
+    authorId: 'author6',
+    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Stitch',
+    description: 'A short story about a magical tailor who can mend fate.',
+    tags: ['short story', 'urban fantasy', 'magic'],
+    chapters: [{ id: 'c6_1', title: 'The Golden Thread', content: 'The needle hummed with ancient power, the thread itself shimmering with possibilities...', order: 1 }],
+    genre: 'Fantasy',
+    status: 'Completed',
+    publishedStatus: 'Published',
+    rating: 4.3,
+    views: 9000,
+    category: 'ShortStory',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 40).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 10).toISOString(),
+    dataAihint: "magic thread"
+  },
+  {
+    id: '7',
+    title: 'The Clockwork Heart',
+    author: 'Cogsworth Tinkerton',
+    authorId: 'author7',
+    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Clockwork',
+    description: 'A short tale of love and machinery in a Victorian-inspired world.',
+    tags: ['short story', 'steampunk', 'romance'],
+    chapters: [{ id: 'c7_1', title: 'The Unveiling', content: 'The automaton\'s heart ticked with a rhythm far too human for mere gears and springs...', order: 1 }],
+    genre: 'Steampunk',
+    status: 'Completed',
+    publishedStatus: 'Published',
+    rating: 4.7,
+    views: 15000,
+    category: 'ShortStory',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 20).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3).toISOString(),
+    dataAihint: "gears heart"
+  },
+   {
+    id: '8',
+    title: 'Love in the Time of Stardust',
+    author: 'Stella Astra',
+    authorId: 'author8',
+    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Stardust',
+    description: 'Two star-crossed lovers find each other across galaxies, their romance defying empires.',
+    tags: ['romance', 'space opera', 'adventure'],
+    chapters: [{ id: 'c8_1', title: 'Cosmic Encounter', content: 'Their ships nearly collided, an accident that sparked an interstellar romance.', order: 1 }],
+    genre: 'Romance',
+    status: 'Ongoing',
+    publishedStatus: 'Published',
+    rating: 4.9,
+    views: 28000,
+    isTrending: true,
+    category: 'Romance',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 25).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 4).toISOString(),
+    dataAihint: "galaxy love"
+  },
+  {
+    id: '9',
+    title: 'The Secret Garden of Andromeda',
+    author: 'Flora Nova',
+    authorId: 'author9',
+    coverImage: 'https://placehold.co/300x450/E62E9A/FFFFFF?text=Andromeda',
+    description: 'A botanist on a distant planet discovers a garden with plants that hold the universe\'s secrets.',
+    tags: ['sci-fi', 'mystery', 'nature'],
+    chapters: [{ id: 'c9_1', title: 'The Seedling', content: 'The probe returned with a single, impossible seed from the Andromeda galaxy...', order: 1 }],
+    genre: 'Science Fiction',
+    status: 'Draft', // Not published
+    publishedStatus: 'Draft',
+    rating: 4.4,
+    views: 5000,
+    category: 'SciFi',
+    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 100).toISOString(),
+    updatedAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 50).toISOString(),
+    dataAihint: "alien plants"
+  }
 ];
 
 const mockPostComments: PostComment[] = [
   { id: 'comment1', postId: 'post1', userId: 'user001', username: 'ReaderRiley', avatarUrl: 'https://placehold.co/40x40/8E7CC3/FFFFFF?text=RR', text: "Great point!", timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(), dataAihint: "user avatar" },
   { id: 'comment2', postId: 'post1', userId: 'user002', username: 'AuthorAlex', avatarUrl: 'https://placehold.co/40x40/E8A87C/FFFFFF?text=AA', text: "I agree completely.", timestamp: new Date(Date.now() - 1000 * 60 * 2).toISOString(), dataAihint: "user avatar" },
   { id: 'comment3', postId: 'post2', userId: 'user001', username: 'ReaderRiley', avatarUrl: 'https://placehold.co/40x40/8E7CC3/FFFFFF?text=RR', text: "Interesting thought!", timestamp: new Date(Date.now() - 1000 * 60 * 10).toISOString(), dataAihint: "user avatar" },
+  { id: 'comment4', postId: 'post3', userId: 'user123', username: 'StorySeeker92', avatarUrl: 'https://placehold.co/40x40/B4317B/F7F2FA?text=SS', text: "Rainy days are the best for reading!", timestamp: new Date(Date.now() - 1000 * 60 * 60 * 1).toISOString(), dataAihint: "user initial" },
 ];
 
 export const mockUserPosts: UserPost[] = [
   {
     id: 'post1',
-    userId: 'user123', // Corresponds to StorySeeker92
+    userId: 'user123', 
     username: 'StorySeeker92',
     avatarUrl: 'https://placehold.co/40x40/B4317B/F7F2FA?text=SS',
     dataAihint: 'user initial',
@@ -125,19 +223,19 @@ export const mockUserPosts: UserPost[] = [
   },
   {
     id: 'post3',
-    userId: 'user001', // ReaderRiley
+    userId: 'user001', 
     username: 'ReaderRiley',
     avatarUrl: 'https://placehold.co/40x40/8E7CC3/FFFFFF?text=RR',
     dataAihint: 'user avatar',
     content: "What's everyone's favorite genre to read on a rainy day? For me, it's definitely a cozy mystery novel. ☕📚",
     timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
     likes: 205,
-    comments: [],
+    comments: mockPostComments.filter(c => c.postId === 'post3'),
     isTrending: true,
   },
   {
     id: 'post4',
-    userId: 'user002', // AuthorAlex
+    userId: 'user002', 
     username: 'AuthorAlex',
     avatarUrl: 'https://placehold.co/40x40/E8A87C/FFFFFF?text=AA',
     dataAihint: 'user avatar',
