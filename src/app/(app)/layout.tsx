@@ -18,12 +18,12 @@ import {
 } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { usePathname, useRouter } from 'next/navigation'; // Added useRouter
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { LogIn, Send } from 'lucide-react'; 
+import { LogIn, Send } from 'lucide-react';
 
 function AppSidebar() {
   const pathname = usePathname();
@@ -76,7 +76,7 @@ function AppSidebar() {
 
 function AppHeader() {
   const pathname = usePathname();
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
   const isHomePage = pathname === '/';
 
   return (
@@ -103,8 +103,8 @@ function AppHeader() {
         )}
         <ThemeToggleButton />
         <Button onClick={() => router.push('/auth/login')}>
-            <LogIn className="mr-2 h-4 w-4 md:hidden" />
-            <span className="hidden md:inline">Login</span>
+            <LogIn className="mr-2 h-4 w-4" /> {/* Icon always visible */}
+            <span>Login</span> {/* Text always visible */}
         </Button>
       </div>
     </header>
