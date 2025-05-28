@@ -16,14 +16,14 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send } from 'lucide-react'; // Removed LogIn
+import { Send, LogIn } from 'lucide-react'; 
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -84,39 +84,47 @@ function AppHeader() {
     setIsClient(true);
   }, []);
 
-  // Calculate isHomePage only after client has mounted to ensure pathname is accurate
   const isHomePage = isClient ? pathname === '/' : false;
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
       <div className="md:hidden">
-        {/* SidebarTrigger is client-side interactive, ensure it renders consistently or only on client */}
         {isClient ? <SidebarTrigger /> : <div className="h-7 w-7" /> } 
       </div>
       <div className="flex-1 md:flex md:justify-center">
-        {/* Logo for mobile, centered on desktop */}
         <div className="md:absolute md:left-1/2 md:-translate-x-1/2">
           <Link href="/">
-            <Logo collapsed={true}/> {/* Always show collapsed (icon only) logo in header */}
+            <Logo collapsed={true}/> 
           </Link>
         </div>
       </div>
       <div className="flex items-center gap-2">
         {isClient && isHomePage ? ( 
-          <Button variant="ghost" size="icon" asChild className="relative">
-            <Link href="/chat">
-              <Send className="h-5 w-5" />
-              <span className="sr-only">Chat</span>
-            </Link>
-          </Button>
+          <Link href="/chat" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative")}>
+            <Send className="h-5 w-5" />
+            <span className="sr-only">Chat</span>
+          </Link>
         ) : (
-          // Consistent placeholder for SSR, especially if isHomePage might be false on server
-          // or to ensure layout consistency if isHomePage calculation is deferred.
-          // If isHomePage could be true on server, this still needs to be a consistent placeholder.
-          <div className="h-10 w-10" /> // Placeholder to maintain layout
+          <div className="h-10 w-10" /> 
         )}
         <ThemeToggleButton />
-        {/* Login button removed */}
+        {isClient ? (
+          <Link
+            href="/auth/login"
+            className={cn(buttonVariants({ variant: "default", size: "default" }))}
+          >
+            <LogIn className="mr-2 h-4 w-4" />
+            <span>Sign In</span>
+          </Link>
+        ) : (
+          <a
+            href="/auth/login" // Basic link for SSR, full page reload if JS disabled
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 bg-primary text-primary-foreground"
+          >
+            <LogIn className="mr-2 h-4 w-4" />
+            <span>Sign In</span>
+          </a>
+        )}
       </div>
     </header>
   );
@@ -129,7 +137,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset>
         <AppHeader />
-        <main className="flex-1 p-4 sm:p-6 pb-20 md:pb-6"> {/* Added padding-bottom for bottom nav */}
+        <main className="flex-1 p-4 sm:p-6 pb-20 md:pb-6">
           {children}
         </main>
         <BottomNavigation />
