@@ -21,6 +21,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger, // Added missing import
 } from "@/components/ui/alert-dialog";
 import {
   Dialog,
@@ -293,5 +294,3 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
     </Card>
   );
 }
-
-    
