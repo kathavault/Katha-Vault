@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Heart, MessageCircle, MoreHorizontal, Trash2, Loader2, MessageSquareReply } from "lucide-react"; // Added MessageSquareReply
+import { Heart, MessageCircle, MoreHorizontal, Trash2, Loader2, MessageSquareReply } from "lucide-react";
 import { formatDistanceToNowStrict } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useState, FormEvent, useEffect } from 'react';
@@ -86,10 +86,14 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
       const newLikedState = !prev;
       if (newLikedState) {
         setCurrentLikeCount(count => count + 1);
-        toast({ title: "Post Liked!", description: `You liked ${post.username}'s post.` });
+        setTimeout(() => {
+          toast({ title: "Post Liked!", description: `You liked ${post.username}'s post.` });
+        }, 0);
       } else {
         setCurrentLikeCount(count => count - 1);
-        toast({ title: "Post Unliked", description: `You unliked ${post.username}'s post.` });
+        setTimeout(() => {
+          toast({ title: "Post Unliked", description: `You unliked ${post.username}'s post.` });
+        }, 0);
       }
       if (onLike) onLike(post.id); // Notify parent if callback provided
       return newLikedState;
@@ -99,7 +103,9 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   const handleCommentSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) {
-        toast({ title: "Empty Comment", description: "Please write something.", variant: "destructive"});
+        setTimeout(() => {
+            toast({ title: "Empty Comment", description: "Please write something.", variant: "destructive"});
+        }, 0);
         return;
     }
     setIsSubmittingComment(true);
@@ -139,7 +145,9 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
       delete newLikes[commentToDeleteId];
       return newLikes;
     });
-    toast({ title: "Comment Deleted", description: "The comment has been removed locally." });
+    setTimeout(() => {
+      toast({ title: "Comment Deleted", description: "The comment has been removed locally." });
+    }, 0);
     setCommentToDeleteId(null); 
   };
 
@@ -148,11 +156,15 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
       const currentCommentLikeState = prev[commentId] || { count: 0, liked: false };
       const newLikedState = !currentCommentLikeState.liked;
       const newCount = newLikedState ? currentCommentLikeState.count + 1 : currentCommentLikeState.count - 1;
-      if (newLikedState) {
-        toast({ title: "Comment Liked!", variant: "default" });
-      } else {
-        toast({ title: "Comment Unliked", variant: "default" });
-      }
+      
+      setTimeout(() => {
+        if (newLikedState) {
+          toast({ title: "Comment Liked!", variant: "default" });
+        } else {
+          toast({ title: "Comment Unliked", variant: "default" });
+        }
+      }, 0);
+
       return {
         ...prev,
         [commentId]: { count: newCount, liked: newLikedState }
@@ -161,10 +173,12 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   };
 
   const handleReplyToComment = (commentId: string, username: string) => {
-    toast({
-      title: "Reply (Placeholder)",
-      description: `Replying to ${username}'s comment. Full reply functionality requires further development.`,
-    });
+    setTimeout(() => {
+      toast({
+        title: "Reply (Placeholder)",
+        description: `Replying to ${username}'s comment. Full reply functionality requires further development.`,
+      });
+    }, 0);
   };
 
 
@@ -190,7 +204,11 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
           <CardTitle className="text-base font-semibold">{post.username}</CardTitle>
           <CardDescription className="text-xs">{formatTimestamp(post.timestamp)}</CardDescription>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast({title: "More options placeholder"})}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
+          setTimeout(() => {
+            toast({title: "More options placeholder"});
+          }, 0);
+        }}>
           <MoreHorizontal className="h-4 w-4" />
           <span className="sr-only">More options</span>
         </Button>
