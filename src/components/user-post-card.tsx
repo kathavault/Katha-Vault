@@ -21,8 +21,17 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
 
 // Mock current user for comments - in a real app, this would come from auth context
 const mockCurrentUserForPostCard = {
@@ -32,9 +41,11 @@ const mockCurrentUserForPostCard = {
   dataAihint: 'user initial',
 };
 
+// Mock likers for demonstration
+const mockLikersList = ["UserAlpha", "BookLover22", "PageTurnerPro", "ReaderX", "AnotherUser"];
+
 interface UserPostCardProps {
   post: UserPost;
-  // Removed onLike and onComment props as we'll handle state internally for simulation
 }
 
 export function UserPostCard({ post }: UserPostCardProps) {
@@ -47,6 +58,8 @@ export function UserPostCard({ post }: UserPostCardProps) {
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null);
+  const [showAllComments, setShowAllComments] = useState(false);
+  const [isLikersDialogOpen, setIsLikersDialogOpen] = useState(false);
 
 
   const handleLikeToggle = () => {
@@ -71,7 +84,6 @@ export function UserPostCard({ post }: UserPostCardProps) {
     }
     setIsSubmittingComment(true);
 
-    // Simulate network delay for comment submission
     setTimeout(() => {
       const newComment: PostComment = {
         id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
@@ -99,7 +111,7 @@ export function UserPostCard({ post }: UserPostCardProps) {
     if (!commentToDeleteId) return;
     setDisplayedComments(prevComments => prevComments.filter(comment => comment.id !== commentToDeleteId));
     toast({ title: "Comment Deleted", description: "The comment has been removed locally." });
-    setCommentToDeleteId(null); // Close the dialog
+    setCommentToDeleteId(null); 
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -110,6 +122,8 @@ export function UserPostCard({ post }: UserPostCardProps) {
       return "some time ago";
     }
   };
+
+  const commentsToShow = showAllComments ? displayedComments : displayedComments.slice(0, 2);
 
   return (
     <Card className="w-full shadow-md hover:shadow-lg transition-shadow">
@@ -133,9 +147,55 @@ export function UserPostCard({ post }: UserPostCardProps) {
       <Separator />
       <CardFooter className="p-3 flex justify-between items-center">
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <span>{currentLikeCount} Likes</span>
+          <Dialog open={isLikersDialogOpen} onOpenChange={setIsLikersDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="link" className="p-0 h-auto text-xs text-muted-foreground hover:text-primary">
+                {currentLikeCount} Likes
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Liked by</DialogTitle>
+                <DialogDescription>Users who liked this post. (Mock Data)</DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="max-h-60">
+                <div className="space-y-2 py-2">
+                  {mockLikersList.slice(0, currentLikeCount > mockLikersList.length ? mockLikersList.length : currentLikeCount).map((liker, index) => (
+                    <div key={index} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted">
+                      <Avatar className="h-7 w-7">
+                        <AvatarImage src={`https://placehold.co/40x40/A0A0A0/FFFFFF?text=${liker.substring(0,1)}`} alt={liker} data-ai-hint="user initial"/>
+                        <AvatarFallback>{liker.substring(0,1).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm">{liker}</span>
+                    </div>
+                  ))}
+                  {currentLikeCount === 0 && <p className="text-sm text-center text-muted-foreground">No likes yet.</p>}
+                </div>
+              </ScrollArea>
+              <DialogFooter>
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">
+                    Close
+                  </Button>
+                </DialogClose>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <span className="mx-1">&middot;</span>
-          <span>{displayedComments.length} Comments</span>
+          {displayedComments.length > 0 && (
+            <Button 
+              variant="link" 
+              className="p-0 h-auto text-xs text-muted-foreground hover:text-primary"
+              onClick={() => setShowAllComments(!showAllComments)}
+            >
+              {showAllComments ? "Hide comments" : 
+                displayedComments.length > 2 ? `View all ${displayedComments.length} comments` : `${displayedComments.length} Comment${displayedComments.length !== 1 ? 's' : ''}`
+              }
+            </Button>
+          )}
+          {displayedComments.length === 0 && (
+             <span>0 Comments</span>
+          )}
         </div>
         <div className="flex gap-1">
           <Button variant="ghost" size="sm" onClick={handleLikeToggle} 
@@ -167,10 +227,12 @@ export function UserPostCard({ post }: UserPostCardProps) {
           </div>
         </form>
       )}
-      {displayedComments.length > 0 && (
+      {commentsToShow.length > 0 && (
         <div className="px-4 pb-4 pt-2 border-t mt-2 space-y-3 max-h-60 overflow-y-auto">
-            <h4 className="text-xs font-semibold text-muted-foreground mb-1">Comments</h4>
-            {displayedComments.map(comment => (
+            {!showAllComments && displayedComments.length > 2 && (
+                 <h4 className="text-xs font-semibold text-muted-foreground mb-1">Comments</h4>
+            )}
+            {commentsToShow.map(comment => (
                 <div key={comment.id} className="flex items-start space-x-2 text-xs group">
                     <Avatar className="h-6 w-6">
                         <AvatarImage src={comment.avatarUrl} alt={comment.username} data-ai-hint={comment.dataAihint || "user avatar small"}/>
@@ -183,7 +245,6 @@ export function UserPostCard({ post }: UserPostCardProps) {
                         </div>
                         <p className="text-foreground/90 mt-0.5">{comment.text}</p>
                     </div>
-                    {/* Simulated delete for any comment - in real app, check ownership */}
                     <AlertDialog open={commentToDeleteId === comment.id} onOpenChange={(open) => !open && setCommentToDeleteId(null)}>
                         <AlertDialogTrigger asChild>
                             <Button 
@@ -218,3 +279,4 @@ export function UserPostCard({ post }: UserPostCardProps) {
     </Card>
   );
 }
+
