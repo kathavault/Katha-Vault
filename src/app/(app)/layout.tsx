@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { LogIn, Send } from 'lucide-react';
+import { Send } from 'lucide-react'; // Removed LogIn
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -116,25 +116,7 @@ function AppHeader() {
           <div className="h-10 w-10" /> // Placeholder to maintain layout
         )}
         <ThemeToggleButton />
-        {isClient ? (
-          <Link
-            href="/auth/login"
-            className={cn(buttonVariants({ variant: "default", size: "default" }))}
-          >
-            <LogIn className="mr-2 h-4 w-4" />
-            <span>Login</span>
-          </Link>
-        ) : (
-          // Basic placeholder for SSR and initial client render to avoid hydration mismatch on className
-          // Using basic classes that affect layout similarly to buttonVariants default.
-          <a
-            href="/auth/login"
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 bg-primary text-primary-foreground"
-          >
-            <LogIn className="mr-2 h-4 w-4" />
-            <span>Login</span>
-          </a>
-        )}
+        {/* Login button removed */}
       </div>
     </header>
   );
