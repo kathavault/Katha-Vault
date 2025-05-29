@@ -1,6 +1,6 @@
 
 "use client";
-import type { NavItem } from '@/types';
+import type { NavItem, UserProfile } from '@/types'; // Added UserProfile
 import { siteConfig } from '@/config/site';
 import { Logo } from '@/components/logo';
 import {
@@ -23,13 +23,30 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, LogIn, UserCircle2 } from 'lucide-react'; 
+import { Send, LogIn, UserCircle2, UserPlus } from 'lucide-react'; 
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
 function AppSidebar() {
   const pathname = usePathname();
   const { open } = useSidebar();
+  const [userProfile, setUserProfile] = useState<Partial<UserProfile> | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedProfile = localStorage.getItem('userProfileData');
+      if (storedProfile) {
+        try {
+          setUserProfile(JSON.parse(storedProfile));
+        } catch (e) {
+          console.error("Failed to parse userProfileData for sidebar", e);
+          setUserProfile(null);
+        }
+      } else {
+        setUserProfile(null);
+      }
+    }
+  }, [pathname]); // Re-check if pathname changes, e.g., after login/logout
 
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
@@ -61,13 +78,13 @@ function AppSidebar() {
       <SidebarFooter className="mt-auto">
          <div className="flex items-center gap-2 p-2 border-t border-sidebar-border">
             <Avatar className="h-8 w-8">
-              <AvatarImage src="https://placehold.co/40x40/E62E9A/FFFFFF?text=U" alt="User" data-ai-hint="user avatar"/>
-              <AvatarFallback>U</AvatarFallback>
+              <AvatarImage src={userProfile?.avatarUrl || "https://placehold.co/40x40/E62E9A/FFFFFF?text=U"} alt={userProfile?.username || "User"} data-ai-hint="user avatar"/>
+              <AvatarFallback>{userProfile?.name?.substring(0,1) || userProfile?.username?.substring(0,1) || 'U'}</AvatarFallback>
             </Avatar>
             {!open ? null : (
-              <div className="flex flex-col text-sm">
-                <span className="font-medium text-sidebar-foreground">User Name</span>
-                <span className="text-xs text-sidebar-foreground/70">user@example.com</span>
+              <div className="flex flex-col text-sm truncate">
+                <span className="font-medium text-sidebar-foreground truncate">{userProfile?.name || userProfile?.username || "User Name"}</span>
+                <span className="text-xs text-sidebar-foreground/70 truncate">{userProfile?.email || "user@example.com"}</span>
               </div>
             )}
           </div>
@@ -78,9 +95,10 @@ function AppSidebar() {
 
 interface AppHeaderProps {
   isAuthenticated: boolean;
+  currentUserProfile: Partial<UserProfile> | null;
 }
 
-function AppHeader({ isAuthenticated }: AppHeaderProps) {
+function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
   const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
 
@@ -109,19 +127,25 @@ function AppHeader({ isAuthenticated }: AppHeaderProps) {
             <span className="sr-only">Chat</span>
           </Link>
         ) : (
-          <div className="h-10 w-10" /> // Placeholder for SSR or non-home pages
+          <div className="h-10 w-10" /> 
         )}
         <ThemeToggleButton />
         {isClient ? (
-          isAuthenticated ? (
-            <Link href="/account">
-              <div className="relative cursor-pointer">
-                <Avatar className="h-9 w-9 border">
-                  <AvatarImage src="https://placehold.co/40x40/B4317B/FFFFFF?text=U" alt="User Account" data-ai-hint="user initial" />
-                  <AvatarFallback>U</AvatarFallback>
-                </Avatar>
-                <span className="absolute bottom-0 right-0 block h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-background" />
-              </div>
+          isAuthenticated && currentUserProfile ? (
+            <Link 
+              href="/account"
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "default" }),
+                "flex items-center gap-2 px-2 sm:px-3 py-1 h-auto rounded-full hover:bg-accent"
+              )}
+            >
+              <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border">
+                <AvatarImage src={currentUserProfile.avatarUrl || undefined} alt={currentUserProfile.username || "User"} data-ai-hint="user initial"/>
+                <AvatarFallback>{currentUserProfile.name?.substring(0,1) || currentUserProfile.username?.substring(0,1) || "U"}</AvatarFallback>
+              </Avatar>
+              <span className="hidden sm:inline text-sm font-medium truncate max-w-[100px]">
+                {currentUserProfile.name || currentUserProfile.username}
+              </span>
             </Link>
           ) : (
             <Link
@@ -150,19 +174,46 @@ function AppHeader({ isAuthenticated }: AppHeaderProps) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const pathname = usePathname(); // To re-check on route change
+  const [currentUserProfile, setCurrentUserProfile] = useState<Partial<UserProfile> | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     // Check localStorage for user data to determine auth state
-    const user = localStorage.getItem('currentUser');
-    setIsAuthenticated(!!user);
+    const userStored = localStorage.getItem('currentUser'); // This indicates basic login
+    setIsAuthenticated(!!userStored);
+
+    if (userStored) {
+      const profileStored = localStorage.getItem('userProfileData');
+      if (profileStored) {
+        try {
+          setCurrentUserProfile(JSON.parse(profileStored));
+        } catch (e) {
+          console.error("Failed to parse userProfileData for header", e);
+          setCurrentUserProfile(null); // Fallback if parsing fails
+        }
+      } else {
+         // If only 'currentUser' exists but no 'userProfileData', create a minimal profile
+         try {
+            const parsedUser = JSON.parse(userStored);
+            setCurrentUserProfile({ 
+                email: parsedUser.email, 
+                username: parsedUser.email?.split('@')[0] || 'User',
+                avatarUrl: `https://placehold.co/40x40/B4317B/FFFFFF?text=${(parsedUser.email?.substring(0,1) || 'U').toUpperCase()}`,
+            });
+         } catch(e) {
+            setCurrentUserProfile(null);
+         }
+      }
+    } else {
+      setCurrentUserProfile(null);
+    }
   }, [pathname]); // Re-run when pathname changes, ensuring updates after login/logout redirects
 
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset>
-        <AppHeader isAuthenticated={isAuthenticated} />
+        <AppHeader isAuthenticated={isAuthenticated} currentUserProfile={currentUserProfile} />
         <main className="flex-1 p-4 sm:p-6 pb-20 md:pb-6">
           {children}
         </main>
