@@ -18,12 +18,12 @@ import {
 } from '@/components/ui/sidebar';
 import { buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, UserCircle2, LogIn, UserPlus } from 'lucide-react';
+import { Send, UserCircle2, LogIn } from 'lucide-react'; // UserPlus removed, LogIn added
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -40,13 +40,20 @@ function AppSidebar() {
           setUserProfile(JSON.parse(storedProfile));
         } catch (e) {
           console.error("Failed to parse userProfileData for sidebar", e);
-          setUserProfile(null);
+          setUserProfile(null); // Fallback if parsing fails
         }
       } else {
-        setUserProfile(null);
+        setUserProfile(null); // No profile data found
       }
     }
   }, [pathname, open]); // Re-check if pathname or sidebar open state changes
+
+  const getInitials = (name?: string, username?: string) => {
+    if (name) return name.substring(0,1).toUpperCase();
+    if (username) return username.substring(0,1).toUpperCase();
+    return 'U';
+  };
+
 
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
@@ -78,8 +85,8 @@ function AppSidebar() {
       <SidebarFooter className="mt-auto">
          <div className="flex items-center gap-2 p-2 border-t border-sidebar-border">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={userProfile?.avatarUrl || "https://placehold.co/40x40/E62E9A/FFFFFF?text=U"} alt={userProfile?.username || "User"} data-ai-hint="user avatar"/>
-              <AvatarFallback>{userProfile?.name?.substring(0,1) || userProfile?.username?.substring(0,1) || 'U'}</AvatarFallback>
+              <AvatarImage src={userProfile?.avatarUrl || undefined} alt={userProfile?.username || "User"} data-ai-hint="user avatar"/>
+              <AvatarFallback>{getInitials(userProfile?.name, userProfile?.username)}</AvatarFallback>
             </Avatar>
             {!open ? null : (
               <div className="flex flex-col text-sm truncate">
@@ -126,6 +133,7 @@ function AppHeader({ isAuthenticated }: AppHeaderProps) {
             <span className="sr-only">Chat</span>
           </Link>
         ) : (
+          // Placeholder for chat button to maintain layout
           <div className="h-10 w-10" /> 
         )}
         <ThemeToggleButton />
@@ -150,7 +158,7 @@ function AppHeader({ isAuthenticated }: AppHeaderProps) {
         ) : (
           // SSR placeholder for the user icon/button
           <div className="h-10 w-10 inline-flex items-center justify-center" aria-label="User actions">
-            <UserCircle2 className="h-5 w-5 text-muted-foreground" />
+            <UserCircle2 className="h-5 w-5" /> {/* Removed text-muted-foreground */}
           </div>
         )}
       </div>
@@ -161,7 +169,7 @@ function AppHeader({ isAuthenticated }: AppHeaderProps) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  // currentUserProfile state is removed as AppHeader no longer needs detailed profile, just auth state
+  const [currentUserProfile, setCurrentUserProfile] = useState<Partial<UserProfile> | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
@@ -169,8 +177,31 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     const userStored = localStorage.getItem('currentUser');
     if (userStored) {
       setIsAuthenticated(true);
+      const profileStored = localStorage.getItem('userProfileData');
+      if (profileStored) {
+        try {
+          setCurrentUserProfile(JSON.parse(profileStored));
+        } catch (e) {
+          console.error("Failed to parse userProfileData from localStorage in AppLayout:", e);
+          // Fallback if userProfileData is corrupted or missing, but currentUser exists
+          try {
+            setCurrentUserProfile({ email: JSON.parse(userStored).email });
+          } catch (parseError) {
+            console.error("Failed to parse currentUser from localStorage in AppLayout:", parseError);
+            setCurrentUserProfile(null);
+          }
+        }
+      } else if (userStored) { // If only currentUser exists
+         try {
+            setCurrentUserProfile({ email: JSON.parse(userStored).email });
+          } catch (parseError) {
+            console.error("Failed to parse currentUser (fallback) from localStorage in AppLayout:", parseError);
+            setCurrentUserProfile(null);
+          }
+      }
     } else {
       setIsAuthenticated(false);
+      setCurrentUserProfile(null);
     }
   }, [pathname]); // Re-check on pathname change (e.g., after login/logout redirect)
 
