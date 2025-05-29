@@ -8,7 +8,7 @@ import { mockUsers, mockUserPosts } from '@/lib/mock-data';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, UserMinus, UserCircle2, ChevronLeft, MessageCircle, AlertTriangle, Loader2, Users } from "lucide-react";
+import { UserPlus, UserMinus, ChevronLeft, MessageCircle, AlertTriangle, Loader2, Users } from "lucide-react";
 import { UserPostCard } from '@/components/user-post-card';
 import Link from 'next/link';
 import { toast } from '@/hooks/use-toast';
@@ -76,11 +76,13 @@ export default function UserProfilePage() {
         if (storedUserId && foundUser.id === storedUserId) {
            // It's the current user's profile page (via /profile/[theirId])
            // Follow state isn't relevant for self.
-           setIsFollowing(false); 
+           setIsFollowing(false);
         } else {
             // Placeholder: check if current user (if exists) follows this profileUser (mocked)
             // For now, defaulting to false
-            setIsFollowing(false); 
+             const followKey = `following_${storedUserId}`;
+             const currentlyFollowing = JSON.parse(localStorage.getItem(followKey) || '[]') as string[];
+             setIsFollowing(currentlyFollowing.includes(foundUser.id));
         }
 
       }
@@ -89,8 +91,8 @@ export default function UserProfilePage() {
   }, [userId]);
 
   const handleFollowToggle = () => {
-    if (!profileUser || profileUser.id === currentLoggedInUserId) return; // Can't follow self
-    
+    if (!profileUser || profileUser.id === currentLoggedInUserId) return;
+
     setIsFollowing(prevIsFollowing => {
       const newFollowState = !prevIsFollowing;
       if (newFollowState) {
@@ -104,8 +106,35 @@ export default function UserProfilePage() {
           toast({ title: "Unfollowed", description: `You have unfollowed ${profileUser.username}. (Simulated)` });
         }, 0);
       }
+      // Simulate updating localStorage for following status
+      if (typeof window !== 'undefined' && currentLoggedInUserId) {
+        const followKey = `following_${currentLoggedInUserId}`;
+        let currentlyFollowing = JSON.parse(localStorage.getItem(followKey) || '[]') as string[];
+        if (newFollowState) {
+          if (!currentlyFollowing.includes(profileUser.id)) {
+            currentlyFollowing.push(profileUser.id);
+          }
+        } else {
+          currentlyFollowing = currentlyFollowing.filter(id => id !== profileUser.id);
+        }
+        localStorage.setItem(followKey, JSON.stringify(currentlyFollowing));
+      }
       return newFollowState;
     });
+  };
+
+  const handleMessageUser = () => {
+    if (!profileUser) return;
+    if (typeof window !== 'undefined') {
+      const userToChatWith = {
+        id: profileUser.id,
+        username: profileUser.username,
+        avatarUrl: profileUser.avatarUrl,
+        dataAihint: profileUser.avatarUrl?.includes('placehold.co') ? 'user initial' : 'user avatar',
+      };
+      localStorage.setItem('initiateChatWithUser', JSON.stringify(userToChatWith));
+      router.push('/chat');
+    }
   };
 
   if (isLoading) {
@@ -130,7 +159,7 @@ export default function UserProfilePage() {
       </div>
     );
   }
-  
+
   const isOwnProfile = currentLoggedInUserId === profileUser.id;
 
 
@@ -214,10 +243,8 @@ export default function UserProfilePage() {
                 {isFollowing ? <UserMinus className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
                 {isFollowing ? "Unfollow" : "Follow"}
               </Button>
-              <Button variant="outline" size="sm" asChild>
-                <Link href={`/chat`}>
+              <Button variant="outline" size="sm" onClick={handleMessageUser}>
                    <MessageCircle className="mr-2 h-4 w-4" /> Message
-                </Link>
               </Button>
             </div>
           )}
@@ -257,4 +284,3 @@ export default function UserProfilePage() {
   );
 }
 
-    

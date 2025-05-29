@@ -81,10 +81,10 @@ export type NavItem = {
 
 export type ChatMessage = {
   id: string;
-  senderId: string;
+  senderId: string; // Can be current user's ID, AI's ID, or another user's ID
   text: string;
   timestamp: string;
-  isCurrentUser?: boolean;
+  isCurrentUser?: boolean; // This might be redundant if comparing senderId with current user ID
 };
 
 export type ChatUser = {
@@ -95,10 +95,11 @@ export type ChatUser = {
 };
 
 export type ChatConversation = {
-  id: string;
+  id: string; // e.g., 'convoWithAi' or 'convoWith_userId123'
   participant: ChatUser;
   lastMessage: string;
   lastMessageTimestamp: string;
   unreadCount?: number;
   messages: ChatMessage[];
+  isAiChat?: boolean; // To distinguish AI chat from user chats
 };

@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useRef, ChangeEvent, FormEvent } from 'react';
-import type { ChatConversation, ChatMessage, ChatUser } from '@/types';
+import type { ChatConversation, ChatMessage, ChatUser, UserProfile } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +19,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger, 
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -42,7 +42,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from "@/lib/utils";
 
 const mockCurrentUser: ChatUser = {
-  id: 'currentUser',
+  id: 'currentUser', // This ID should ideally match the logged-in user's ID from Firebase/localStorage
   username: 'StorySeeker92',
   avatarUrl: 'https://placehold.co/40x40/E62E9A/FFFFFF?text=ME',
   dataAihint: 'user initial',
@@ -51,7 +51,7 @@ const mockCurrentUser: ChatUser = {
 const kathaVaultAiUser: ChatUser = {
   id: 'kathaVaultAi',
   username: 'Katha Vault AI',
-  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV', // Default AI avatar
+  avatarUrl: 'https://placehold.co/40x40/8A2BE2/FFFFFF?text=KV',
   dataAihint: 'brand logo K',
 };
 
@@ -69,12 +69,12 @@ const generateInitialConversationsData = (customAiName?: string | null, customAi
     messages: [
       { id: 'aiMsg1', senderId: kathaVaultAiUser.id, text: "Hello! How can I help you with Katha Vault stories today? You can ask me about novels on the site or for suggestions. I can chat in English or Hindi! Feel free to use emojis to make our chat more engaging. My goal is to be a friendly and helpful companion for users exploring Katha Vault.", timestamp: new Date().toISOString() },
     ],
+    isAiChat: true,
   },
 ];
 
-// Updated mock data for active users bar - only Katha Vault AI
 const mockActiveUsersList: ChatUser[] = [
-  kathaVaultAiUser, // AI is always "active"
+  kathaVaultAiUser,
 ];
 
 
@@ -96,41 +96,82 @@ export default function ChatPage() {
 
   const [conversationToClear, setConversationToClear] = useState<string | null>(null);
   const [conversationToDelete, setConversationToDelete] = useState<string | null>(null);
-  
+  const [messageToDeleteId, setMessageToDeleteId] = useState<string | null>(null);
+
   const [activeUsers, setActiveUsers] = useState<ChatUser[]>([]);
-
+  const [currentLoggedInUser, setCurrentLoggedInUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
-    const storedNickname = localStorage.getItem('kathaAiNickname');
-    const storedAvatarDataUri = localStorage.getItem('kathaAiAvatarDataUri');
-    if (storedNickname) setAiCustomNickname(storedNickname);
-    if (storedAvatarDataUri) setAiCustomAvatarDataUri(storedAvatarDataUri);
+    let loggedInUserProfile: UserProfile | null = null;
+    if (typeof window !== 'undefined') {
+      const storedProfile = localStorage.getItem('userProfileData');
+      if (storedProfile) {
+        try {
+          loggedInUserProfile = JSON.parse(storedProfile);
+          setCurrentLoggedInUser(loggedInUserProfile);
+          mockCurrentUser.id = loggedInUserProfile?.id || 'currentUser';
+          mockCurrentUser.username = loggedInUserProfile?.username || 'StorySeeker92';
+          mockCurrentUser.avatarUrl = loggedInUserProfile?.avatarUrl || 'https://placehold.co/40x40/E62E9A/FFFFFF?text=ME';
+        } catch (e) {
+          console.error("Failed to parse user profile for chat page", e);
+        }
+      }
 
-    const mockData = generateInitialConversationsData(storedNickname, storedAvatarDataUri);
-    setConversations(mockData);
-    if (mockData.length > 0) {
-      setSelectedConversationId(mockData[0].id);
+      const storedNickname = localStorage.getItem('kathaAiNickname');
+      const storedAvatarDataUri = localStorage.getItem('kathaAiAvatarDataUri');
+      if (storedNickname) setAiCustomNickname(storedNickname);
+      if (storedAvatarDataUri) setAiCustomAvatarDataUri(storedAvatarDataUri);
+
+      let initialConvos = generateInitialConversationsData(storedNickname, storedAvatarDataUri);
+
+      const chatToInitiateJson = localStorage.getItem('initiateChatWithUser');
+      if (chatToInitiateJson) {
+        try {
+          const userToChatWith: ChatUser = JSON.parse(chatToInitiateJson);
+          localStorage.removeItem('initiateChatWithUser'); // Clear it after use
+
+          if (!initialConvos.find(c => c.participant.id === userToChatWith.id)) {
+            const newConversation: ChatConversation = {
+              id: `convoWith_${userToChatWith.id}`,
+              participant: userToChatWith,
+              lastMessage: "Chat started.",
+              lastMessageTimestamp: new Date().toISOString(),
+              unreadCount: 0,
+              messages: [],
+              isAiChat: false,
+            };
+            initialConvos = [newConversation, ...initialConvos];
+            setSelectedConversationId(newConversation.id);
+          } else {
+            setSelectedConversationId(initialConvos.find(c => c.participant.id === userToChatWith.id)!.id);
+          }
+        } catch (e) {
+          console.error("Error initiating chat from localStorage", e);
+        }
+      }
+      
+      setConversations(initialConvos);
+      if (!selectedConversationId && initialConvos.length > 0) {
+        setSelectedConversationId(initialConvos[0].id);
+      }
+      
+      const updatedActiveUsers = mockActiveUsersList.map(user =>
+        user.id === kathaVaultAiUser.id
+        ? { ...user, username: storedNickname || kathaVaultAiUser.username, avatarUrl: storedAvatarDataUri || kathaVaultAiUser.avatarUrl }
+        : user
+      );
+      setActiveUsers(updatedActiveUsers);
     }
-
-    // Update mockActiveUsersList with customized AI details if any
-    const updatedActiveUsers = mockActiveUsersList.map(user => 
-      user.id === kathaVaultAiUser.id 
-      ? { ...user, username: storedNickname || kathaVaultAiUser.username, avatarUrl: storedAvatarDataUri || kathaVaultAiUser.avatarUrl } 
-      : user
-    );
-    setActiveUsers(updatedActiveUsers);
-
     setIsLoadingInitialData(false);
-  }, []);
+  }, []); // Removed selectedConversationId from dependencies to avoid re-triggering on select
 
   useEffect(() => {
-    // Update AI details in conversations list and active users bar if they change
     const updatedAiUserName = aiCustomNickname || kathaVaultAiUser.username;
     const updatedAiAvatarUrl = aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl;
 
-    setConversations(prevConvos => 
-      prevConvos.map(convo => 
-        convo.participant.id === kathaVaultAiUser.id 
+    setConversations(prevConvos =>
+      prevConvos.map(convo =>
+        convo.participant.id === kathaVaultAiUser.id
         ? { ...convo, participant: { ...convo.participant, username: updatedAiUserName, avatarUrl: updatedAiAvatarUrl } }
         : convo
       )
@@ -155,10 +196,14 @@ export default function ChatPage() {
 
   const handleSendMessage = async () => {
     if (!currentMessage.trim() || !selectedConversation) return;
+    if (!currentLoggedInUser) {
+        toast({title: "Not Logged In", description: "Please log in to send messages.", variant: "destructive"});
+        return;
+    }
 
     const userMessage: ChatMessage = {
       id: `msgUser${Date.now()}`,
-      senderId: mockCurrentUser.id,
+      senderId: currentLoggedInUser.id,
       text: currentMessage.trim(),
       timestamp: new Date().toISOString(),
     };
@@ -177,8 +222,8 @@ export default function ChatPage() {
     );
     const userInput = currentMessage.trim();
     setCurrentMessage('');
-    
-    if (selectedConversation.participant.id === kathaVaultAiUser.id) {
+
+    if (selectedConversation.isAiChat) {
       setIsAiResponding(true);
       setAiError(null);
       try {
@@ -220,9 +265,14 @@ export default function ChatPage() {
       } finally {
         setIsAiResponding(false);
       }
+    } else {
+      // Placeholder for sending message to another user (backend needed)
+      setTimeout(() => {
+        toast({ title: "Message Sent (Simulated)", description: `Your message to ${selectedConversation.participant.username} has been sent locally.`});
+      }, 300);
     }
   };
-  
+
   const formatDisplayTimestamp = (isoString: string) => {
     try {
       return formatDistanceToNowStrict(new Date(isoString), { addSuffix: true });
@@ -234,7 +284,7 @@ export default function ChatPage() {
   const handleOpenEditAiProfileDialog = () => {
     setTempNickname(aiCustomNickname || kathaVaultAiUser.username);
     setTempAvatarDataUri(aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl);
-    setAvatarFile(null); // Reset file input state
+    setAvatarFile(null);
     setIsEditingAiProfile(true);
   };
 
@@ -249,7 +299,7 @@ export default function ChatPage() {
       reader.readAsDataURL(file);
     } else {
       setAvatarFile(null);
-      setTempAvatarDataUri(aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl); 
+      setTempAvatarDataUri(aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl);
     }
   };
 
@@ -257,12 +307,12 @@ export default function ChatPage() {
     e.preventDefault();
     setAiCustomNickname(tempNickname);
     localStorage.setItem('kathaAiNickname', tempNickname);
-    
+
     if (tempAvatarDataUri && (avatarFile || tempAvatarDataUri !== kathaVaultAiUser.avatarUrl)) {
       setAiCustomAvatarDataUri(tempAvatarDataUri);
       localStorage.setItem('kathaAiAvatarDataUri', tempAvatarDataUri);
     }
-    
+
     setIsEditingAiProfile(false);
     setAvatarFile(null);
     toast({ title: "AI Profile Updated", description: "Katha Vault AI's appearance has been updated for you." });
@@ -274,12 +324,12 @@ export default function ChatPage() {
 
   const handleClearChat = () => {
     if (!conversationToClear) return;
-    setConversations(prev => prev.map(c => 
-      c.id === conversationToClear 
-      ? { ...c, messages: [], lastMessage: "Chat cleared", lastMessageTimestamp: new Date().toISOString() } 
+    setConversations(prev => prev.map(c =>
+      c.id === conversationToClear
+      ? { ...c, messages: [], lastMessage: "Chat cleared", lastMessageTimestamp: new Date().toISOString() }
       : c
     ));
-    toast({ title: "Chat Cleared", description: "The conversation messages have been removed." });
+    toast({ title: "Chat Cleared", description: "The conversation messages have been removed locally." });
     setConversationToClear(null);
   };
 
@@ -291,10 +341,27 @@ export default function ChatPage() {
     if (!conversationToDelete) return;
     setConversations(prev => prev.filter(c => c.id !== conversationToDelete));
     if (selectedConversationId === conversationToDelete) {
-      setSelectedConversationId(null);
+      setSelectedConversationId(conversations.length > 1 ? conversations.find(c => c.id !== conversationToDelete)?.id || null : null);
     }
-    toast({ title: "Chat Deleted", description: "The conversation has been removed." });
+    toast({ title: "Chat Deleted", description: "The conversation has been removed locally." });
     setConversationToDelete(null);
+  };
+
+  const handleConfirmDeleteMessage = (msgId: string) => {
+    setMessageToDeleteId(msgId);
+  };
+
+  const handleDeleteMessage = () => {
+    if (!messageToDeleteId || !selectedConversationId) return;
+    setConversations(prevConvos =>
+      prevConvos.map(convo =>
+        convo.id === selectedConversationId
+          ? { ...convo, messages: convo.messages.filter(msg => msg.id !== messageToDeleteId) }
+          : convo
+      )
+    );
+    toast({ title: "Message Deleted", description: "The message has been removed from your view." });
+    setMessageToDeleteId(null);
   };
 
 
@@ -324,7 +391,6 @@ export default function ChatPage() {
           </div>
         </CardHeader>
 
-        {/* Active Users Horizontal Bar */}
         <div className="p-3 border-b">
             <ScrollArea className="w-full whitespace-nowrap">
                 <div className="flex space-x-4 pb-2">
@@ -341,9 +407,10 @@ export default function ChatPage() {
             </ScrollArea>
         </div>
 
-
         <ScrollArea className="flex-grow">
-          {conversations.map(convo => (
+          {conversations.map(convo => {
+            const participant = convo.isAiChat ? { ...kathaVaultAiUser, username: displayedAiName, avatarUrl: displayedAiAvatar, dataAihint: displayedAiDataAihint } : convo.participant;
+            return (
             <div key={convo.id} className="relative group">
               <Button
                 variant={selectedConversationId === convo.id ? "secondary" : "ghost"}
@@ -352,23 +419,23 @@ export default function ChatPage() {
               >
                 <div className="relative">
                   <Avatar className="h-10 w-10 mr-3">
-                    <AvatarImage 
-                      src={convo.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : convo.participant.avatarUrl} 
-                      alt={convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username} 
-                      data-ai-hint={convo.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : convo.participant.dataAihint || "user avatar"}
+                    <AvatarImage
+                      src={participant.avatarUrl}
+                      alt={participant.username}
+                      data-ai-hint={participant.dataAihint || "user avatar"}
                     />
                     <AvatarFallback>
-                      {(convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username).substring(0, 2).toUpperCase()}
+                      {participant.username.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  {convo.participant.id === kathaVaultAiUser.id && ( // Online indicator for AI
+                  {(convo.isAiChat || mockActiveUsersList.find(u => u.id === participant.id)) && (
                      <span className="absolute bottom-0 right-2 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
                   )}
                 </div>
                 <div className="flex-grow text-left overflow-hidden">
                   <div className="flex justify-between items-center">
                     <p className="font-semibold truncate">
-                      {convo.participant.id === kathaVaultAiUser.id ? displayedAiName : convo.participant.username}
+                      {participant.username}
                     </p>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatDisplayTimestamp(convo.lastMessageTimestamp)}
@@ -391,19 +458,18 @@ export default function ChatPage() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => handleConfirmClearChat(convo.id)}>
-                    <Eraser className="mr-2 h-4 w-4" /> Clear Chat
+                    <Eraser className="mr-2 h-4 w-4" /> Clear Chat (for me)
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleConfirmDeleteChat(convo.id)} className="text-destructive focus:text-destructive">
-                    <Trash2 className="mr-2 h-4 w-4" /> Delete Chat
+                    <Trash2 className="mr-2 h-4 w-4" /> Delete Chat (for me)
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
-          ))}
+          )})}
         </ScrollArea>
       </aside>
 
-      {/* Message View */}
       <main className="w-full md:w-2/3 flex flex-col bg-background flex-grow">
         {selectedConversation ? (
           <>
@@ -411,132 +477,107 @@ export default function ChatPage() {
               <div className="flex items-center space-x-3">
                 <div className="relative">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage 
-                      src={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiAvatar : selectedConversation.participant.avatarUrl} 
-                      alt={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username}
-                      data-ai-hint={selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiDataAihint : selectedConversation.participant.dataAihint || "user avatar chat"}
+                    <AvatarImage
+                      src={selectedConversation.isAiChat ? displayedAiAvatar : selectedConversation.participant.avatarUrl}
+                      alt={selectedConversation.isAiChat ? displayedAiName : selectedConversation.participant.username}
+                      data-ai-hint={selectedConversation.isAiChat ? displayedAiDataAihint : selectedConversation.participant.dataAihint || "user avatar chat"}
                     />
                     <AvatarFallback>
-                      {(selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username).substring(0, 2).toUpperCase()}
+                      {(selectedConversation.isAiChat ? displayedAiName : selectedConversation.participant.username).substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  {selectedConversation.participant.id === kathaVaultAiUser.id && (
+                  {(selectedConversation.isAiChat || mockActiveUsersList.find(u => u.id === selectedConversation.participant.id)) && (
                      <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-card" />
                   )}
                 </div>
                 <div>
                   <p className="font-semibold text-lg">
-                    {selectedConversation.participant.id === kathaVaultAiUser.id ? displayedAiName : selectedConversation.participant.username}
+                    {selectedConversation.isAiChat ? displayedAiName : selectedConversation.participant.username}
                   </p>
-                  {selectedConversation.participant.id === kathaVaultAiUser.id && (
+                  {selectedConversation.isAiChat && (
                     <p className="text-xs text-muted-foreground">AI Assistant &bull; Online</p>
+                  )}
+                   {!selectedConversation.isAiChat && (
+                    <p className="text-xs text-muted-foreground">Online (Simulated)</p>
                   )}
                 </div>
               </div>
-              {selectedConversation.participant.id === kathaVaultAiUser.id && (
-                <Dialog open={isEditingAiProfile} onOpenChange={setIsEditingAiProfile}>
-                  <DialogTrigger asChild>
-                    <Button variant="ghost" size="icon" onClick={handleOpenEditAiProfileDialog}>
-                      <Pencil className="h-4 w-4" />
-                      <span className="sr-only">Edit AI Profile</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-5 w-5" />
+                        <span className="sr-only">Chat Options</span>
                     </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <form onSubmit={handleSaveAiProfile}>
-                      <DialogHeader>
-                        <DialogTitle>Customize Katha Vault AI</DialogTitle>
-                        <DialogDescription>
-                          Personalize how the AI appears to you. These changes are local to your browser.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="ai-nickname" className="text-right">
-                            Nickname
-                          </Label>
-                          <Input
-                            id="ai-nickname"
-                            value={tempNickname}
-                            onChange={(e) => setTempNickname(e.target.value)}
-                            className="col-span-3"
-                            placeholder={kathaVaultAiUser.username}
-                          />
-                        </div>
-                        <div className="grid grid-cols-4 items-center gap-4">
-                          <Label htmlFor="ai-avatar-file" className="text-right">
-                            Avatar
-                          </Label>
-                          <Input
-                            id="ai-avatar-file"
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarFileChange}
-                            className="col-span-3"
-                          />
-                        </div>
-                        {tempAvatarDataUri && (
-                            <div className="grid grid-cols-4 items-center gap-4">
-                                <div className="col-start-2 col-span-3">
-                                     <Label className="text-xs text-muted-foreground">Preview:</Label>
-                                    <Avatar className="mt-1 h-20 w-20">
-                                        <AvatarImage src={tempAvatarDataUri} alt="Avatar Preview" data-ai-hint="avatar preview" />
-                                        <AvatarFallback>??</AvatarFallback>
-                                    </Avatar>
-                                </div>
-                            </div>
-                        )}
-                      </div>
-                      <DialogFooter>
-                        <Button type="submit"><Save className="mr-2 h-4 w-4"/>Save Changes</Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
-              )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    {selectedConversation.isAiChat && (
+                        <DropdownMenuItem onClick={handleOpenEditAiProfileDialog}>
+                            <Pencil className="mr-2 h-4 w-4" /> Customize AI Appearance
+                        </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={() => handleConfirmClearChat(selectedConversation.id)}>
+                        <Eraser className="mr-2 h-4 w-4" /> Clear Chat (for me)
+                    </DropdownMenuItem>
+                     {!selectedConversation.isAiChat && (
+                        <DropdownMenuItem disabled>
+                           {/* Placeholder for future options like "Block User" or "View Profile" */}
+                           <span className="text-muted-foreground text-xs">More options soon...</span>
+                        </DropdownMenuItem>
+                    )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
             </CardHeader>
-            
-            <ScrollArea className="flex-grow p-4 space-y-4">
+
+            <ScrollArea className="flex-grow p-4 space-y-2">
               {selectedConversation.messages.map(msg => {
-                const isCurrentUserMsg = msg.senderId === mockCurrentUser.id;
+                const isCurrentUserMsg = msg.senderId === currentLoggedInUser?.id;
                 const isAiMsg = msg.senderId === kathaVaultAiUser.id;
-                
+
                 let participantToDisplay: ChatUser;
-                if (isCurrentUserMsg) {
-                    participantToDisplay = mockCurrentUser;
+                if (isCurrentUserMsg && currentLoggedInUser) {
+                    participantToDisplay = { id: currentLoggedInUser.id, username: currentLoggedInUser.username, avatarUrl: currentLoggedInUser.avatarUrl || mockCurrentUser.avatarUrl, dataAihint: currentLoggedInUser.avatarUrl?.includes("placehold.co") ? "user initial" : "user avatar"};
                 } else if (isAiMsg) {
-                    participantToDisplay = {
-                        ...kathaVaultAiUser,
-                        username: displayedAiName,
-                        avatarUrl: displayedAiAvatar,
-                        dataAihint: displayedAiDataAihint
-                    };
+                    participantToDisplay = { ...kathaVaultAiUser, username: displayedAiName, avatarUrl: displayedAiAvatar, dataAihint: displayedAiDataAihint };
                 } else {
-                    // Fallback for other participants if user-to-user chat is added later
-                    participantToDisplay = selectedConversation.participant; 
+                    participantToDisplay = selectedConversation.participant;
                 }
 
                 return (
-                  <div key={msg.id} className={`flex items-end gap-2 ${isCurrentUserMsg ? 'justify-end' : 'justify-start'}`}>
+                  <div key={msg.id} className={`flex items-end gap-2 group ${isCurrentUserMsg ? 'justify-end' : 'justify-start'}`}>
                     {!isCurrentUserMsg && (
                       <div className="relative self-start">
                         <Avatar className="h-8 w-8">
                            <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "user avatar small"}/>
                            <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        {isAiMsg && ( // Online indicator for AI in messages
+                        {(isAiMsg || mockActiveUsersList.find(u=> u.id === participantToDisplay.id)) && (
                            <span className="absolute bottom-0 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-background" />
                         )}
                       </div>
                     )}
                     <div className={cn(
-                        "max-w-[70%] p-3 rounded-xl",
+                        "max-w-[70%] p-3 rounded-xl relative",
                         isCurrentUserMsg ? 'bg-primary text-primary-foreground rounded-br-none' : 'bg-muted text-muted-foreground rounded-bl-none',
-                        isAiMsg && 'no-select' 
+                        isAiMsg && 'no-select'
                       )}>
                       <p className="text-sm whitespace-pre-wrap">{msg.text}</p>
                       <p className={`text-xs mt-1 ${isCurrentUserMsg ? 'text-primary-foreground/70 text-right' : 'text-muted-foreground/70 text-left'}`}>
                         {format(new Date(msg.timestamp), 'p')}
                       </p>
+                       <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className={`absolute ${isCurrentUserMsg ? 'left-[-28px]' : 'right-[-28px]'} top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 h-6 w-6 p-1`}>
+                            <MoreVertical className="h-3.5 w-3.5" />
+                            <span className="sr-only">Message options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align={isCurrentUserMsg ? "start" : "end"}>
+                          <DropdownMenuItem onClick={() => handleConfirmDeleteMessage(msg.id)} className="text-destructive focus:text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete for me
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                      {isCurrentUserMsg && (
                        <div className="relative self-start">
@@ -593,14 +634,66 @@ export default function ChatPage() {
                   onChange={(e: ChangeEvent<HTMLInputElement>) => setCurrentMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && !isAiResponding && handleSendMessage()}
                   className="flex-grow"
-                  disabled={isAiResponding}
+                  disabled={isAiResponding || !currentLoggedInUser}
                 />
-                <Button size="icon" onClick={handleSendMessage} disabled={!currentMessage.trim() || isAiResponding}>
+                <Button size="icon" onClick={handleSendMessage} disabled={!currentMessage.trim() || isAiResponding || !currentLoggedInUser}>
                   <SendHorizontal className="h-5 w-5" />
                   <span className="sr-only">Send message</span>
                 </Button>
               </div>
             </div>
+            <Dialog open={isEditingAiProfile} onOpenChange={setIsEditingAiProfile}>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <form onSubmit={handleSaveAiProfile}>
+                      <DialogHeader>
+                        <DialogTitle>Customize Katha Vault AI</DialogTitle>
+                        <DialogDescription>
+                          Personalize how the AI appears to you. These changes are local to your browser.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="grid gap-4 py-4">
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="ai-nickname" className="text-right">
+                            Nickname
+                          </Label>
+                          <Input
+                            id="ai-nickname"
+                            value={tempNickname}
+                            onChange={(e) => setTempNickname(e.target.value)}
+                            className="col-span-3"
+                            placeholder={kathaVaultAiUser.username}
+                          />
+                        </div>
+                        <div className="grid grid-cols-4 items-center gap-4">
+                          <Label htmlFor="ai-avatar-file" className="text-right">
+                            Avatar
+                          </Label>
+                          <Input
+                            id="ai-avatar-file"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleAvatarFileChange}
+                            className="col-span-3"
+                          />
+                        </div>
+                        {tempAvatarDataUri && (
+                            <div className="grid grid-cols-4 items-center gap-4">
+                                <div className="col-start-2 col-span-3">
+                                     <Label className="text-xs text-muted-foreground">Preview:</Label>
+                                    <Avatar className="mt-1 h-20 w-20">
+                                        <AvatarImage src={tempAvatarDataUri} alt="Avatar Preview" data-ai-hint="avatar preview" />
+                                        <AvatarFallback>??</AvatarFallback>
+                                    </Avatar>
+                                </div>
+                            </div>
+                        )}
+                      </div>
+                      <DialogFooter>
+                        <Button type="submit"><Save className="mr-2 h-4 w-4"/>Save Changes</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+            </Dialog>
           </>
         ) : (
           <div className="flex-grow flex items-center justify-center text-muted-foreground">
@@ -608,19 +701,18 @@ export default function ChatPage() {
               <MessageSquare className="h-16 w-16 mx-auto mb-4" />
               <p className="text-lg">No chat selected</p>
               {conversations.length > 0 && <p className="text-sm">Select a conversation to start messaging.</p>}
-              {conversations.length === 0 && <p className="text-sm">You currently have no active conversations.</p>}
+              {conversations.length === 0 && <p className="text-sm">You currently have no active conversations. Click on a user's profile to start a chat.</p>}
             </div>
           </div>
         )}
       </main>
 
-      {/* AlertDialog for Clear Chat */}
       <AlertDialog open={!!conversationToClear} onOpenChange={(open) => !open && setConversationToClear(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to clear this chat?</AlertDialogTitle>
             <AlertDialogDescription>
-              All messages in this conversation will be permanently removed. This action cannot be undone.
+              All messages in this conversation will be removed from your view. This action cannot be undone for you.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -630,13 +722,12 @@ export default function ChatPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* AlertDialog for Delete Chat */}
       <AlertDialog open={!!conversationToDelete} onOpenChange={(open) => !open && setConversationToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to delete this chat?</AlertDialogTitle>
             <AlertDialogDescription>
-              This conversation will be permanently removed from your chat list. This action cannot be undone.
+              This conversation will be removed from your chat list (for you only). This action cannot be undone for you.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -645,8 +736,21 @@ export default function ChatPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+       <AlertDialog open={!!messageToDeleteId} onOpenChange={(open) => !open && setMessageToDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the message from your view. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setMessageToDeleteId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMessage} className="bg-destructive hover:bg-destructive/90">Delete for me</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-
-    
