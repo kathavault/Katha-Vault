@@ -33,7 +33,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger, // Added AlertDialogTrigger
+  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useForm, type SubmitHandler } from "react-hook-form";
@@ -123,11 +123,8 @@ export default function AccountSettingsPage() {
     }
 
     try {
-      // Re-authenticate user before sensitive operations
       const credential = EmailAuthProvider.credential(currentUser.email, data.currentPasswordForEmail);
       await reauthenticateWithCredential(currentUser, credential);
-
-      // Proceed with email update
       await verifyBeforeUpdateEmail(currentUser, data.newEmail);
       toast({ 
         title: "Verification Email Sent", 
@@ -136,14 +133,13 @@ export default function AccountSettingsPage() {
       });
       emailForm.reset();
       setIsChangeEmailDialogOpen(false);
-      // Update local storage if you want to reflect the attempt, though profile page will use Firebase's email
       const userProfileData = JSON.parse(localStorage.getItem('userProfileData') || '{}');
       localStorage.setItem('userProfileData', JSON.stringify({...userProfileData, emailPendingVerification: data.newEmail}));
 
     } catch (error: any) {
       console.error("Error changing email:", error);
       let errorMessage = "Failed to change email. Please ensure your current password is correct.";
-      if (error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = "Incorrect current password. Please try again.";
       } else if (error.code === 'auth/email-already-in-use') {
         errorMessage = "This email address is already in use by another account.";
@@ -169,7 +165,7 @@ export default function AccountSettingsPage() {
     } catch (error: any) {
       console.error("Error changing password:", error);
       let errorMessage = "Failed to change password. Ensure your current password is correct.";
-      if (error.code === 'auth/wrong-password') {
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
         errorMessage = "Incorrect current password. Please try again.";
       } else if (error.code === 'auth/weak-password') {
         errorMessage = "The new password is too weak. Please choose a stronger one.";
@@ -190,16 +186,15 @@ export default function AccountSettingsPage() {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('currentUser'); 
         localStorage.removeItem('userProfileData');
-        // Remove other settings from localStorage on logout
         localStorage.removeItem('settings_emailNotifications');
         localStorage.removeItem('settings_pushNotifications');
         localStorage.removeItem('settings_isProfilePrivate');
         localStorage.removeItem('settings_isEmailHidden');
+        localStorage.removeItem('userJoinedDate'); // Added this
       }
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
       setIsLogoutConfirmOpen(false);
       router.push('/'); 
-      setTimeout(() => window.location.reload(), 100); 
     } catch (error) {
       console.error("Logout error:", error);
       toast({ title: "Logout Failed", description: "Could not log out. Please try again.", variant: "destructive" });
@@ -442,3 +437,5 @@ export default function AccountSettingsPage() {
     </div>
   );
 }
+
+    
