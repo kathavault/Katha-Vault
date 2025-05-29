@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, LogIn, UserCircle2, UserPlus } from 'lucide-react'; 
+import { Send, UserCircle2 } from 'lucide-react'; 
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -46,7 +46,7 @@ function AppSidebar() {
         setUserProfile(null);
       }
     }
-  }, [pathname]); // Re-check if pathname changes, e.g., after login/logout
+  }, [pathname, open]); // Re-check if pathname or sidebar open state changes
 
   return (
     <Sidebar collapsible="icon" variant="sidebar" side="left">
@@ -94,11 +94,10 @@ function AppSidebar() {
 }
 
 interface AppHeaderProps {
-  isAuthenticated: boolean;
-  currentUserProfile: Partial<UserProfile> | null;
+  // isAuthenticated and currentUserProfile are no longer needed here if the sign-in button/avatar is removed from the header
 }
 
-function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
+function AppHeader({}: AppHeaderProps) {
   const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
 
@@ -130,42 +129,7 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
           <div className="h-10 w-10" /> 
         )}
         <ThemeToggleButton />
-        {isClient ? (
-          isAuthenticated && currentUserProfile ? (
-            <Link 
-              href="/account"
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "default" }),
-                "flex items-center gap-2 px-2 sm:px-3 py-1 h-auto rounded-full hover:bg-accent"
-              )}
-            >
-              <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border">
-                <AvatarImage src={currentUserProfile.avatarUrl || undefined} alt={currentUserProfile.username || "User"} data-ai-hint="user initial"/>
-                <AvatarFallback>{currentUserProfile.name?.substring(0,1) || currentUserProfile.username?.substring(0,1) || "U"}</AvatarFallback>
-              </Avatar>
-              <span className="hidden sm:inline text-sm font-medium truncate max-w-[100px]">
-                {currentUserProfile.name || currentUserProfile.username}
-              </span>
-            </Link>
-          ) : (
-            <Link
-              href="/auth/login"
-              className={cn(buttonVariants({ variant: "default", size: "default" }))}
-            >
-              <LogIn className="mr-2 h-4 w-4" />
-              <span>Sign In</span>
-            </Link>
-          )
-        ) : (
-          // Basic placeholder for SSR and initial client render
-          <a
-            href="/auth/login"
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-4 py-2 bg-primary text-primary-foreground"
-          >
-            <LogIn className="mr-2 h-4 w-4" />
-            <span>Sign In</span>
-          </a>
-        )}
+        {/* Sign In / User Avatar button removed from here */}
       </div>
     </header>
   );
@@ -178,18 +142,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Check localStorage for user data to determine auth state
-    const userStored = localStorage.getItem('currentUser'); // This indicates basic login
-    setIsAuthenticated(!!userStored);
-
+    const userStored = localStorage.getItem('currentUser'); 
+    const profileStored = localStorage.getItem('userProfileData');
+    
     if (userStored) {
-      const profileStored = localStorage.getItem('userProfileData');
+      setIsAuthenticated(true);
       if (profileStored) {
         try {
           setCurrentUserProfile(JSON.parse(profileStored));
         } catch (e) {
-          console.error("Failed to parse userProfileData for header", e);
-          setCurrentUserProfile(null); // Fallback if parsing fails
+          console.error("Failed to parse userProfileData for layout", e);
+          // Fallback to minimal profile from currentUser if profile data is corrupt
+          try {
+             const parsedUser = JSON.parse(userStored);
+             setCurrentUserProfile({ 
+                 email: parsedUser.email, 
+                 username: parsedUser.email?.split('@')[0] || 'User',
+                 name: parsedUser.email?.split('@')[0] || 'User',
+                 avatarUrl: `https://placehold.co/40x40/B4317B/FFFFFF?text=${(parsedUser.email?.substring(0,1) || 'U').toUpperCase()}`,
+             });
+          } catch (parseError) {
+             setCurrentUserProfile(null);
+          }
         }
       } else {
          // If only 'currentUser' exists but no 'userProfileData', create a minimal profile
@@ -198,6 +172,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             setCurrentUserProfile({ 
                 email: parsedUser.email, 
                 username: parsedUser.email?.split('@')[0] || 'User',
+                name: parsedUser.email?.split('@')[0] || 'User',
                 avatarUrl: `https://placehold.co/40x40/B4317B/FFFFFF?text=${(parsedUser.email?.substring(0,1) || 'U').toUpperCase()}`,
             });
          } catch(e) {
@@ -205,15 +180,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
          }
       }
     } else {
+      setIsAuthenticated(false);
       setCurrentUserProfile(null);
     }
-  }, [pathname]); // Re-run when pathname changes, ensuring updates after login/logout redirects
+  }, [pathname]);
 
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset>
-        <AppHeader isAuthenticated={isAuthenticated} currentUserProfile={currentUserProfile} />
+        <AppHeader />
         <main className="flex-1 p-4 sm:p-6 pb-20 md:pb-6">
           {children}
         </main>

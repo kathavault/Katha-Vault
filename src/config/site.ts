@@ -1,6 +1,6 @@
 
 import type { NavItem } from '@/types';
-import { Home, Library, Search, UserCircle2, Sparkles, ShieldCheck, LogIn, UserPlus } from 'lucide-react'; // Added UserPlus
+import { Home, Library, Search, UserCircle2, Sparkles, ShieldCheck, LogIn } from 'lucide-react'; // Removed UserPlus
 
 export const siteConfig = {
   name: 'Katha Vault',
@@ -42,10 +42,10 @@ export const siteConfig = {
       href: '/admin',
       icon: ShieldCheck,
     },
-    {
-      title: 'Sign Up',
-      href: '/auth/signup',
-      icon: UserPlus, // Changed to UserPlus for Sign Up
-    }
+    // { // Sign Up option removed from sidebar
+    //   title: 'Sign Up',
+    //   href: '/auth/signup',
+    //   icon: UserPlus, 
+    // }
   ] satisfies NavItem[],
 };
