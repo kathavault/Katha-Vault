@@ -13,7 +13,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { UserPostCard } from '@/components/user-post-card';
-import { mockUserPosts as allMockPosts } from '@/lib/mock-data';
+import { mockUserPosts as allMockPosts, mockUsers } from '@/lib/mock-data';
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,6 @@ const defaultUserProfile: UserProfile = {
   following: 180,
 };
 
-// Mock data for followers/following dialogs
 const mockFollowersList = ["ReaderRiley", "BookwormBelle", "SciFiFan", "FantasyGuru", "NovelNinja", "WordSmith", "PageTurnerPro", "AlexAuthor"];
 const mockFollowingList = ["EleanorVanceAuthor", "MarcusStoneWrites", "ReaderRiley", "AdminUser"];
 
@@ -59,45 +58,75 @@ export default function AccountPage() {
   const [isFollowersDialogOpen, setIsFollowersDialogOpen] = useState(false);
   const [isFollowingDialogOpen, setIsFollowingDialogOpen] = useState(false);
 
-
+  // This effect now listens for focus to re-check localStorage for profile updates
   useEffect(() => {
-    let profileToUse = { ...defaultUserProfile }; // Start with defaults
+    const loadProfileData = () => {
+      let profileToUse: UserProfile = { ...defaultUserProfile };
+      let emailHiddenSetting = false;
 
-    if (typeof window !== 'undefined') {
-      const storedProfile = localStorage.getItem('userProfileData');
-      const storedIsEmailHidden = localStorage.getItem('settings_isEmailHidden');
+      if (typeof window !== 'undefined') {
+        const storedProfile = localStorage.getItem('userProfileData');
+        const storedIsEmailHidden = localStorage.getItem('settings_isEmailHidden');
 
-      if (storedProfile) {
-        try {
-          const parsedProfile = JSON.parse(storedProfile);
-          profileToUse = {
-            ...profileToUse, // Keep defaults for fields not in storedProfile
-            ...parsedProfile, // Override with stored values
-          };
-        } catch (e) {
-          console.error("Failed to parse stored profile data for account page", e);
+        if (storedProfile) {
+          try {
+            const parsedProfile = JSON.parse(storedProfile) as Partial<UserProfile>;
+             profileToUse = {
+              ...defaultUserProfile, // Start with defaults
+              ...parsedProfile,     // Override with stored values
+              id: parsedProfile.id || defaultUserProfile.id, // Ensure ID is consistent
+              email: parsedProfile.email || defaultUserProfile.email, // Prioritize stored email
+              // Ensure mock data arrays are correctly typed or defaulted
+              readingHistory: parsedProfile.readingHistory || defaultUserProfile.readingHistory,
+              favorites: parsedProfile.favorites || defaultUserProfile.favorites,
+              submittedStories: parsedProfile.submittedStories || defaultUserProfile.submittedStories,
+              userPosts: parsedProfile.userPosts || defaultUserProfile.userPosts,
+            };
+          } catch (e) {
+            console.error("Failed to parse stored profile data for account page", e);
+          }
+        }
+        if (storedIsEmailHidden !== null) {
+          emailHiddenSetting = JSON.parse(storedIsEmailHidden);
         }
       }
-      if (storedIsEmailHidden !== null) {
-        setIsEmailHidden(JSON.parse(storedIsEmailHidden));
-      }
-    }
-    
-    setCurrentUser(prevUser => ({
-      ...prevUser, // Keep existing parts of the state not covered by localStorage
-      ...profileToUse, // Apply loaded or default profile data
-      userPosts: allMockPosts.filter(p => p.userId === profileToUse.id) // Filter posts based on resolved user ID
-    }));
-    
-    // Simulate joined date (not stored)
-    setJoinedDate(new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString());
+      
+      // Find posts for the current user from allMockPosts
+      const userSpecificPosts = allMockPosts.filter(p => p.userId === profileToUse.id);
+      
+      setCurrentUser(prevUser => ({
+        ...prevUser, // Keep parts of state not directly from userProfileData (like followers/following if managed differently)
+        ...profileToUse, // Apply loaded or default profile data
+        userPosts: userSpecificPosts, // Update posts
+      }));
+      setIsEmailHidden(emailHiddenSetting);
+    };
 
+    loadProfileData(); // Load on initial mount
+
+    // Simulate joined date (not stored)
+    if (typeof window !== 'undefined' && !localStorage.getItem('userJoinedDate')) {
+        const newJoinedDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString();
+        localStorage.setItem('userJoinedDate', newJoinedDate);
+        setJoinedDate(newJoinedDate);
+    } else if (typeof window !== 'undefined') {
+        setJoinedDate(localStorage.getItem('userJoinedDate') || '');
+    }
+
+
+    // Re-load data when the window gains focus, to catch updates from other tabs/windows
+    window.addEventListener('focus', loadProfileData);
+    return () => {
+      window.removeEventListener('focus', loadProfileData);
+    };
   }, []); 
 
   const handleCreatePost = (e: FormEvent) => {
     e.preventDefault();
     if (!newPostContent.trim()) {
-      toast({ title: "Empty Post", description: "Please write something to post.", variant: "destructive" });
+      setTimeout(() => {
+        toast({ title: "Empty Post", description: "Please write something to post.", variant: "destructive" });
+      }, 0);
       return;
     }
     setIsPosting(true);
@@ -175,7 +204,7 @@ export default function AccountPage() {
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-6">
           <Avatar className="h-24 w-24 border-2 border-primary">
             <AvatarImage src={currentUser.avatarUrl} alt={currentUser.username} data-ai-hint="user avatar"/>
-            <AvatarFallback className="text-3xl">{currentUser.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback className="text-3xl">{currentUser.username?.substring(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div className="flex-grow">
             {currentUser.name && <CardTitle className="text-2xl">{currentUser.name}</CardTitle>}
@@ -195,7 +224,7 @@ export default function AccountPage() {
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader><DialogTitle>Followers</DialogTitle>
-                  <DialogDescription>This list shows users who follow you. (Mock data)</DialogDescription>
+                  <DialogDescription>This list shows users who follow you. (Mock data for {currentUser.username})</DialogDescription>
                   </DialogHeader>
                   <ScrollArea className="max-h-60">
                     <div className="space-y-2 py-2">
@@ -220,7 +249,7 @@ export default function AccountPage() {
                 </DialogTrigger>
                  <DialogContent>
                   <DialogHeader><DialogTitle>Following</DialogTitle>
-                  <DialogDescription>This list shows users you follow. (Mock data)</DialogDescription>
+                  <DialogDescription>This list shows users you follow. (Mock data for {currentUser.username})</DialogDescription>
                   </DialogHeader>
                    <ScrollArea className="max-h-60">
                      <div className="space-y-2 py-2">

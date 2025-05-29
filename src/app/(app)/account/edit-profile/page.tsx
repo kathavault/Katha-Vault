@@ -14,6 +14,7 @@ import { UserCircle2, Save, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation"; // Import useRouter
 
 const profileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must be at most 50 characters").optional().or(z.literal('')),
@@ -25,7 +26,6 @@ const profileSchema = z.object({
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
-// Initial default values, will be overridden by localStorage if present
 const defaultProfileValues = {
   name: "Katha Seeker",
   username: "StorySeeker92",
@@ -35,43 +35,37 @@ const defaultProfileValues = {
 };
 
 export default function EditProfilePage() {
+  const router = useRouter(); // Initialize router
   const [initialValues, setInitialValues] = useState(defaultProfileValues);
   const [avatarPreview, setAvatarPreview] = useState(defaultProfileValues.avatarUrl);
 
   useEffect(() => {
+    let loadedValues = { ...defaultProfileValues };
     if (typeof window !== 'undefined') {
       const storedProfile = localStorage.getItem('userProfileData');
       if (storedProfile) {
         try {
           const parsedProfile = JSON.parse(storedProfile);
-          const updatedInitialValues = {
-            ...defaultProfileValues, // Start with defaults
-            ...parsedProfile, // Override with any stored values
-            email: parsedProfile.email || defaultProfileValues.email, // Ensure email from stored profile is prioritized
+          loadedValues = {
+            ...defaultProfileValues,
+            ...parsedProfile,
+            email: parsedProfile.email || defaultProfileValues.email, 
           };
-          setInitialValues(updatedInitialValues);
-          setAvatarPreview(updatedInitialValues.avatarUrl || '');
         } catch (e) {
           console.error("Failed to parse stored profile data for edit page", e);
-          // Fallback to defaults if parsing fails
-          setInitialValues(defaultProfileValues);
-          setAvatarPreview(defaultProfileValues.avatarUrl);
         }
-      } else {
-        // No stored profile, use defaults
-        setInitialValues(defaultProfileValues);
-        setAvatarPreview(defaultProfileValues.avatarUrl);
       }
     }
+    setInitialValues(loadedValues);
+    setAvatarPreview(loadedValues.avatarUrl || '');
   }, []);
 
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-    values: initialValues, // Use 'values' to re-initialize form when initialValues change from localStorage
+    values: initialValues, 
   });
   
-  // Effect to reset the form when initialValues (from localStorage) change after mount
   useEffect(() => {
     form.reset(initialValues);
     setAvatarPreview(initialValues.avatarUrl || '');
@@ -84,33 +78,35 @@ export default function EditProfilePage() {
       username: data.username,
       bio: data.bio || initialValues.bio,
       avatarUrl: data.avatarUrl || initialValues.avatarUrl,
-      email: initialValues.email, // Email is not editable here, preserve it
+      email: initialValues.email, 
     };
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('userProfileData', JSON.stringify(profileToSave));
-      setInitialValues(profileToSave); // Update state to reflect saved data for immediate UI update
-      // No need to setAvatarPreview here as form.reset in useEffect will handle it
+      // Update mockUsers in memory for other components using it directly - this is a simulation
+      // This part is tricky because mockUsers isn't directly accessible or mutable from here in a clean way
+      // For now, AccountPage will re-read from localStorage.
     }
+
+    setInitialValues(profileToSave); // Update local state to reflect saved data
 
     toast({
       title: "Profile Updated!",
       description: "Your profile has been successfully updated.",
       variant: "default",
     });
+    // Optionally redirect back to account page
+    // router.push('/account'); 
   };
 
   const handleAvatarUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUrl = e.target.value;
     form.setValue("avatarUrl", newUrl);
-    // Basic URL validation for preview
     if (newUrl && newUrl.match(/^https?:\/\/.+\..+/)) {
        setAvatarPreview(newUrl);
     } else if (!newUrl) {
-       setAvatarPreview(''); // Clear preview if URL is emptied
+       setAvatarPreview(''); 
     } else {
-      // Keep current preview or a fallback if URL is invalid but not empty
-      // Or simply setAvatarPreview('') to clear on any invalid non-empty input
       setAvatarPreview(initialValues.avatarUrl || ''); 
     }
   };
@@ -122,7 +118,7 @@ export default function EditProfilePage() {
         <h1 className="text-3xl font-bold text-primary">Edit Profile</h1>
       </header>
       <p className="text-muted-foreground">
-        Update your personal information. Changes will be reflected across Katha Vault.
+        Update your personal information. Changes will be reflected locally in this browser session.
       </p>
 
       <Form {...form}>
@@ -152,7 +148,7 @@ export default function EditProfilePage() {
                           placeholder="https://example.com/your-avatar.png" 
                           {...field} 
                           onChange={handleAvatarUrlChange}
-                          value={field.value || ''} // Ensure controlled component
+                          value={field.value || ''}
                         />
                       </FormControl>
                       <FormMessage />

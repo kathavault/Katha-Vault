@@ -30,17 +30,19 @@ export default function UserProfilePage() {
 
   useEffect(() => {
     setIsLoading(true);
-    const foundUser = mockUsers.find(user => user.id === userId);
-    setProfileUser(foundUser || null);
+    // Simulate API call
+    setTimeout(() => {
+      const foundUser = mockUsers.find(user => user.id === userId);
+      setProfileUser(foundUser || null);
 
-    if (foundUser) {
-      const posts = mockUserPosts.filter(post => post.userId === userId);
-      setUserPosts(posts);
-      // Mock initial follow state (e.g., check localStorage or a mock list)
-      // For this simulation, let's assume the current user isn't following initially
-      setIsFollowing(false); 
-    }
-    setIsLoading(false);
+      if (foundUser) {
+        const posts = mockUserPosts.filter(post => post.userId === userId);
+        setUserPosts(posts);
+        // Mock initial follow state (e.g., check localStorage or a mock list)
+        setIsFollowing(false); 
+      }
+      setIsLoading(false);
+    }, 300); // Simulate network delay
   }, [userId]);
 
   const handleFollowToggle = () => {
@@ -113,7 +115,7 @@ export default function UserProfilePage() {
                 {isFollowing ? "Unfollow" : "Follow"}
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/chat?userId=${profileUser.id}`}> {/* Placeholder for actual chat link */}
+                <Link href={`/chat`}> {/* Updated: Navigates to general chat page */}
                    <MessageCircle className="mr-2 h-4 w-4" /> Message
                 </Link>
               </Button>
@@ -147,3 +149,4 @@ export default function UserProfilePage() {
     </div>
   );
 }
+
