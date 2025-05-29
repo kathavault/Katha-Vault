@@ -19,13 +19,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app: FirebaseApp;
-let auth: Auth;
+let authInstance: Auth; // Renamed to avoid conflict with the export name
 // let firestore: Firestore;
 // let storage: FirebaseStorage;
 
 try {
   app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
+  authInstance = getAuth(app); // Use renamed variable
   // firestore = getFirestore(app);
   // storage = getStorage(app);
 } catch (error) {
@@ -36,4 +36,4 @@ try {
   throw new Error("Firebase initialization failed");
 }
 
-export { app, auth /*, firestore, storage */ };
+export { app, authInstance as auth /*, firestore, storage */ };

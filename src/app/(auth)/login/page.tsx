@@ -25,6 +25,15 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
+// Default mock user data - this structure helps initialize profile if not found in localStorage
+const defaultMockUser = {
+  name: "Katha Seeker",
+  username: "StorySeeker92",
+  bio: "Avid reader and aspiring author. Always on the lookout for the next great adventure within the pages of a book. Favorite genres: Sci-Fi and Fantasy.",
+  avatarUrl: "https://placehold.co/150x150/B4317B/F7F2FA?text=SS",
+};
+
+
 export default function LoginPage() {
   const router = useRouter();
   const form = useForm<LoginFormData>({
@@ -46,13 +55,24 @@ export default function LoginPage() {
           title: "Email Not Verified",
           description: "Please verify your email address before logging in. Check your inbox for a verification link.",
           variant: "destructive",
+          duration: 7000,
         });
-        // await auth.signOut(); // Optionally sign out
+        // await auth.signOut(); // Optionally sign out if email not verified
         return;
       }
       
-      // Store minimal user info to indicate logged-in state
+      // Store more complete user info to indicate logged-in state and for profile display
+      // This is a simulation. In a real app, you'd fetch profile data from your backend.
+      const userProfileToStore = {
+        email: userCredential.user.email,
+        name: userCredential.user.displayName || defaultMockUser.name, // Use Firebase displayName or default
+        username: userCredential.user.email?.split('@')[0] || defaultMockUser.username, // Derive username or use default
+        avatarUrl: userCredential.user.photoURL || defaultMockUser.avatarUrl, // Use Firebase photoURL or default
+        bio: defaultMockUser.bio, // Default bio for now
+      };
       localStorage.setItem('currentUser', JSON.stringify({ email: userCredential.user.email }));
+      localStorage.setItem('userProfileData', JSON.stringify(userProfileToStore));
+
 
       toast({
         title: "Login Successful!",

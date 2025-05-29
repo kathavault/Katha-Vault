@@ -1,21 +1,32 @@
 
 "use client";
 
-import type { UserProfile, UserPost, PostComment } from '@/types';
+import type { UserProfile, UserPost } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { User, Edit3, BookOpen, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle, PlusCircle } from "lucide-react";
+import { User, Edit3, BookOpen, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle, PlusCircle, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, FormEvent } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { UserPostCard } from '@/components/user-post-card';
 import { mockUserPosts as allMockPosts } from '@/lib/mock-data';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-const defaultMockUser: UserProfile = {
+const defaultUserProfile: UserProfile = {
   id: 'user123',
   name: 'Katha Seeker',
   username: 'StorySeeker92',
@@ -28,43 +39,60 @@ const defaultMockUser: UserProfile = {
   ],
   favorites: ['1'],
   submittedStories: [],
-  userPosts: [], // Will be populated from allMockPosts or local state
+  userPosts: [], 
   followers: 1250,
   following: 180,
 };
 
+// Mock data for followers/following dialogs
+const mockFollowersList = ["ReaderRiley", "BookwormBelle", "SciFiFan", "FantasyGuru", "NovelNinja", "WordSmith", "PageTurnerPro", "AlexAuthor"];
+const mockFollowingList = ["EleanorVanceAuthor", "MarcusStoneWrites", "ReaderRiley", "AdminUser"];
+
+
 export default function AccountPage() {
   const [joinedDate, setJoinedDate] = useState('');
-  const [currentUser, setCurrentUser] = useState<UserProfile>(defaultMockUser);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(defaultUserProfile);
   const [newPostContent, setNewPostContent] = useState('');
   const [isPosting, setIsPosting] = useState(false);
+  const [isEmailHidden, setIsEmailHidden] = useState(false);
+
+  const [isFollowersDialogOpen, setIsFollowersDialogOpen] = useState(false);
+  const [isFollowingDialogOpen, setIsFollowingDialogOpen] = useState(false);
+
 
   useEffect(() => {
+    let profileToUse = { ...defaultUserProfile }; // Start with defaults
+
     if (typeof window !== 'undefined') {
       const storedProfile = localStorage.getItem('userProfileData');
+      const storedIsEmailHidden = localStorage.getItem('settings_isEmailHidden');
+
       if (storedProfile) {
         try {
           const parsedProfile = JSON.parse(storedProfile);
-          setCurrentUser(prevUser => ({
-            ...prevUser, // Keep existing followers, following, readingHistory, etc.
-            name: parsedProfile.name || prevUser.name,
-            username: parsedProfile.username || prevUser.username,
-            bio: parsedProfile.bio || prevUser.bio,
-            avatarUrl: parsedProfile.avatarUrl || prevUser.avatarUrl,
-            email: parsedProfile.email || prevUser.email, // email typically comes from auth
-          }));
+          profileToUse = {
+            ...profileToUse, // Keep defaults for fields not in storedProfile
+            ...parsedProfile, // Override with stored values
+          };
         } catch (e) {
           console.error("Failed to parse stored profile data for account page", e);
         }
       }
-      // Filter user posts based on current user ID (from defaultMockUser or potentially from a future auth context)
-      setCurrentUser(prevUser => ({
-        ...prevUser,
-        userPosts: allMockPosts.filter(p => p.userId === prevUser.id)
-      }));
+      if (storedIsEmailHidden !== null) {
+        setIsEmailHidden(JSON.parse(storedIsEmailHidden));
+      }
     }
+    
+    setCurrentUser(prevUser => ({
+      ...prevUser, // Keep existing parts of the state not covered by localStorage
+      ...profileToUse, // Apply loaded or default profile data
+      userPosts: allMockPosts.filter(p => p.userId === profileToUse.id) // Filter posts based on resolved user ID
+    }));
+    
+    // Simulate joined date (not stored)
     setJoinedDate(new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString());
-  }, []); // Runs once on mount
+
+  }, []); 
 
   const handleCreatePost = (e: FormEvent) => {
     e.preventDefault();
@@ -91,8 +119,6 @@ export default function AccountPage() {
         ...prevUser,
         userPosts: [newPost, ...(prevUser.userPosts || [])]
       }));
-      // Optionally, update allMockPosts if you want this to reflect elsewhere (though ideally backend handles this)
-      // allMockPosts.unshift(newPost); 
       setNewPostContent('');
       toast({ title: "Post Created!", description: "Your post is now live (simulated)." });
       setIsPosting(false);
@@ -110,6 +136,8 @@ export default function AccountPage() {
         toast({ title: "Comment Added! (Simulated)", description: `Your comment: "${commentText}"` });
     }, 0);
   };
+
+  const displayedEmail = isEmailHidden ? "Email hidden by user" : currentUser.email;
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -153,18 +181,61 @@ export default function AccountPage() {
             {currentUser.name && <CardTitle className="text-2xl">{currentUser.name}</CardTitle>}
             <CardDescription className="text-lg text-muted-foreground -mt-1">@{currentUser.username}</CardDescription>
             <CardDescription className="flex items-center gap-2 mt-1">
-              <Mail className="h-4 w-4" /> {currentUser.email}
+              {isEmailHidden ? <EyeOff className="h-4 w-4" /> : <Mail className="h-4 w-4" />} {displayedEmail}
             </CardDescription>
             <CardDescription className="flex items-center gap-2 mt-1">
               <CalendarDays className="h-4 w-4" /> Joined: {joinedDate || 'Loading...'}
             </CardDescription>
             <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Users className="h-4 w-4" /> <strong>{currentUser.followers}</strong> Followers
-              </div>
-              <div className="flex items-center gap-1">
-                <UserPlus className="h-4 w-4" /> <strong>{currentUser.following}</strong> Following
-              </div>
+              <Dialog open={isFollowersDialogOpen} onOpenChange={setIsFollowersDialogOpen}>
+                <DialogTrigger asChild>
+                   <Button variant="link" className="p-0 h-auto flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
+                      <Users className="h-4 w-4" /> <strong>{currentUser.followers}</strong> Followers
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>Followers</DialogTitle>
+                  <DialogDescription>This list shows users who follow you. (Mock data)</DialogDescription>
+                  </DialogHeader>
+                  <ScrollArea className="max-h-60">
+                    <div className="space-y-2 py-2">
+                    {mockFollowersList.slice(0, currentUser.followers).map((follower, index) => (
+                        <div key={index} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted">
+                        <Avatar className="h-7 w-7"><AvatarFallback>{follower.substring(0,1)}</AvatarFallback></Avatar>
+                        <span className="text-sm">{follower}</span>
+                        </div>
+                    ))}
+                    {currentUser.followers === 0 && <p className="text-sm text-center text-muted-foreground">No followers yet.</p>}
+                    </div>
+                  </ScrollArea>
+                  <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
+                </DialogContent>
+              </Dialog>
+              
+              <Dialog open={isFollowingDialogOpen} onOpenChange={setIsFollowingDialogOpen}>
+                 <DialogTrigger asChild>
+                    <Button variant="link" className="p-0 h-auto flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
+                        <UserPlus className="h-4 w-4" /> <strong>{currentUser.following}</strong> Following
+                    </Button>
+                </DialogTrigger>
+                 <DialogContent>
+                  <DialogHeader><DialogTitle>Following</DialogTitle>
+                  <DialogDescription>This list shows users you follow. (Mock data)</DialogDescription>
+                  </DialogHeader>
+                   <ScrollArea className="max-h-60">
+                     <div className="space-y-2 py-2">
+                    {mockFollowingList.slice(0, currentUser.following).map((followedUser, index) => (
+                        <div key={index} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted">
+                        <Avatar className="h-7 w-7"><AvatarFallback>{followedUser.substring(0,1)}</AvatarFallback></Avatar>
+                        <span className="text-sm">{followedUser}</span>
+                        </div>
+                    ))}
+                    {currentUser.following === 0 && <p className="text-sm text-center text-muted-foreground">Not following anyone yet.</p>}
+                    </div>
+                  </ScrollArea>
+                  <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
@@ -193,7 +264,7 @@ export default function AccountPage() {
             <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" /> Reading History
             </h3>
-            {currentUser.readingHistory.length > 0 ? (
+            {currentUser.readingHistory && currentUser.readingHistory.length > 0 ? (
               <ul className="space-y-2 text-sm">
                 {currentUser.readingHistory.map(item => (
                   <li key={item.storyId} className="flex justify-between items-center p-2 rounded-md hover:bg-muted">

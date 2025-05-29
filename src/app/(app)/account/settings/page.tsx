@@ -7,10 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { Settings as SettingsIcon, Bell, Palette, ShieldCheck, LogOut, Save, UserCog, VenetianMask, Mail, KeyRound, Ban, UserX, Trash2 } from "lucide-react";
+import { Settings as SettingsIcon, Bell, Palette, ShieldCheck, LogOut, Save, UserCog, VenetianMask, Mail, KeyRound, Ban, UserX, Trash2, EyeOff } from "lucide-react";
 import { toast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { auth } from "@/lib/firebase";
+import { updatePassword, verifyBeforeUpdateEmail, EmailAuthProvider, reauthenticateWithCredential, type User } from "firebase/auth";
+
 import {
   Dialog,
   DialogContent,
@@ -30,19 +33,18 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { useForm, SubmitHandler } from "react-hook-form";
+import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
 const emailChangeSchema = z.object({
   newEmail: z.string().email("Invalid email address."),
-  confirmNewEmail: z.string().email("Invalid email address."),
-}).refine(data => data.newEmail === data.confirmNewEmail, {
-  message: "Emails don't match",
-  path: ["confirmNewEmail"],
+  currentPasswordForEmail: z.string().min(1, "Current password is required for email change."),
+}).refine(data => data.newEmail !== auth.currentUser?.email, {
+  message: "New email must be different from the current one.",
+  path: ["newEmail"],
 });
 type EmailChangeFormData = z.infer<typeof emailChangeSchema>;
 
@@ -59,22 +61,31 @@ type PasswordChangeFormData = z.infer<typeof passwordChangeSchema>;
 
 export default function AccountSettingsPage() {
   const router = useRouter();
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(false);
-  const [darkModeSystem, setDarkModeSystem] = useState(true); 
+  const [darkModeSystem, setDarkModeSystem] = useState(true);
   const [isProfilePrivate, setIsProfilePrivate] = useState(false);
+  const [isEmailHidden, setIsEmailHidden] = useState(false);
 
   const [isChangeEmailDialogOpen, setIsChangeEmailDialogOpen] = useState(false);
   const [isChangePasswordDialogOpen, setIsChangePasswordDialogOpen] = useState(false);
   const [isBlockedAccountsDialogOpen, setIsBlockedAccountsDialogOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
-
+  
   const mockBlockedUsers = [{id: 'userBlock1', name: 'TroubleMakerX'}, {id: 'userBlock2', name: 'SpamBot007'}];
 
   const emailForm = useForm<EmailChangeFormData>({ resolver: zodResolver(emailChangeSchema) });
   const passwordForm = useForm<PasswordChangeFormData>({ resolver: zodResolver(passwordChangeSchema) });
 
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(user => {
+      setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
+  
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedEmailNotifications = localStorage.getItem('settings_emailNotifications');
@@ -85,6 +96,9 @@ export default function AccountSettingsPage() {
       
       const storedIsProfilePrivate = localStorage.getItem('settings_isProfilePrivate');
       if (storedIsProfilePrivate !== null) setIsProfilePrivate(JSON.parse(storedIsProfilePrivate));
+
+      const storedIsEmailHidden = localStorage.getItem('settings_isEmailHidden');
+      if (storedIsEmailHidden !== null) setIsEmailHidden(JSON.parse(storedIsEmailHidden));
     }
   }, []);
 
@@ -93,42 +107,97 @@ export default function AccountSettingsPage() {
       localStorage.setItem('settings_emailNotifications', JSON.stringify(emailNotifications));
       localStorage.setItem('settings_pushNotifications', JSON.stringify(pushNotifications));
       localStorage.setItem('settings_isProfilePrivate', JSON.stringify(isProfilePrivate));
+      localStorage.setItem('settings_isEmailHidden', JSON.stringify(isEmailHidden));
     }
-    console.log("Settings saved (simulated):", { emailNotifications, pushNotifications, darkModeSystem, isProfilePrivate });
     toast({
       title: "Settings Saved",
       description: "Your preferences have been updated and saved locally.",
     });
   };
 
-  const handleChangeEmailSubmit: SubmitHandler<EmailChangeFormData> = (data) => {
-    console.log("Change email request (simulated):", data.newEmail);
-    toast({ title: "Email Change Requested", description: "A confirmation link has been sent to your new email (simulated)." });
-    emailForm.reset();
-    setIsChangeEmailDialogOpen(false);
+  const handleChangeEmailSubmit: SubmitHandler<EmailChangeFormData> = async (data) => {
+    if (!currentUser || !currentUser.email) {
+      toast({ title: "Error", description: "No user logged in or current email not found.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      // Re-authenticate user before sensitive operations
+      const credential = EmailAuthProvider.credential(currentUser.email, data.currentPasswordForEmail);
+      await reauthenticateWithCredential(currentUser, credential);
+
+      // Proceed with email update
+      await verifyBeforeUpdateEmail(currentUser, data.newEmail);
+      toast({ 
+        title: "Verification Email Sent", 
+        description: `A verification link has been sent to ${data.newEmail}. Please check your inbox to complete the email change. You may need to log in again after verifying.`,
+        duration: 7000 
+      });
+      emailForm.reset();
+      setIsChangeEmailDialogOpen(false);
+      // Update local storage if you want to reflect the attempt, though profile page will use Firebase's email
+      const userProfileData = JSON.parse(localStorage.getItem('userProfileData') || '{}');
+      localStorage.setItem('userProfileData', JSON.stringify({...userProfileData, emailPendingVerification: data.newEmail}));
+
+    } catch (error: any) {
+      console.error("Error changing email:", error);
+      let errorMessage = "Failed to change email. Please ensure your current password is correct.";
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect current password. Please try again.";
+      } else if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email address is already in use by another account.";
+      } else if (error.code === 'auth/requires-recent-login') {
+        errorMessage = "This operation is sensitive and requires recent authentication. Please log out and log back in to change your email.";
+      }
+      toast({ title: "Email Change Failed", description: errorMessage, variant: "destructive" });
+    }
   };
 
-  const handleChangePasswordSubmit: SubmitHandler<PasswordChangeFormData> = (data) => {
-    console.log("Password change attempt (simulated). New password:", data.newPassword);
-    toast({ title: "Password Changed", description: "Your password has been updated (simulated)." });
-    passwordForm.reset();
-    setIsChangePasswordDialogOpen(false);
+  const handleChangePasswordSubmit: SubmitHandler<PasswordChangeFormData> = async (data) => {
+    if (!currentUser || !currentUser.email) {
+      toast({ title: "Error", description: "No user logged in.", variant: "destructive" });
+      return;
+    }
+    try {
+      const credential = EmailAuthProvider.credential(currentUser.email, data.currentPassword);
+      await reauthenticateWithCredential(currentUser, credential);
+      await updatePassword(currentUser, data.newPassword);
+      toast({ title: "Password Changed", description: "Your password has been successfully updated." });
+      passwordForm.reset();
+      setIsChangePasswordDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error changing password:", error);
+      let errorMessage = "Failed to change password. Ensure your current password is correct.";
+      if (error.code === 'auth/wrong-password') {
+        errorMessage = "Incorrect current password. Please try again.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "The new password is too weak. Please choose a stronger one.";
+      } else if (error.code === 'auth/requires-recent-login') {
+        errorMessage = "This operation is sensitive and requires recent authentication. Please log out and log back in to change your password.";
+      }
+      toast({ title: "Password Change Failed", description: errorMessage, variant: "destructive" });
+    }
   };
   
   const handleUnblockUser = (userId: string, userName: string) => {
      toast({ title: "User Unblocked (Simulated)", description: `${userName} has been unblocked.` });
   };
 
-  const handleLogout = () => {
-    console.log("Logout initiated (simulated)");
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('currentUser'); 
-      localStorage.removeItem('userProfileData'); // Clear profile data too
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('currentUser'); 
+        localStorage.removeItem('userProfileData');
+      }
+      toast({ title: "Logged Out", description: "You have been successfully logged out." });
+      setIsLogoutConfirmOpen(false);
+      router.push('/'); 
+      setTimeout(() => window.location.reload(), 100); 
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast({ title: "Logout Failed", description: "Could not log out. Please try again.", variant: "destructive" });
     }
-    toast({ title: "Logged Out", description: "You have been successfully logged out (simulated)." });
-    setIsLogoutConfirmOpen(false);
-    router.push('/'); 
-    setTimeout(() => window.location.reload(), 100); 
   };
 
   return (
@@ -138,7 +207,7 @@ export default function AccountSettingsPage() {
         <h1 className="text-3xl font-bold text-primary">Account Settings</h1>
       </header>
       <p className="text-muted-foreground">
-        Manage your notification preferences, theme settings, account security, and privacy. Changes are saved locally.
+        Manage your notification preferences, theme settings, account security, and privacy.
       </p>
 
       <Card>
@@ -211,7 +280,7 @@ export default function AccountSettingsPage() {
             <div className="flex items-center justify-between space-x-2 p-4 rounded-md border">
                 <Label htmlFor="profile-private" className="font-medium">
                 Private Profile
-                <p className="text-sm text-muted-foreground font-normal">If enabled, your profile and activity will not be publicly visible.</p>
+                <p className="text-sm text-muted-foreground font-normal">If enabled, your profile and activity may not be publicly visible to non-followers.</p>
                 </Label>
                 <Switch
                 id="profile-private"
@@ -219,6 +288,17 @@ export default function AccountSettingsPage() {
                 onCheckedChange={setIsProfilePrivate}
                 />
             </div>
+             <div className="flex items-center justify-between space-x-2 p-4 rounded-md border">
+                <Label htmlFor="email-hidden" className="font-medium">
+                  Hide Email on Public Profile
+                  <p className="text-sm text-muted-foreground font-normal">If enabled, your email address will not be visible on your public profile page (if one exists).</p>
+                </Label>
+                <Switch
+                  id="email-hidden"
+                  checked={isEmailHidden}
+                  onCheckedChange={setIsEmailHidden}
+                />
+              </div>
 
             <Dialog open={isChangeEmailDialogOpen} onOpenChange={setIsChangeEmailDialogOpen}>
               <DialogTrigger asChild>
@@ -229,7 +309,7 @@ export default function AccountSettingsPage() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Change Email Address</DialogTitle>
-                  <DialogDescription>Enter your new email address. This is a simulated action.</DialogDescription>
+                  <DialogDescription>Enter your new email address and current password. A verification link will be sent to the new email.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={emailForm.handleSubmit(handleChangeEmailSubmit)} className="space-y-4 py-2">
                   <div>
@@ -238,13 +318,13 @@ export default function AccountSettingsPage() {
                     {emailForm.formState.errors.newEmail && <p className="text-destructive text-sm mt-1">{emailForm.formState.errors.newEmail.message}</p>}
                   </div>
                   <div>
-                    <Label htmlFor="confirmNewEmail">Confirm New Email</Label>
-                    <Input id="confirmNewEmail" type="email" {...emailForm.register("confirmNewEmail")} />
-                    {emailForm.formState.errors.confirmNewEmail && <p className="text-destructive text-sm mt-1">{emailForm.formState.errors.confirmNewEmail.message}</p>}
+                    <Label htmlFor="currentPasswordForEmail">Current Password</Label>
+                    <Input id="currentPasswordForEmail" type="password" {...emailForm.register("currentPasswordForEmail")} />
+                    {emailForm.formState.errors.currentPasswordForEmail && <p className="text-destructive text-sm mt-1">{emailForm.formState.errors.currentPasswordForEmail.message}</p>}
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsChangeEmailDialogOpen(false)}>Cancel</Button>
-                    <Button type="submit">Request Change</Button>
+                    <Button type="submit" disabled={emailForm.formState.isSubmitting}>Request Change</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -259,7 +339,7 @@ export default function AccountSettingsPage() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Change Password</DialogTitle>
-                  <DialogDescription>Enter your current and new password. This is a simulated action.</DialogDescription>
+                  <DialogDescription>Enter your current and new password.</DialogDescription>
                 </DialogHeader>
                 <form onSubmit={passwordForm.handleSubmit(handleChangePasswordSubmit)} className="space-y-4 py-2">
                    <div>
@@ -279,7 +359,7 @@ export default function AccountSettingsPage() {
                   </div>
                   <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsChangePasswordDialogOpen(false)}>Cancel</Button>
-                    <Button type="submit">Change Password</Button>
+                    <Button type="submit" disabled={passwordForm.formState.isSubmitting}>Change Password</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
@@ -294,7 +374,7 @@ export default function AccountSettingsPage() {
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>Blocked Accounts</DialogTitle>
-                        <DialogDescription>Manage users you've blocked. Unblocking is simulated.</DialogDescription>
+                        <DialogDescription>Manage users you've blocked. (Simulated)</DialogDescription>
                     </DialogHeader>
                     <div className="py-4 space-y-3 max-h-60 overflow-y-auto">
                         {mockBlockedUsers.length > 0 ? mockBlockedUsers.map(user => (
@@ -333,7 +413,7 @@ export default function AccountSettingsPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure you want to log out?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action will log you out of your account (simulated).
+                            This action will log you out of your account.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

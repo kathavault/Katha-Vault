@@ -20,13 +20,13 @@ const profileSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters").max(30, "Username must be at most 30 characters"),
   bio: z.string().max(200, "Bio must be at most 200 characters").optional(),
   avatarUrl: z.string().url("Must be a valid URL for avatar image").optional().or(z.literal('')),
-  email: z.string().email("Invalid email address").optional(),
+  email: z.string().email("Invalid email address").optional(), // Email is not directly editable here but shown
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
-// Mock existing user data - this will be updated by localStorage if present
-let mockExistingUser = {
+// Initial default values, will be overridden by localStorage if present
+const defaultProfileValues = {
   name: "Katha Seeker",
   username: "StorySeeker92",
   bio: "Avid reader and aspiring author. Always on the lookout for the next great adventure within the pages of a book. Favorite genres: Sci-Fi and Fantasy.",
@@ -35,8 +35,8 @@ let mockExistingUser = {
 };
 
 export default function EditProfilePage() {
-  const [initialValues, setInitialValues] = useState(mockExistingUser);
-  const [avatarPreview, setAvatarPreview] = useState(mockExistingUser.avatarUrl);
+  const [initialValues, setInitialValues] = useState(defaultProfileValues);
+  const [avatarPreview, setAvatarPreview] = useState(defaultProfileValues.avatarUrl);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -45,23 +45,22 @@ export default function EditProfilePage() {
         try {
           const parsedProfile = JSON.parse(storedProfile);
           const updatedInitialValues = {
-            ...mockExistingUser, // keep email and other base fields
-            name: parsedProfile.name || mockExistingUser.name,
-            username: parsedProfile.username || mockExistingUser.username,
-            bio: parsedProfile.bio || mockExistingUser.bio,
-            avatarUrl: parsedProfile.avatarUrl || mockExistingUser.avatarUrl,
+            ...defaultProfileValues, // Start with defaults
+            ...parsedProfile, // Override with any stored values
+            email: parsedProfile.email || defaultProfileValues.email, // Ensure email from stored profile is prioritized
           };
-          mockExistingUser = updatedInitialValues; // Update module-level mock
           setInitialValues(updatedInitialValues);
-          setAvatarPreview(updatedInitialValues.avatarUrl);
+          setAvatarPreview(updatedInitialValues.avatarUrl || '');
         } catch (e) {
           console.error("Failed to parse stored profile data for edit page", e);
-          setInitialValues(mockExistingUser);
-          setAvatarPreview(mockExistingUser.avatarUrl);
+          // Fallback to defaults if parsing fails
+          setInitialValues(defaultProfileValues);
+          setAvatarPreview(defaultProfileValues.avatarUrl);
         }
       } else {
-        setInitialValues(mockExistingUser);
-        setAvatarPreview(mockExistingUser.avatarUrl);
+        // No stored profile, use defaults
+        setInitialValues(defaultProfileValues);
+        setAvatarPreview(defaultProfileValues.avatarUrl);
       }
     }
   }, []);
@@ -69,45 +68,29 @@ export default function EditProfilePage() {
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
-    values: { // Use 'values' to make form re-initialize when initialValues change
-      name: initialValues.name,
-      username: initialValues.username,
-      bio: initialValues.bio,
-      avatarUrl: initialValues.avatarUrl,
-      email: initialValues.email,
-    },
+    values: initialValues, // Use 'values' to re-initialize form when initialValues change from localStorage
   });
   
+  // Effect to reset the form when initialValues (from localStorage) change after mount
   useEffect(() => {
-    // Reset form with potentially updated initialValues from localStorage
-    form.reset({
-      name: initialValues.name,
-      username: initialValues.username,
-      bio: initialValues.bio,
-      avatarUrl: initialValues.avatarUrl,
-      email: initialValues.email,
-    });
-    setAvatarPreview(initialValues.avatarUrl);
+    form.reset(initialValues);
+    setAvatarPreview(initialValues.avatarUrl || '');
   }, [initialValues, form]);
 
 
   const onSubmit: SubmitHandler<ProfileFormData> = (data) => {
-    console.log("Profile Updated:", data);
-
     const profileToSave = {
-      name: data.name || initialValues.name, // Keep existing name if new one is empty
+      name: data.name || initialValues.name,
       username: data.username,
-      bio: data.bio || initialValues.bio, // Keep existing bio if new one is empty
-      avatarUrl: data.avatarUrl || initialValues.avatarUrl, // Keep existing avatar if new one is empty
-      email: initialValues.email, // Email is not editable here
+      bio: data.bio || initialValues.bio,
+      avatarUrl: data.avatarUrl || initialValues.avatarUrl,
+      email: initialValues.email, // Email is not editable here, preserve it
     };
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('userProfileData', JSON.stringify(profileToSave));
-      // Update module-level mock for immediate reflection if page isn't reloaded
-      mockExistingUser = profileToSave;
-      setInitialValues(profileToSave); // Update state to reflect saved data
-      setAvatarPreview(profileToSave.avatarUrl); // Update preview
+      setInitialValues(profileToSave); // Update state to reflect saved data for immediate UI update
+      // No need to setAvatarPreview here as form.reset in useEffect will handle it
     }
 
     toast({
@@ -118,14 +101,19 @@ export default function EditProfilePage() {
   };
 
   const handleAvatarUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    form.setValue("avatarUrl", e.target.value);
-    if (form.getValues("avatarUrl")?.match(/^https?:\/\/.+\..+/)) {
-       setAvatarPreview(e.target.value);
+    const newUrl = e.target.value;
+    form.setValue("avatarUrl", newUrl);
+    // Basic URL validation for preview
+    if (newUrl && newUrl.match(/^https?:\/\/.+\..+/)) {
+       setAvatarPreview(newUrl);
+    } else if (!newUrl) {
+       setAvatarPreview(''); // Clear preview if URL is emptied
     } else {
-       setAvatarPreview(""); 
+      // Keep current preview or a fallback if URL is invalid but not empty
+      // Or simply setAvatarPreview('') to clear on any invalid non-empty input
+      setAvatarPreview(initialValues.avatarUrl || ''); 
     }
   };
-
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -164,6 +152,7 @@ export default function EditProfilePage() {
                           placeholder="https://example.com/your-avatar.png" 
                           {...field} 
                           onChange={handleAvatarUrlChange}
+                          value={field.value || ''} // Ensure controlled component
                         />
                       </FormControl>
                       <FormMessage />
@@ -178,7 +167,7 @@ export default function EditProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
-                    <FormControl><Input placeholder="Your full name" {...field} /></FormControl>
+                    <FormControl><Input placeholder="Your full name" {...field} value={field.value || ''} /></FormControl>
                     <FormDescription>This name may be displayed on your profile.</FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -191,7 +180,7 @@ export default function EditProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Username</FormLabel>
-                    <FormControl><Input placeholder="Your unique username" {...field} /></FormControl>
+                    <FormControl><Input placeholder="Your unique username" {...field} value={field.value || ''} /></FormControl>
                     <FormDescription>This is your public display name (e.g., @username).</FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -203,8 +192,8 @@ export default function EditProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>
-                    <FormControl><Input type="email" placeholder="your.email@example.com" {...field} disabled /></FormControl>
-                     <FormDescription>Your email address is not publicly visible and cannot be changed here.</FormDescription>
+                    <FormControl><Input type="email" placeholder="your.email@example.com" {...field} value={field.value || ''} disabled /></FormControl>
+                     <FormDescription>Your email address is not publicly visible and cannot be changed here. Use Account Settings to change your email.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -215,7 +204,7 @@ export default function EditProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Bio</FormLabel>
-                    <FormControl><Textarea placeholder="Tell us a little about yourself..." {...field} rows={4} /></FormControl>
+                    <FormControl><Textarea placeholder="Tell us a little about yourself..." {...field} value={field.value || ''} rows={4} /></FormControl>
                     <FormDescription>A short description about you (max 200 characters).</FormDescription>
                     <FormMessage />
                   </FormItem>
