@@ -1,6 +1,6 @@
 
 "use client";
-import type { NavItem, UserProfile } from '@/types'; // Added UserProfile
+import type { NavItem, UserProfile } from '@/types';
 import { siteConfig } from '@/config/site';
 import { Logo } from '@/components/logo';
 import {
@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, UserCircle2 } from 'lucide-react'; 
+import { Send, UserCircle2, LogIn, UserPlus } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -94,10 +94,10 @@ function AppSidebar() {
 }
 
 interface AppHeaderProps {
-  // isAuthenticated and currentUserProfile are no longer needed here if the sign-in button/avatar is removed from the header
+  isAuthenticated: boolean;
 }
 
-function AppHeader({}: AppHeaderProps) {
+function AppHeader({ isAuthenticated }: AppHeaderProps) {
   const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
 
@@ -129,7 +129,30 @@ function AppHeader({}: AppHeaderProps) {
           <div className="h-10 w-10" /> 
         )}
         <ThemeToggleButton />
-        {/* Sign In / User Avatar button removed from here */}
+        {isClient ? (
+          isAuthenticated ? (
+            <Link
+              href="/account"
+              className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+              aria-label="My Account"
+            >
+              <UserCircle2 className="h-5 w-5" />
+            </Link>
+          ) : (
+            <Link
+              href="/auth/login"
+              className={cn(buttonVariants({ variant: "ghost", size: "icon" }))}
+              aria-label="Sign In"
+            >
+              <UserCircle2 className="h-5 w-5" />
+            </Link>
+          )
+        ) : (
+          // SSR placeholder for the user icon/button
+          <div className="h-10 w-10 inline-flex items-center justify-center" aria-label="User actions">
+            <UserCircle2 className="h-5 w-5 text-muted-foreground" />
+          </div>
+        )}
       </div>
     </header>
   );
@@ -138,58 +161,24 @@ function AppHeader({}: AppHeaderProps) {
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUserProfile, setCurrentUserProfile] = useState<Partial<UserProfile> | null>(null);
+  // currentUserProfile state is removed as AppHeader no longer needs detailed profile, just auth state
   const pathname = usePathname();
 
   useEffect(() => {
-    const userStored = localStorage.getItem('currentUser'); 
-    const profileStored = localStorage.getItem('userProfileData');
-    
+    // Check localStorage for authentication status
+    const userStored = localStorage.getItem('currentUser');
     if (userStored) {
       setIsAuthenticated(true);
-      if (profileStored) {
-        try {
-          setCurrentUserProfile(JSON.parse(profileStored));
-        } catch (e) {
-          console.error("Failed to parse userProfileData for layout", e);
-          // Fallback to minimal profile from currentUser if profile data is corrupt
-          try {
-             const parsedUser = JSON.parse(userStored);
-             setCurrentUserProfile({ 
-                 email: parsedUser.email, 
-                 username: parsedUser.email?.split('@')[0] || 'User',
-                 name: parsedUser.email?.split('@')[0] || 'User',
-                 avatarUrl: `https://placehold.co/40x40/B4317B/FFFFFF?text=${(parsedUser.email?.substring(0,1) || 'U').toUpperCase()}`,
-             });
-          } catch (parseError) {
-             setCurrentUserProfile(null);
-          }
-        }
-      } else {
-         // If only 'currentUser' exists but no 'userProfileData', create a minimal profile
-         try {
-            const parsedUser = JSON.parse(userStored);
-            setCurrentUserProfile({ 
-                email: parsedUser.email, 
-                username: parsedUser.email?.split('@')[0] || 'User',
-                name: parsedUser.email?.split('@')[0] || 'User',
-                avatarUrl: `https://placehold.co/40x40/B4317B/FFFFFF?text=${(parsedUser.email?.substring(0,1) || 'U').toUpperCase()}`,
-            });
-         } catch(e) {
-            setCurrentUserProfile(null);
-         }
-      }
     } else {
       setIsAuthenticated(false);
-      setCurrentUserProfile(null);
     }
-  }, [pathname]);
+  }, [pathname]); // Re-check on pathname change (e.g., after login/logout redirect)
 
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset>
-        <AppHeader />
+        <AppHeader isAuthenticated={isAuthenticated} />
         <main className="flex-1 p-4 sm:p-6 pb-20 md:pb-6">
           {children}
         </main>
