@@ -27,6 +27,7 @@ export default function UserProfilePage() {
   const [userPosts, setUserPosts] = useState<UserPost[]>([]);
   const [isFollowing, setIsFollowing] = useState(false); // Mock follow state
   const [isLoading, setIsLoading] = useState(true);
+  const [displayedFollowersCount, setDisplayedFollowersCount] = useState(0);
 
   useEffect(() => {
     setIsLoading(true);
@@ -38,6 +39,7 @@ export default function UserProfilePage() {
       if (foundUser) {
         const posts = mockUserPosts.filter(post => post.userId === userId);
         setUserPosts(posts);
+        setDisplayedFollowersCount(foundUser.followers || 0);
         // Mock initial follow state (e.g., check localStorage or a mock list)
         setIsFollowing(false); 
       }
@@ -47,12 +49,19 @@ export default function UserProfilePage() {
 
   const handleFollowToggle = () => {
     if (!profileUser) return;
+    
     setIsFollowing(prev => {
       const newFollowState = !prev;
       if (newFollowState) {
-        toast({ title: "Followed!", description: `You are now following ${profileUser.username}. (Simulated)` });
+        setDisplayedFollowersCount(count => count + 1);
+        setTimeout(() => {
+          toast({ title: "Followed!", description: `You are now following ${profileUser.username}. (Simulated)` });
+        }, 0);
       } else {
-        toast({ title: "Unfollowed", description: `You have unfollowed ${profileUser.username}. (Simulated)` });
+        setDisplayedFollowersCount(count => Math.max(0, count - 1)); // Ensure count doesn't go below 0
+         setTimeout(() => {
+          toast({ title: "Unfollowed", description: `You have unfollowed ${profileUser.username}. (Simulated)` });
+        }, 0);
       }
       return newFollowState;
     });
@@ -101,7 +110,7 @@ export default function UserProfilePage() {
             <CardDescription className="text-lg text-muted-foreground -mt-1">@{profileUser.username}</CardDescription>
              <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
-                <UserCircle2 className="h-4 w-4" /> <strong>{profileUser.followers || 0}</strong> Followers
+                <UserCircle2 className="h-4 w-4" /> <strong>{displayedFollowersCount}</strong> Followers
               </div>
               <div className="flex items-center gap-1">
                 <UserPlus className="h-4 w-4" /> <strong>{profileUser.following || 0}</strong> Following
@@ -115,7 +124,7 @@ export default function UserProfilePage() {
                 {isFollowing ? "Unfollow" : "Follow"}
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/chat`}> {/* Updated: Navigates to general chat page */}
+                <Link href={`/chat`}> {/* Navigates to general chat page */}
                    <MessageCircle className="mr-2 h-4 w-4" /> Message
                 </Link>
               </Button>
@@ -149,4 +158,3 @@ export default function UserProfilePage() {
     </div>
   );
 }
-
