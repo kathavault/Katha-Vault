@@ -38,14 +38,21 @@ import { ScrollArea } from './ui/scroll-area';
 
 const mockLikersList = ["UserAlpha", "BookLover22", "PageTurnerPro", "ReaderX", "AnotherUser", "BookwormBelle", "SciFiFan", "FantasyGuru", "NovelNinja", "WordSmith"];
 
+// Minimal mock for current user ID to be used within the card if currentUserId prop is not passed
+// In a real app, this would come from an auth context.
+const MOCK_FALLBACK_USER_ID = "tempUser";
+
+
 interface UserPostCardProps {
   post: UserPost;
-  currentUserId?: string; // ID of the currently logged-in user
+  currentUserId?: string;
   onLike?: (postId: string) => void;
   onComment?: (postId: string, commentText: string) => void;
 }
 
 export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPostCardProps) {
+  const effectiveCurrentUserId = currentUserId || MOCK_FALLBACK_USER_ID;
+
   const [isLiked, setIsLiked] = useState(false);
   const [currentLikeCount, setCurrentLikeCount] = useState(post.likes);
   const [displayedComments, setDisplayedComments] = useState<PostComment[]>([]);
@@ -61,7 +68,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
     username: post.username,
     avatarUrl: post.avatarUrl,
     dataAihint: post.dataAihint,
-    name: post.name // Assuming UserPost might have a name field
+    name: post.name 
   });
   const [commenterProfiles, setCommenterProfiles] = useState<Record<string, {username: string; avatarUrl: string; dataAihint?: string}>>({});
 
@@ -76,64 +83,70 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
     });
     setCommentLikes(initialCommentLikes);
 
-    // If this post is by the current logged-in user, fetch their latest profile for display
-    if (post.userId === currentUserId && typeof window !== 'undefined') {
-      const storedProfile = localStorage.getItem('userProfileData');
-      if (storedProfile) {
-        try {
-          const parsedProfile: Partial<UserProfile> = JSON.parse(storedProfile);
-          setPostAuthorProfile(prev => ({
-            ...prev,
-            username: parsedProfile.username || prev.username,
-            avatarUrl: parsedProfile.avatarUrl || prev.avatarUrl,
-            name: parsedProfile.name || prev.name,
-            // dataAihint could also be part of userProfileData if needed
-          }));
-        } catch (e) {
-          console.error("Failed to parse userProfileData for UserPostCard author", e);
-        }
-      }
-    }
-
-    // For comments, if a comment's userId matches currentUserId, use localStorage profile
-    // This part is more complex as it requires fetching profile for each comment if it's the current user
-    // For now, we'll focus on new comments using latest data. Existing comments by others use baked-in data.
-    // For comments by the current user, we can update them similarly if we loop through comments.
-    if (typeof window !== 'undefined' && currentUserId) {
+    let currentUserProfileData: Partial<UserProfile> | null = null;
+    if (typeof window !== 'undefined') {
         const storedProfile = localStorage.getItem('userProfileData');
         if (storedProfile) {
             try {
-                const parsedCurrentUserProfile: Partial<UserProfile> = JSON.parse(storedProfile);
-                const updatedCommenterProfiles: Record<string, {username: string; avatarUrl: string; dataAihint?: string}> = {};
-                initialComments.forEach(comment => {
-                    if (comment.userId === currentUserId) {
-                        updatedCommenterProfiles[comment.id] = {
-                            username: parsedCurrentUserProfile.username || comment.username,
-                            avatarUrl: parsedCurrentUserProfile.avatarUrl || comment.avatarUrl,
-                            dataAihint: comment.dataAihint // Or from parsedCurrentUserProfile if available
-                        };
-                    }
-                });
-                setCommenterProfiles(prev => ({...prev, ...updatedCommenterProfiles}));
+                currentUserProfileData = JSON.parse(storedProfile) as Partial<UserProfile>;
             } catch (e) {
-                console.error("Failed to parse userProfileData for UserPostCard commenters", e);
+                console.error("Failed to parse userProfileData in UserPostCard", e);
             }
         }
     }
 
+    if (post.userId === (currentUserProfileData?.id || effectiveCurrentUserId)) {
+      setPostAuthorProfile(prev => ({
+        ...prev,
+        username: currentUserProfileData?.username || prev.username,
+        avatarUrl: currentUserProfileData?.avatarUrl || prev.avatarUrl,
+        name: currentUserProfileData?.name || prev.name,
+      }));
+    } else {
+       setPostAuthorProfile({
+        username: post.username,
+        avatarUrl: post.avatarUrl,
+        dataAihint: post.dataAihint,
+        name: post.name 
+      });
+    }
+    
+    const updatedCommenterProfiles: Record<string, {username: string; avatarUrl: string; dataAihint?: string}> = {};
+    initialComments.forEach(comment => {
+        if (comment.userId === (currentUserProfileData?.id || effectiveCurrentUserId)) {
+            updatedCommenterProfiles[comment.id] = {
+                username: currentUserProfileData?.username || comment.username,
+                avatarUrl: currentUserProfileData?.avatarUrl || comment.avatarUrl,
+                dataAihint: comment.dataAihint 
+            };
+        } else {
+            updatedCommenterProfiles[comment.id] = {
+                 username: comment.username,
+                 avatarUrl: comment.avatarUrl,
+                 dataAihint: comment.dataAihint
+            };
+        }
+    });
+    setCommenterProfiles(prev => ({...prev, ...updatedCommenterProfiles}));
 
-  }, [post.likes, post.comments, post.userId, currentUserId, post.username, post.avatarUrl, post.dataAihint, post.name]);
+  }, [post.likes, post.comments, post.userId, effectiveCurrentUserId, post.username, post.avatarUrl, post.dataAihint, post.name]);
 
   const handleLikeToggle = () => {
     setIsLiked(prev => {
       const newLikedState = !prev;
       if (newLikedState) {
-        setCurrentLikeCount(count => count + 1);
+        setCurrentLikeCount(count => {
+          console.log(`UserPostCard: Liking post ${post.id}. Current likes: ${count}. New likes: ${count + 1}`);
+          return count + 1;
+        });
         setTimeout(() => {
           toast({ title: "Post Liked!", description: `You liked ${postAuthorProfile.username}'s post.` });
         }, 0);
       } else {
-        setCurrentLikeCount(count => count - 1);
+        setCurrentLikeCount(count => {
+          console.log(`UserPostCard: Unliking post ${post.id}. Current likes: ${count}. New likes: ${Math.max(0, count - 1)}`);
+          return Math.max(0, count - 1);
+        });
         setTimeout(() => {
           toast({ title: "Post Unliked", description: `You unliked ${postAuthorProfile.username}'s post.` });
         }, 0);
@@ -153,38 +166,38 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
     }
     setIsSubmittingComment(true);
 
-    let currentUserCommentingProfile: Partial<UserProfile> = {
+    let currentUserCommentingProfile: Partial<UserProfile> & {id: string; username: string; avatarUrl: string} = {
+        id: effectiveCurrentUserId,
         username: 'You',
-        avatarUrl: 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U', // Default fallback
-        id: 'tempUser'
+        avatarUrl: 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U',
+        dataAihint: 'user initial'
     };
 
     if (typeof window !== 'undefined') {
         const storedProfile = localStorage.getItem('userProfileData');
         if (storedProfile) {
             try {
-                const parsedProfile = JSON.parse(storedProfile);
+                const parsedProfile = JSON.parse(storedProfile) as Partial<UserProfile>;
                 currentUserCommentingProfile = {
-                    id: parsedProfile.id || 'tempUser', // Assuming profileData has id
+                    id: parsedProfile.id || effectiveCurrentUserId,
                     username: parsedProfile.username || 'You',
                     avatarUrl: parsedProfile.avatarUrl || currentUserCommentingProfile.avatarUrl,
-                    // dataAihint might also be relevant
+                    dataAihint: parsedProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : undefined,
                 };
-            } catch (e) {
-                console.error("Failed to parse stored profile for commenting", e);
+            } catch (err) {
+                console.error("Failed to parse stored profile for commenting", err);
             }
         }
     }
-
 
     setTimeout(() => {
       const newComment: PostComment = {
         id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         postId: post.id,
-        userId: currentUserCommentingProfile.id!,
-        username: currentUserCommentingProfile.username!,
-        avatarUrl: currentUserCommentingProfile.avatarUrl!,
-        dataAihint: currentUserCommentingProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : undefined,
+        userId: currentUserCommentingProfile.id,
+        username: currentUserCommentingProfile.username,
+        avatarUrl: currentUserCommentingProfile.avatarUrl,
+        dataAihint: currentUserCommentingProfile.dataAihint,
         text: commentText.trim(),
         timestamp: new Date().toISOString(),
         likes: 0,
@@ -192,14 +205,16 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
       };
       setDisplayedComments(prevComments => [newComment, ...prevComments]);
       setCommentLikes(prev => ({ ...prev, [newComment.id]: { count: 0, liked: false } }));
-      setCommenterProfiles(prev => ({
+      
+      setCommenterProfiles(prev => ({ // Ensure new comment by current user uses latest profile
           ...prev,
-          [newComment.id]: { // Add profile for the new comment if it's by current user
+          [newComment.id]: { 
               username: newComment.username,
               avatarUrl: newComment.avatarUrl,
               dataAihint: newComment.dataAihint
           }
       }));
+
       setCommentText('');
       setShowCommentInput(false);
       setIsSubmittingComment(false);
@@ -220,7 +235,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
       delete newLikes[commentToDeleteId];
       return newLikes;
     });
-    setCommenterProfiles(prev => {
+     setCommenterProfiles(prev => {
         const newProfiles = {...prev};
         delete newProfiles[commentToDeleteId];
         return newProfiles;
@@ -235,7 +250,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
     setCommentLikes(prev => {
       const currentCommentLikeState = prev[commentId] || { count: 0, liked: false };
       const newLikedState = !currentCommentLikeState.liked;
-      const newCount = newLikedState ? currentCommentLikeState.count + 1 : currentCommentLikeState.count - 1;
+      const newCount = newLikedState ? currentCommentLikeState.count + 1 : Math.max(0, currentCommentLikeState.count - 1);
       setTimeout(() => {
         if (newLikedState) {
           toast({ title: "Comment Liked!", variant: "default" });
@@ -245,7 +260,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
       }, 0);
       return {
         ...prev,
-        [commentId]: { count: newCount < 0 ? 0 : newCount, liked: newLikedState }
+        [commentId]: { count: newCount, liked: newLikedState }
       };
     });
   };
@@ -270,19 +285,21 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
 
   const commentsToDisplay = showAllComments ? displayedComments : displayedComments.slice(0, 2);
   
-  let canCurrentUserModeratePost = false;
+  let canCurrentUserDeletePost = false;
+  let isPostOwnerViewing = false;
+
   if (typeof window !== 'undefined') {
       const storedProfile = localStorage.getItem('userProfileData');
       if (storedProfile) {
           try {
-              const parsedProfile: Partial<UserProfile> = JSON.parse(storedProfile);
-              if (parsedProfile.id === post.userId) {
-                  canCurrentUserModeratePost = true;
+              const parsedCurrentUserProfile: Partial<UserProfile> = JSON.parse(storedProfile);
+              if (parsedCurrentUserProfile.id === post.userId) {
+                  canCurrentUserDeletePost = true; // User can delete their own post
+                  isPostOwnerViewing = true;
               }
           } catch(e) { /* ignore */ }
       }
   }
-
 
   return (
     <Card className="w-full shadow-md hover:shadow-lg transition-shadow">
@@ -302,7 +319,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
           setTimeout(() => {
-            toast({title: "More options placeholder"});
+            toast({title: "More options placeholder (e.g., delete own post, report)"});
           }, 0);
         }}>
           <MoreHorizontal className="h-4 w-4" />
@@ -375,9 +392,9 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
       {showCommentInput && (
         <form onSubmit={handleCommentSubmit} className="px-3 pb-3 border-t pt-3">
           <div className="flex gap-2 items-start">
-            <Avatar className="h-8 w-8 mt-1">
-                <AvatarImage src={JSON.parse(localStorage.getItem('userProfileData') || '{}').avatarUrl || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U'} alt="Current User" data-ai-hint="user initial"/>
-                <AvatarFallback>{(JSON.parse(localStorage.getItem('userProfileData') || '{}').username || 'U').substring(0,1).toUpperCase()}</AvatarFallback>
+             <Avatar className="h-8 w-8 mt-1">
+                <AvatarImage src={(typeof window !== 'undefined' && JSON.parse(localStorage.getItem('userProfileData') || '{}').avatarUrl) || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U'} alt="Current User" data-ai-hint="user initial"/>
+                <AvatarFallback>{((typeof window !== 'undefined' && JSON.parse(localStorage.getItem('userProfileData') || '{}').username) || 'U').substring(0,1).toUpperCase()}</AvatarFallback>
             </Avatar>
             <Input
               value={commentText}
@@ -394,7 +411,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
       )}
       {commentsToDisplay.length > 0 && (
         <div className="px-4 pb-4 pt-2 border-t mt-2 space-y-3 max-h-60 overflow-y-auto">
-            {(showAllComments || displayedComments.length > 2) && (
+            {(showAllComments || displayedComments.length > 2) && displayedComments.length > 0 && (
                  <h4 className="text-xs font-semibold text-muted-foreground mb-1">Comments ({displayedComments.length})</h4>
             )}
             {commentsToDisplay.map(comment => {
@@ -407,7 +424,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
                   if (storedProfile) {
                       try {
                           const parsedCurrentUserProfile: Partial<UserProfile> = JSON.parse(storedProfile);
-                          if (parsedCurrentUserProfile.id === comment.userId || parsedCurrentUserProfile.id === post.userId) {
+                          if (parsedCurrentUserProfile.id === comment.userId || isPostOwnerViewing) {
                               canDeleteThisComment = true;
                           }
                       } catch(e) { /* ignore */ }

@@ -14,24 +14,33 @@ import Link from 'next/link';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Simulate the current logged-in user's ID for follow/unfollow logic
-// In a real app, this would come from an auth context
-const MOCK_CURRENT_USER_ID = 'user123'; // This is StorySeeker92
-
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
   const userId = params.userId as string;
 
-  const [profileUser, setProfileUser] = useState<UserProfile | null | undefined>(undefined); // undefined for loading
+  const [profileUser, setProfileUser] = useState<UserProfile | null | undefined>(undefined); 
   const [userPosts, setUserPosts] = useState<UserPost[]>([]);
-  const [isFollowing, setIsFollowing] = useState(false); // Mock follow state
+  const [isFollowing, setIsFollowing] = useState(false); 
   const [isLoading, setIsLoading] = useState(true);
   const [displayedFollowersCount, setDisplayedFollowersCount] = useState(0);
+  const [currentLoggedInUserId, setCurrentLoggedInUserId] = useState<string | null>(null);
+
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+        const storedProfile = localStorage.getItem('userProfileData');
+        if (storedProfile) {
+            try {
+                const parsedProfile: Partial<UserProfile> = JSON.parse(storedProfile);
+                setCurrentLoggedInUserId(parsedProfile.id || null);
+            } catch(e) {
+                console.error("Error parsing userProfileData from localStorage on profile page", e);
+            }
+        }
+    }
+
     setIsLoading(true);
-    // Simulate API call
     setTimeout(() => {
       const foundUser = mockUsers.find(user => user.id === userId);
       setProfileUser(foundUser || null);
@@ -40,11 +49,10 @@ export default function UserProfilePage() {
         const posts = mockUserPosts.filter(post => post.userId === userId);
         setUserPosts(posts);
         setDisplayedFollowersCount(foundUser.followers || 0);
-        // Mock initial follow state (e.g., check localStorage or a mock list)
         setIsFollowing(false); 
       }
       setIsLoading(false);
-    }, 300); // Simulate network delay
+    }, 300); 
   }, [userId]);
 
   const handleFollowToggle = () => {
@@ -53,12 +61,18 @@ export default function UserProfilePage() {
     setIsFollowing(prev => {
       const newFollowState = !prev;
       if (newFollowState) {
-        setDisplayedFollowersCount(count => count + 1);
+        setDisplayedFollowersCount(count => {
+           console.log(`UserProfilePage: Following user ${profileUser.username}. Current followers: ${count}. New followers: ${count + 1}`);
+           return count + 1;
+        });
         setTimeout(() => {
           toast({ title: "Followed!", description: `You are now following ${profileUser.username}. (Simulated)` });
         }, 0);
       } else {
-        setDisplayedFollowersCount(count => Math.max(0, count - 1)); // Ensure count doesn't go below 0
+        setDisplayedFollowersCount(count => {
+           console.log(`UserProfilePage: Unfollowing user ${profileUser.username}. Current followers: ${count}. New followers: ${Math.max(0, count - 1)}`);
+           return Math.max(0, count - 1);
+        });
          setTimeout(() => {
           toast({ title: "Unfollowed", description: `You have unfollowed ${profileUser.username}. (Simulated)` });
         }, 0);
@@ -83,14 +97,14 @@ export default function UserProfilePage() {
           <AlertTitle>User Not Found</AlertTitle>
           <AlertDescription>The profile you are looking for does not exist.</AlertDescription>
           <Button asChild variant="link" className="mt-4">
-            <Link href="/search">Go to Search</Link>
+            <Link href="/">Go to Homepage</Link> 
           </Button>
         </Alert>
       </div>
     );
   }
   
-  const isOwnProfile = profileUser.id === MOCK_CURRENT_USER_ID;
+  const isOwnProfile = currentLoggedInUserId === profileUser.id;
 
 
   return (
@@ -124,11 +138,18 @@ export default function UserProfilePage() {
                 {isFollowing ? "Unfollow" : "Follow"}
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/chat`}> {/* Navigates to general chat page */}
+                <Link href={`/chat`}> 
                    <MessageCircle className="mr-2 h-4 w-4" /> Message
                 </Link>
               </Button>
             </div>
+          )}
+           {isOwnProfile && (
+             <Button variant="outline" size="sm" asChild>
+               <Link href="/account/edit-profile">
+                 Edit Profile
+               </Link>
+            </Button>
           )}
         </CardHeader>
         <CardContent className="p-6 pt-0">
@@ -146,7 +167,7 @@ export default function UserProfilePage() {
         {userPosts.length > 0 ? (
           <div className="space-y-6">
             {userPosts.map(post => (
-              <UserPostCard key={post.id} post={post} />
+              <UserPostCard key={post.id} post={post} currentUserId={currentLoggedInUserId || undefined} />
             ))}
           </div>
         ) : (
