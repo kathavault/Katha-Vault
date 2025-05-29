@@ -18,12 +18,12 @@ import {
 } from '@/components/ui/sidebar';
 import { buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, UserCircle2, LogIn } from 'lucide-react'; 
+import { Send, UserCircle2, LogIn, UserPlus } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -33,12 +33,14 @@ function AppSidebar() {
   const [userProfile, setUserProfile] = useState<Partial<UserProfile> | null>(null);
   const [isClient, setIsClient] = useState(false);
 
+  const adminEmails = ['kathavault@gmail.com', 'rajputkritika510@gmail.com'];
+
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isClient) { // Ensure isClient is true
       const storedProfile = localStorage.getItem('userProfileData');
       if (storedProfile) {
         try {
@@ -99,20 +101,29 @@ function AppSidebar() {
       <SidebarContent>
         <ScrollArea className="h-full">
           <SidebarMenu>
-            {siteConfig.mainNav.map((item) => (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={pathname === item.href}
-                  tooltip={{ children: item.title, className: "bg-sidebar-accent text-sidebar-accent-foreground" }}
-                >
-                  <Link href={item.href}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
+            {siteConfig.mainNav.map((item) => {
+              const isAdminLink = item.href === '/admin';
+              const isAdminUser = isClient && userProfile && userProfile.email && adminEmails.includes(userProfile.email);
+
+              if (isAdminLink && !isAdminUser) {
+                return null; // Hide admin link if it's the admin link AND user is not an admin
+              }
+              
+              return (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname === item.href}
+                    tooltip={{ children: item.title, className: "bg-sidebar-accent text-sidebar-accent-foreground" }}
+                  >
+                    <Link href={item.href}>
+                      <item.icon />
+                      <span>{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
           </SidebarMenu>
         </ScrollArea>
       </SidebarContent>
@@ -166,13 +177,11 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
             <span className="sr-only">Chat</span>
           </Link>
         ) : (
-          <div className="h-10 w-10" /> // Placeholder for Chat button to maintain layout
+          <div className="h-10 w-10" /> 
         )}
 
-        {/* Theme Toggle Button */}
         <ThemeToggleButton />
-
-        {/* User Icon / Sign In Button was here - NOW REMOVED */}
+        {/* User Icon / Sign In Button - REMOVED */}
       </div>
     </header>
   );
@@ -187,7 +196,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkAuth = () => {
       const userStored = localStorage.getItem('currentUser');
-      let profileData = null;
+      let profileData: Partial<UserProfile> | null = null;
+
       if (userStored) {
         setIsAuthenticated(true);
         const profileStored = localStorage.getItem('userProfileData');
@@ -196,15 +206,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             profileData = JSON.parse(profileStored);
           } catch (e) {
             console.error("Failed to parse userProfileData from localStorage in AppLayout:", e);
-            try {
-              profileData = { email: JSON.parse(userStored).email };
+            try { // Fallback to currentUser if userProfileData is corrupt
+              const parsedCurrentUser = JSON.parse(userStored);
+              profileData = { email: parsedCurrentUser.email, id: parsedCurrentUser.uid };
             } catch (parseError) {
               console.error("Failed to parse currentUser (fallback) from localStorage in AppLayout:", parseError);
             }
           }
-        } else { // If only currentUser exists
-          try {
-            profileData = { email: JSON.parse(userStored).email };
+        } else { 
+          try { // Only currentUser exists, try to use it
+            const parsedCurrentUser = JSON.parse(userStored);
+            profileData = { email: parsedCurrentUser.email, id: parsedCurrentUser.uid };
           } catch (parseError) {
             console.error("Failed to parse currentUser (for profile) from localStorage in AppLayout:", parseError);
           }
@@ -223,7 +235,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
     };
     window.addEventListener('storage', handleStorageChange);
-    
     window.addEventListener('focus', checkAuth);
 
 
