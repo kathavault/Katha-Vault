@@ -116,7 +116,7 @@ export default function ChatPage() {
     const updatedActiveUsers = mockActiveUsersList.map(user => 
       user.id === kathaVaultAiUser.id 
       ? { ...user, username: storedNickname || kathaVaultAiUser.username, avatarUrl: storedAvatarDataUri || kathaVaultAiUser.avatarUrl } 
-      : user // This branch is now less relevant as only AI is in the list, but good for future expansion
+      : user
     );
     setActiveUsers(updatedActiveUsers);
 
@@ -312,8 +312,8 @@ export default function ChatPage() {
   const displayedAiDataAihint = kathaVaultAiUser.dataAihint;
 
   return (
-    <div className="flex h-[calc(100vh-var(--header-height,100px))] border rounded-lg shadow-lg bg-card">
-      <aside className="w-1/3 border-r flex flex-col">
+    <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,100px))] border rounded-lg shadow-lg bg-card">
+      <aside className="w-full md:w-1/3 border-b md:border-b-0 md:border-r flex flex-col">
         <CardHeader className="p-4 border-b">
           <div className="flex justify-between items-center">
             <CardTitle className="text-xl">Chats</CardTitle>
@@ -404,7 +404,7 @@ export default function ChatPage() {
       </aside>
 
       {/* Message View */}
-      <main className="w-2/3 flex flex-col bg-background">
+      <main className="w-full md:w-2/3 flex flex-col bg-background flex-grow">
         {selectedConversation ? (
           <>
             <CardHeader className="p-4 border-b flex flex-row items-center justify-between space-x-3">
