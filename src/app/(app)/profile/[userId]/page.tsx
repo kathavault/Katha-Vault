@@ -58,21 +58,15 @@ export default function UserProfilePage() {
   const handleFollowToggle = () => {
     if (!profileUser) return;
     
-    setIsFollowing(prev => {
-      const newFollowState = !prev;
-      if (newFollowState) {
-        setDisplayedFollowersCount(count => {
-           console.log(`UserProfilePage: Following user ${profileUser.username}. Current followers: ${count}. New followers: ${count + 1}`);
-           return count + 1;
-        });
+    setIsFollowing(prevIsFollowing => {
+      const newFollowState = !prevIsFollowing;
+      if (newFollowState) { // If now following
+        setDisplayedFollowersCount(count => count + 1);
         setTimeout(() => {
           toast({ title: "Followed!", description: `You are now following ${profileUser.username}. (Simulated)` });
         }, 0);
-      } else {
-        setDisplayedFollowersCount(count => {
-           console.log(`UserProfilePage: Unfollowing user ${profileUser.username}. Current followers: ${count}. New followers: ${Math.max(0, count - 1)}`);
-           return Math.max(0, count - 1);
-        });
+      } else { // If now unfollowing
+        setDisplayedFollowersCount(count => Math.max(0, count - 1));
          setTimeout(() => {
           toast({ title: "Unfollowed", description: `You have unfollowed ${profileUser.username}. (Simulated)` });
         }, 0);
