@@ -49,6 +49,7 @@ export default function UserProfilePage() {
         const posts = mockUserPosts.filter(post => post.userId === userId);
         setUserPosts(posts);
         setDisplayedFollowersCount(foundUser.followers || 0);
+        // In a real app, you'd fetch the current user's follow status for this profileUser
         setIsFollowing(false); 
       }
       setIsLoading(false);
@@ -60,12 +61,12 @@ export default function UserProfilePage() {
     
     setIsFollowing(prevIsFollowing => {
       const newFollowState = !prevIsFollowing;
-      if (newFollowState) { // If now following
+      if (newFollowState) {
         setDisplayedFollowersCount(count => count + 1);
         setTimeout(() => {
           toast({ title: "Followed!", description: `You are now following ${profileUser.username}. (Simulated)` });
         }, 0);
-      } else { // If now unfollowing
+      } else {
         setDisplayedFollowersCount(count => Math.max(0, count - 1));
          setTimeout(() => {
           toast({ title: "Unfollowed", description: `You have unfollowed ${profileUser.username}. (Simulated)` });

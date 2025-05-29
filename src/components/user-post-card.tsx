@@ -65,7 +65,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
   });
   const [commenterProfiles, setCommenterProfiles] = useState<Record<string, {username: string; avatarUrl: string; dataAihint?: string}>>({});
   
-  const effectiveCurrentUserId = currentUserId; // Use the passed prop
+  const effectiveCurrentUserId = currentUserId; 
 
   useEffect(() => {
     setCurrentLikeCount(post.likes);
@@ -90,16 +90,15 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
         }
     }
 
-    // Update post author display if it's the current user
     if (post.userId === (currentUserProfileData?.id || effectiveCurrentUserId)) {
       setPostAuthorProfile(prev => ({
         ...prev,
         username: currentUserProfileData?.username || prev.username,
         avatarUrl: currentUserProfileData?.avatarUrl || prev.avatarUrl,
         name: currentUserProfileData?.name || prev.name,
+        dataAihint: currentUserProfileData?.avatarUrl?.includes('placehold.co') ? 'user initial' : prev.dataAihint
       }));
     } else {
-       // If it's not the current user, ensure we use the post's static data
        setPostAuthorProfile({
         username: post.username,
         avatarUrl: post.avatarUrl,
@@ -108,14 +107,13 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
       });
     }
     
-    // Update commenter profiles, prioritizing current user's latest data
     const updatedCommenterProfiles: Record<string, {username: string; avatarUrl: string; dataAihint?: string}> = {};
     initialComments.forEach(comment => {
         if (comment.userId === (currentUserProfileData?.id || effectiveCurrentUserId)) {
             updatedCommenterProfiles[comment.id] = {
                 username: currentUserProfileData?.username || comment.username,
                 avatarUrl: currentUserProfileData?.avatarUrl || comment.avatarUrl,
-                dataAihint: comment.dataAihint 
+                dataAihint: currentUserProfileData?.avatarUrl?.includes('placehold.co') ? 'user initial' : comment.dataAihint 
             };
         } else {
             updatedCommenterProfiles[comment.id] = {
@@ -127,7 +125,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
     });
     setCommenterProfiles(prev => ({...prev, ...updatedCommenterProfiles}));
 
-  }, [post, effectiveCurrentUserId]); // Re-run if post prop or currentUserId changes
+  }, [post, effectiveCurrentUserId]); 
 
   const handleLikeToggle = () => {
     setIsLiked(prevIsLiked => {
@@ -143,7 +141,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
           toast({ title: "Post Unliked", description: `You unliked ${postAuthorProfile.username}'s post.` });
         }, 0);
       }
-      if (onLike) onLike(post.id);
+      if (onLike) onLike(post.id); // Call the prop if provided
       return newLikedState;
     });
   };
@@ -159,11 +157,15 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
     }
     setIsSubmittingComment(true);
 
-    let currentUserCommentingProfile: Partial<UserProfile> & {id: string; username: string; avatarUrl: string; dataAihint?: string} = {
-        id: effectiveCurrentUserId || `anonUser${Date.now()}`, // Fallback ID
+    let currentUserCommentingProfile: UserProfile = {
+        id: effectiveCurrentUserId || `anonUser${Date.now()}`, 
         username: 'You',
         avatarUrl: 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U',
-        dataAihint: 'user initial'
+        dataAihint: 'user initial',
+        email: '', 
+        readingHistory: [],
+        favorites: [],
+        submittedStories: []
     };
 
     if (typeof window !== 'undefined') {
@@ -171,12 +173,17 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
         if (storedProfile) {
             try {
                 const parsedProfile = JSON.parse(storedProfile) as Partial<UserProfile>;
-                if(parsedProfile.id && parsedProfile.username && parsedProfile.avatarUrl){
+                if(parsedProfile.id && parsedProfile.username && parsedProfile.avatarUrl && parsedProfile.email){
                     currentUserCommentingProfile = {
                         id: parsedProfile.id,
                         username: parsedProfile.username,
+                        name: parsedProfile.name,
                         avatarUrl: parsedProfile.avatarUrl,
-                        dataAihint: parsedProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : undefined,
+                        dataAihint: parsedProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : 'user avatar',
+                        email: parsedProfile.email,
+                        readingHistory: parsedProfile.readingHistory || [],
+                        favorites: parsedProfile.favorites || [],
+                        submittedStories: parsedProfile.submittedStories || [],
                     };
                 }
             } catch (err) {
@@ -280,8 +287,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
 
   const commentsToDisplay = showAllComments ? displayedComments : displayedComments.slice(0, 2);
   
-  let canCurrentUserModeratePost = false; // Can the current user delete any comment on this post?
-  
+  let canCurrentUserModeratePost = false; 
   if (effectiveCurrentUserId && post.userId === effectiveCurrentUserId) {
       canCurrentUserModeratePost = true;
   }
