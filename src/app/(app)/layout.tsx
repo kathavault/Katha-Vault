@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, UserCircle2, LogIn } from 'lucide-react'; // UserPlus removed, LogIn added
+import { Send, UserCircle2, LogIn, UserPlus } from 'lucide-react'; // UserPlus for Sign Up in sidebar
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -40,13 +40,13 @@ function AppSidebar() {
           setUserProfile(JSON.parse(storedProfile));
         } catch (e) {
           console.error("Failed to parse userProfileData for sidebar", e);
-          setUserProfile(null); // Fallback if parsing fails
+          setUserProfile(null);
         }
       } else {
-        setUserProfile(null); // No profile data found
+        setUserProfile(null);
       }
     }
-  }, [pathname, open]); // Re-check if pathname or sidebar open state changes
+  }, [pathname, open]);
 
   const getInitials = (name?: string, username?: string) => {
     if (name) return name.substring(0,1).toUpperCase();
@@ -105,19 +105,17 @@ interface AppHeaderProps {
 }
 
 function AppHeader({ isAuthenticated }: AppHeaderProps) {
-  const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
+  useEffect(() => { setIsClient(true); }, []);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
+  const pathname = usePathname(); // Client hook
+  // Calculate isHomePage only when isClient is true to ensure pathname is available
   const isHomePage = isClient ? pathname === '/' : false;
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
       <div className="md:hidden">
-        {isClient ? <SidebarTrigger /> : <div className="h-7 w-7" /> }
+        {isClient ? <SidebarTrigger /> : <div className="h-7 w-7" /> } {/* Placeholder for trigger */}
       </div>
       <div className="flex-1 md:flex md:justify-center">
         <div className="md:absolute md:left-1/2 md:-translate-x-1/2">
@@ -133,8 +131,7 @@ function AppHeader({ isAuthenticated }: AppHeaderProps) {
             <span className="sr-only">Chat</span>
           </Link>
         ) : (
-          // Placeholder for chat button to maintain layout
-          <div className="h-10 w-10" /> 
+          <div className="h-10 w-10" /> // Consistent placeholder for chat button to maintain layout
         )}
         <ThemeToggleButton />
         {isClient ? (
@@ -157,8 +154,9 @@ function AppHeader({ isAuthenticated }: AppHeaderProps) {
           )
         ) : (
           // SSR placeholder for the user icon/button
-          <div className="h-10 w-10 inline-flex items-center justify-center" aria-label="User actions">
-            <UserCircle2 className="h-5 w-5" /> {/* Removed text-muted-foreground */}
+          // Ensure this aria-label matches the client-side unauthenticated version.
+          <div className="h-10 w-10 inline-flex items-center justify-center" aria-label="Sign In">
+            <UserCircle2 className="h-5 w-5" />
           </div>
         )}
       </div>
@@ -173,7 +171,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    // Check localStorage for authentication status
     const userStored = localStorage.getItem('currentUser');
     if (userStored) {
       setIsAuthenticated(true);
@@ -183,7 +180,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           setCurrentUserProfile(JSON.parse(profileStored));
         } catch (e) {
           console.error("Failed to parse userProfileData from localStorage in AppLayout:", e);
-          // Fallback if userProfileData is corrupted or missing, but currentUser exists
           try {
             setCurrentUserProfile({ email: JSON.parse(userStored).email });
           } catch (parseError) {
@@ -191,7 +187,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             setCurrentUserProfile(null);
           }
         }
-      } else if (userStored) { // If only currentUser exists
+      } else if (userStored) {
          try {
             setCurrentUserProfile({ email: JSON.parse(userStored).email });
           } catch (parseError) {
@@ -203,7 +199,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setIsAuthenticated(false);
       setCurrentUserProfile(null);
     }
-  }, [pathname]); // Re-check on pathname change (e.g., after login/logout redirect)
+  }, [pathname]); // Re-check on pathname change
 
   return (
     <SidebarProvider defaultOpen={true}>
