@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, UserCircle2, UserPlus, LogIn } from 'lucide-react'; 
+import { Send, UserCircle2, LogIn } from 'lucide-react'; 
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -51,7 +51,7 @@ function AppSidebar() {
         setUserProfile(null);
       }
     }
-  }, [pathname, open, isClient]); // Added isClient to dependency array
+  }, [pathname, open, isClient]);
 
   const getInitials = (name?: string, username?: string) => {
     if (name) return name.substring(0,1).toUpperCase();
@@ -72,7 +72,7 @@ function AppSidebar() {
           <ScrollArea className="h-full">
             <SidebarMenu>
               {siteConfig.mainNav.map((item) => (
-                <SidebarMenuItem key={item.href} className="h-8" /> // Simplified placeholder
+                <SidebarMenuItem key={item.href} className="h-8" />
               ))}
             </SidebarMenu>
           </ScrollArea>
@@ -143,7 +143,7 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
   const [isClient, setIsClient] = useState(false);
   useEffect(() => { setIsClient(true); }, []);
 
-  const pathname = usePathname(); 
+  const pathname = usePathname();
   const isHomePage = isClient ? pathname === '/' : false;
 
   return (
@@ -159,51 +159,20 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {/* Chat Button */}
         {isClient && isHomePage ? (
           <Link href="/chat" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative")}>
             <Send className="h-5 w-5" />
             <span className="sr-only">Chat</span>
           </Link>
         ) : (
-          <div className="h-10 w-10" /> 
+          <div className="h-10 w-10" /> // Placeholder for Chat button to maintain layout
         )}
+
+        {/* Theme Toggle Button */}
         <ThemeToggleButton />
-        {isClient ? (
-          isAuthenticated && currentUserProfile ? (
-            <Link
-              href="/account"
-              className={cn(
-                buttonVariants({ variant: "ghost", size: "default" }),
-                "flex items-center gap-2 px-2 sm:px-3 h-10" 
-              )}
-              aria-label="My Account"
-            >
-              <Avatar className="h-7 w-7">
-                <AvatarImage src={currentUserProfile.avatarUrl} alt={currentUserProfile.name || currentUserProfile.username || "User"} data-ai-hint="user avatar header"/>
-                <AvatarFallback>
-                  {(currentUserProfile.name || currentUserProfile.username || "U").substring(0,1).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <span className="hidden sm:inline truncate max-w-[100px]">
-                {currentUserProfile.name || currentUserProfile.username}
-              </span>
-            </Link>
-          ) : (
-            <Link
-                href="/auth/login"
-                className={cn(buttonVariants({ variant: "default", size: "default" }))}
-                aria-label="Sign In"
-              >
-                <LogIn className="mr-0 sm:mr-2 h-4 w-4" /> 
-                <span className="hidden sm:inline">Sign In</span>
-            </Link>
-          )
-        ) : (
-          // SSR placeholder for the user icon/button
-          <div className="h-10 w-10 inline-flex items-center justify-center" aria-label="Sign In">
-            <LogIn className="h-5 w-5" />
-          </div>
-        )}
+
+        {/* User Icon / Sign In Button was here - NOW REMOVED */}
       </div>
     </header>
   );
@@ -218,38 +187,36 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkAuth = () => {
       const userStored = localStorage.getItem('currentUser');
+      let profileData = null;
       if (userStored) {
         setIsAuthenticated(true);
         const profileStored = localStorage.getItem('userProfileData');
         if (profileStored) {
           try {
-            setCurrentUserProfile(JSON.parse(profileStored));
+            profileData = JSON.parse(profileStored);
           } catch (e) {
             console.error("Failed to parse userProfileData from localStorage in AppLayout:", e);
             try {
-              setCurrentUserProfile({ email: JSON.parse(userStored).email }); // Fallback to email from currentUser
+              profileData = { email: JSON.parse(userStored).email };
             } catch (parseError) {
               console.error("Failed to parse currentUser (fallback) from localStorage in AppLayout:", parseError);
-              setCurrentUserProfile(null);
             }
           }
-        } else if (userStored) { // If only currentUser exists
+        } else { // If only currentUser exists
           try {
-            setCurrentUserProfile({ email: JSON.parse(userStored).email });
+            profileData = { email: JSON.parse(userStored).email };
           } catch (parseError) {
             console.error("Failed to parse currentUser (for profile) from localStorage in AppLayout:", parseError);
-            setCurrentUserProfile(null);
           }
         }
       } else {
         setIsAuthenticated(false);
-        setCurrentUserProfile(null);
       }
+      setCurrentUserProfile(profileData);
     };
 
-    checkAuth(); // Check immediately on mount
+    checkAuth(); 
 
-    // Listen to storage changes to reflect logout/login from other tabs (optional but good UX)
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'currentUser' || event.key === 'userProfileData') {
         checkAuth();
@@ -257,8 +224,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener('storage', handleStorageChange);
     
-    // Re-check on focus as well, as localStorage might be changed in another tab
-    // then this tab gets focus
     window.addEventListener('focus', checkAuth);
 
 
@@ -266,7 +231,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', checkAuth);
     };
-  }, [pathname]); // Re-check on pathname change, e.g., after login/logout navigation
+  }, [pathname]); 
 
   return (
     <SidebarProvider defaultOpen={true}>
