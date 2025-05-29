@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { UserPost, PostComment } from '@/types';
+import type { UserPost, PostComment, UserProfile } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { toast } from '@/hooks/use-toast';
 import { useState, FormEvent, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import Link from 'next/link'; // Added Link
+import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,51 +36,93 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from './ui/scroll-area';
 
-
-// Mock current user for comments - in a real app, this would come from auth context
-const mockCurrentUserForPostCard = {
-  id: 'user123', // This is StorySeeker92 from mock-data
-  username: 'StorySeeker92',
-  avatarUrl: 'https://placehold.co/40x40/E62E9A/FFFFFF?text=ME',
-  dataAihint: 'user initial',
-};
-
-// Mock likers for demonstration
 const mockLikersList = ["UserAlpha", "BookLover22", "PageTurnerPro", "ReaderX", "AnotherUser", "BookwormBelle", "SciFiFan", "FantasyGuru", "NovelNinja", "WordSmith"];
 
 interface UserPostCardProps {
   post: UserPost;
-  onLike?: (postId: string) => void; 
-  onComment?: (postId: string, commentText: string) => void; 
+  currentUserId?: string; // ID of the currently logged-in user
+  onLike?: (postId: string) => void;
+  onComment?: (postId: string, commentText: string) => void;
 }
 
-export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
+export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPostCardProps) {
   const [isLiked, setIsLiked] = useState(false);
   const [currentLikeCount, setCurrentLikeCount] = useState(post.likes);
   const [displayedComments, setDisplayedComments] = useState<PostComment[]>([]);
-  
   const [showCommentInput, setShowCommentInput] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
-
   const [commentToDeleteId, setCommentToDeleteId] = useState<string | null>(null);
   const [showAllComments, setShowAllComments] = useState(false);
   const [isLikersDialogOpen, setIsLikersDialogOpen] = useState(false);
-
   const [commentLikes, setCommentLikes] = useState<Record<string, { count: number; liked: boolean }>>({});
+
+  const [postAuthorProfile, setPostAuthorProfile] = useState<{username: string; avatarUrl: string; dataAihint?: string; name?: string}>({
+    username: post.username,
+    avatarUrl: post.avatarUrl,
+    dataAihint: post.dataAihint,
+    name: post.name // Assuming UserPost might have a name field
+  });
+  const [commenterProfiles, setCommenterProfiles] = useState<Record<string, {username: string; avatarUrl: string; dataAihint?: string}>>({});
 
   useEffect(() => {
     setCurrentLikeCount(post.likes);
     const initialComments = post.comments || [];
     setDisplayedComments(initialComments);
-    
+
     const initialCommentLikes: Record<string, { count: number; liked: boolean }> = {};
     initialComments.forEach(comment => {
       initialCommentLikes[comment.id] = { count: comment.likes || 0, liked: false };
     });
     setCommentLikes(initialCommentLikes);
-  }, [post.likes, post.comments]);
 
+    // If this post is by the current logged-in user, fetch their latest profile for display
+    if (post.userId === currentUserId && typeof window !== 'undefined') {
+      const storedProfile = localStorage.getItem('userProfileData');
+      if (storedProfile) {
+        try {
+          const parsedProfile: Partial<UserProfile> = JSON.parse(storedProfile);
+          setPostAuthorProfile(prev => ({
+            ...prev,
+            username: parsedProfile.username || prev.username,
+            avatarUrl: parsedProfile.avatarUrl || prev.avatarUrl,
+            name: parsedProfile.name || prev.name,
+            // dataAihint could also be part of userProfileData if needed
+          }));
+        } catch (e) {
+          console.error("Failed to parse userProfileData for UserPostCard author", e);
+        }
+      }
+    }
+
+    // For comments, if a comment's userId matches currentUserId, use localStorage profile
+    // This part is more complex as it requires fetching profile for each comment if it's the current user
+    // For now, we'll focus on new comments using latest data. Existing comments by others use baked-in data.
+    // For comments by the current user, we can update them similarly if we loop through comments.
+    if (typeof window !== 'undefined' && currentUserId) {
+        const storedProfile = localStorage.getItem('userProfileData');
+        if (storedProfile) {
+            try {
+                const parsedCurrentUserProfile: Partial<UserProfile> = JSON.parse(storedProfile);
+                const updatedCommenterProfiles: Record<string, {username: string; avatarUrl: string; dataAihint?: string}> = {};
+                initialComments.forEach(comment => {
+                    if (comment.userId === currentUserId) {
+                        updatedCommenterProfiles[comment.id] = {
+                            username: parsedCurrentUserProfile.username || comment.username,
+                            avatarUrl: parsedCurrentUserProfile.avatarUrl || comment.avatarUrl,
+                            dataAihint: comment.dataAihint // Or from parsedCurrentUserProfile if available
+                        };
+                    }
+                });
+                setCommenterProfiles(prev => ({...prev, ...updatedCommenterProfiles}));
+            } catch (e) {
+                console.error("Failed to parse userProfileData for UserPostCard commenters", e);
+            }
+        }
+    }
+
+
+  }, [post.likes, post.comments, post.userId, currentUserId, post.username, post.avatarUrl, post.dataAihint, post.name]);
 
   const handleLikeToggle = () => {
     setIsLiked(prev => {
@@ -88,15 +130,15 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
       if (newLikedState) {
         setCurrentLikeCount(count => count + 1);
         setTimeout(() => {
-          toast({ title: "Post Liked!", description: `You liked ${post.username}'s post.` });
+          toast({ title: "Post Liked!", description: `You liked ${postAuthorProfile.username}'s post.` });
         }, 0);
       } else {
         setCurrentLikeCount(count => count - 1);
-         setTimeout(() => {
-          toast({ title: "Post Unliked", description: `You unliked ${post.username}'s post.` });
+        setTimeout(() => {
+          toast({ title: "Post Unliked", description: `You unliked ${postAuthorProfile.username}'s post.` });
         }, 0);
       }
-      if (onLike) onLike(post.id); 
+      if (onLike) onLike(post.id);
       return newLikedState;
     });
   };
@@ -104,33 +146,65 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   const handleCommentSubmit = (e: FormEvent) => {
     e.preventDefault();
     if (!commentText.trim()) {
-        setTimeout(() => {
-            toast({ title: "Empty Comment", description: "Please write something.", variant: "destructive"});
-        }, 0);
-        return;
+      setTimeout(() => {
+        toast({ title: "Empty Comment", description: "Please write something.", variant: "destructive" });
+      }, 0);
+      return;
     }
     setIsSubmittingComment(true);
 
-    setTimeout(() => { 
+    let currentUserCommentingProfile: Partial<UserProfile> = {
+        username: 'You',
+        avatarUrl: 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U', // Default fallback
+        id: 'tempUser'
+    };
+
+    if (typeof window !== 'undefined') {
+        const storedProfile = localStorage.getItem('userProfileData');
+        if (storedProfile) {
+            try {
+                const parsedProfile = JSON.parse(storedProfile);
+                currentUserCommentingProfile = {
+                    id: parsedProfile.id || 'tempUser', // Assuming profileData has id
+                    username: parsedProfile.username || 'You',
+                    avatarUrl: parsedProfile.avatarUrl || currentUserCommentingProfile.avatarUrl,
+                    // dataAihint might also be relevant
+                };
+            } catch (e) {
+                console.error("Failed to parse stored profile for commenting", e);
+            }
+        }
+    }
+
+
+    setTimeout(() => {
       const newComment: PostComment = {
         id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         postId: post.id,
-        userId: mockCurrentUserForPostCard.id, 
-        username: mockCurrentUserForPostCard.username,
-        avatarUrl: mockCurrentUserForPostCard.avatarUrl,
-        dataAihint: mockCurrentUserForPostCard.dataAihint,
+        userId: currentUserCommentingProfile.id!,
+        username: currentUserCommentingProfile.username!,
+        avatarUrl: currentUserCommentingProfile.avatarUrl!,
+        dataAihint: currentUserCommentingProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : undefined,
         text: commentText.trim(),
         timestamp: new Date().toISOString(),
-        likes: 0, 
-        replies: [], 
+        likes: 0,
+        replies: [],
       };
-      setDisplayedComments(prevComments => [newComment, ...prevComments]); 
+      setDisplayedComments(prevComments => [newComment, ...prevComments]);
       setCommentLikes(prev => ({ ...prev, [newComment.id]: { count: 0, liked: false } }));
+      setCommenterProfiles(prev => ({
+          ...prev,
+          [newComment.id]: { // Add profile for the new comment if it's by current user
+              username: newComment.username,
+              avatarUrl: newComment.avatarUrl,
+              dataAihint: newComment.dataAihint
+          }
+      }));
       setCommentText('');
       setShowCommentInput(false);
       setIsSubmittingComment(false);
       toast({ title: "Comment Posted!", description: "Your comment has been added locally." });
-      if (onComment) onComment(post.id, newComment.text); 
+      if (onComment) onComment(post.id, newComment.text);
     }, 500);
   };
 
@@ -142,14 +216,19 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
     if (!commentToDeleteId) return;
     setDisplayedComments(prevComments => prevComments.filter(comment => comment.id !== commentToDeleteId));
     setCommentLikes(prev => {
-      const newLikes = {...prev};
+      const newLikes = { ...prev };
       delete newLikes[commentToDeleteId];
       return newLikes;
+    });
+    setCommenterProfiles(prev => {
+        const newProfiles = {...prev};
+        delete newProfiles[commentToDeleteId];
+        return newProfiles;
     });
     setTimeout(() => {
       toast({ title: "Comment Deleted", description: "The comment has been removed locally." });
     }, 0);
-    setCommentToDeleteId(null); 
+    setCommentToDeleteId(null);
   };
 
   const handleLikeComment = (commentId: string) => {
@@ -157,7 +236,6 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
       const currentCommentLikeState = prev[commentId] || { count: 0, liked: false };
       const newLikedState = !currentCommentLikeState.liked;
       const newCount = newLikedState ? currentCommentLikeState.count + 1 : currentCommentLikeState.count - 1;
-      
       setTimeout(() => {
         if (newLikedState) {
           toast({ title: "Comment Liked!", variant: "default" });
@@ -165,10 +243,9 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
           toast({ title: "Comment Unliked", variant: "default" });
         }
       }, 0);
-
       return {
         ...prev,
-        [commentId]: { count: newCount < 0 ? 0 : newCount, liked: newLikedState } // ensure count doesn't go below 0
+        [commentId]: { count: newCount < 0 ? 0 : newCount, liked: newLikedState }
       };
     });
   };
@@ -182,7 +259,6 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
     }, 0);
   };
 
-
   const formatTimestamp = (timestamp: string) => {
     try {
       return formatDistanceToNowStrict(new Date(timestamp), { addSuffix: true });
@@ -193,22 +269,36 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
   };
 
   const commentsToDisplay = showAllComments ? displayedComments : displayedComments.slice(0, 2);
-  const canCurrentUserModerate = post.userId === mockCurrentUserForPostCard.id;
+  
+  let canCurrentUserModeratePost = false;
+  if (typeof window !== 'undefined') {
+      const storedProfile = localStorage.getItem('userProfileData');
+      if (storedProfile) {
+          try {
+              const parsedProfile: Partial<UserProfile> = JSON.parse(storedProfile);
+              if (parsedProfile.id === post.userId) {
+                  canCurrentUserModeratePost = true;
+              }
+          } catch(e) { /* ignore */ }
+      }
+  }
+
 
   return (
     <Card className="w-full shadow-md hover:shadow-lg transition-shadow">
       <CardHeader className="flex flex-row items-start gap-3 space-y-0 p-4">
         <Link href={`/profile/${post.userId}`} className="cursor-pointer">
           <Avatar className="h-10 w-10 border">
-            <AvatarImage src={post.avatarUrl} alt={post.username} data-ai-hint={post.dataAihint || "user avatar"}/>
-            <AvatarFallback>{post.username.substring(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarImage src={postAuthorProfile.avatarUrl} alt={postAuthorProfile.username} data-ai-hint={postAuthorProfile.dataAihint || "user avatar"}/>
+            <AvatarFallback>{postAuthorProfile.username.substring(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
         </Link>
         <div className="flex-grow">
           <Link href={`/profile/${post.userId}`} className="cursor-pointer hover:underline">
-            <CardTitle className="text-base font-semibold">{post.username}</CardTitle>
+            <CardTitle className="text-base font-semibold">{postAuthorProfile.name || postAuthorProfile.username}</CardTitle>
+             {postAuthorProfile.name && <CardDescription className="text-xs -mt-0.5">@{postAuthorProfile.username}</CardDescription>}
           </Link>
-          <CardDescription className="text-xs">{formatTimestamp(post.timestamp)}</CardDescription>
+          <CardDescription className="text-xs mt-0.5">{formatTimestamp(post.timestamp)}</CardDescription>
         </div>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => {
           setTimeout(() => {
@@ -261,8 +351,8 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
           </Dialog>
           <span className="mx-1">&middot;</span>
           {displayedComments.length > 0 ? (
-            <Button 
-              variant="link" 
+            <Button
+              variant="link"
               className="p-0 h-auto text-xs text-muted-foreground hover:text-primary"
               onClick={() => setShowAllComments(!showAllComments)}
             >
@@ -273,7 +363,7 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
           )}
         </div>
         <div className="flex gap-1">
-          <Button variant="ghost" size="sm" onClick={handleLikeToggle} 
+          <Button variant="ghost" size="sm" onClick={handleLikeToggle}
             className={cn("hover:text-primary", isLiked ? "text-primary" : "text-muted-foreground")}>
             <Heart className={cn("mr-1.5 h-4 w-4", isLiked && "fill-primary")} /> Like
           </Button>
@@ -286,8 +376,8 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
         <form onSubmit={handleCommentSubmit} className="px-3 pb-3 border-t pt-3">
           <div className="flex gap-2 items-start">
             <Avatar className="h-8 w-8 mt-1">
-              <AvatarImage src={mockCurrentUserForPostCard.avatarUrl} alt="Current User" data-ai-hint="user initial"/>
-              <AvatarFallback>{mockCurrentUserForPostCard.username.substring(0,1).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={JSON.parse(localStorage.getItem('userProfileData') || '{}').avatarUrl || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U'} alt="Current User" data-ai-hint="user initial"/>
+                <AvatarFallback>{(JSON.parse(localStorage.getItem('userProfileData') || '{}').username || 'U').substring(0,1).toUpperCase()}</AvatarFallback>
             </Avatar>
             <Input
               value={commentText}
@@ -304,52 +394,66 @@ export function UserPostCard({ post, onLike, onComment }: UserPostCardProps) {
       )}
       {commentsToDisplay.length > 0 && (
         <div className="px-4 pb-4 pt-2 border-t mt-2 space-y-3 max-h-60 overflow-y-auto">
-            {(showAllComments || displayedComments.length > 2) && ( 
+            {(showAllComments || displayedComments.length > 2) && (
                  <h4 className="text-xs font-semibold text-muted-foreground mb-1">Comments ({displayedComments.length})</h4>
             )}
             {commentsToDisplay.map(comment => {
               const commentLikeState = commentLikes[comment.id] || { count: 0, liked: false };
-              const canDeleteThisComment = canCurrentUserModerate || comment.userId === mockCurrentUserForPostCard.id;
+              const profile = commenterProfiles[comment.id] || { username: comment.username, avatarUrl: comment.avatarUrl, dataAihint: comment.dataAihint };
+              
+              let canDeleteThisComment = false;
+              if (typeof window !== 'undefined') {
+                  const storedProfile = localStorage.getItem('userProfileData');
+                  if (storedProfile) {
+                      try {
+                          const parsedCurrentUserProfile: Partial<UserProfile> = JSON.parse(storedProfile);
+                          if (parsedCurrentUserProfile.id === comment.userId || parsedCurrentUserProfile.id === post.userId) {
+                              canDeleteThisComment = true;
+                          }
+                      } catch(e) { /* ignore */ }
+                  }
+              }
+              
               return (
                 <div key={comment.id} className="flex items-start space-x-2 text-xs group">
                   <Link href={`/profile/${comment.userId}`} className="cursor-pointer">
                     <Avatar className="h-6 w-6">
-                        <AvatarImage src={comment.avatarUrl} alt={comment.username} data-ai-hint={comment.dataAihint || "user avatar small"}/>
-                        <AvatarFallback>{comment.username.substring(0,1).toUpperCase()}</AvatarFallback>
+                        <AvatarImage src={profile.avatarUrl} alt={profile.username} data-ai-hint={profile.dataAihint || "user avatar small"}/>
+                        <AvatarFallback>{profile.username.substring(0,1).toUpperCase()}</AvatarFallback>
                     </Avatar>
                   </Link>
                     <div className="flex-grow bg-muted/50 p-2 rounded-md">
                         <div className="flex justify-between items-center">
                           <Link href={`/profile/${comment.userId}`} className="cursor-pointer hover:underline">
-                            <span className="font-semibold text-foreground">{comment.username}</span>
+                            <span className="font-semibold text-foreground">{profile.username}</span>
                           </Link>
                             <span className="text-muted-foreground/80">{formatTimestamp(comment.timestamp)}</span>
                         </div>
                         <p className="text-foreground/90 mt-0.5">{comment.text}</p>
                         <div className="mt-1.5 flex items-center gap-2">
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
+                            <Button
+                                variant="ghost"
+                                size="sm"
                                 className={cn("p-0 h-auto text-xs hover:text-primary", commentLikeState.liked ? "text-primary" : "text-muted-foreground")}
                                 onClick={() => handleLikeComment(comment.id)}
                             >
-                                <Heart className={cn("mr-1 h-3 w-3", commentLikeState.liked && "fill-primary")} /> 
+                                <Heart className={cn("mr-1 h-3 w-3", commentLikeState.liked && "fill-primary")} />
                                 {commentLikeState.count > 0 ? commentLikeState.count : 'Like'}
                             </Button>
-                            <Button 
-                                variant="ghost" 
-                                size="sm" 
+                            <Button
+                                variant="ghost"
+                                size="sm"
                                 className="p-0 h-auto text-xs text-muted-foreground hover:text-primary"
-                                onClick={() => handleReplyToComment(comment.id, comment.username)}
+                                onClick={() => handleReplyToComment(comment.id, profile.username)}
                             >
                                 <MessageSquareReply className="mr-1 h-3 w-3" /> Reply
                             </Button>
                             {canDeleteThisComment && (
                                 <AlertDialog open={commentToDeleteId === comment.id} onOpenChange={(open) => !open && setCommentToDeleteId(null)}>
                                     <AlertDialogTrigger asChild>
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
                                             className="h-5 w-5 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted-foreground hover:text-destructive ml-auto"
                                             onClick={() => confirmDeleteComment(comment.id)}
                                         >

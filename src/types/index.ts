@@ -2,9 +2,8 @@
 export type StoryChapter = {
   id: string;
   title: string;
-  content: string; // HTML or plain text
+  content: string; // Can be HTML from rich text editor or plain text
   order: number;
-  // chapterImageUrl?: string; // Optional: if you want small images per chapter
 };
 
 export type Story = {
@@ -12,60 +11,61 @@ export type Story = {
   title: string;
   author: string;
   authorId: string;
-  coverImage: string;
+  coverImage: string; // Can be a URL or a Data URI string
   description: string;
   tags: string[];
   chapters: StoryChapter[];
   genre: string;
-  status: 'Ongoing' | 'Completed'; // Narrative status
-  publishedStatus: 'Published' | 'Draft' | 'Review'; // Admin publication status
+  status: 'Ongoing' | 'Completed';
+  publishedStatus: 'Published' | 'Draft' | 'Review';
   rating?: number;
   views?: number;
   isTrending?: boolean;
   isCurated?: boolean;
-  category?: 'Trending' | 'Novel' | 'ShortStory' | 'Curated' | 'Romance' | 'SciFi' | string; // Made category more flexible
-  createdAt: string; // ISO Date string
-  updatedAt: string; // ISO Date string
-  dataAihint?: string; // Optional for StoryCard and other images
+  category?: 'Trending' | 'Novel' | 'ShortStory' | 'Curated' | 'Romance' | 'SciFi' | 'General' | string;
+  createdAt: string;
+  updatedAt: string;
+  dataAihint?: string;
 };
 
 export type PostComment = {
   id: string;
-  postId: string;
+  postId: string; // ID of the UserPost or StoryChapter
   userId: string;
   username: string;
   avatarUrl: string;
   text: string;
-  timestamp: string; // ISO Date string
+  timestamp: string;
   dataAihint?: string;
-  likes?: number; // Added for UI simulation
-  replies?: PostComment[]; // Added for UI simulation
+  likes?: number;
+  replies?: PostComment[];
 };
 
 export type UserPost = {
   id: string;
   userId: string;
+  name?: string; // User's full name
   username: string;
   avatarUrl: string;
   dataAihint?: string;
   content: string;
-  timestamp: string; // ISO Date string
+  timestamp: string;
   likes: number;
   comments: PostComment[];
-  isTrending?: boolean; // For library section
+  isTrending?: boolean;
 };
 
 export type UserProfile = {
   id: string;
-  name?: string; // Added user's full name
+  name?: string;
   username: string;
   email: string;
-  avatarUrl: string;
+  avatarUrl: string; // Can be a URL or a Data URI string
   bio?: string;
   readingHistory: Array<{ storyId: string; title: string; lastReadChapterId?: string; progress?: number }>;
-  favorites: string[]; // Array of story IDs
-  submittedStories: Array<{ storyId: string; title: string }>; // Kept for admin mock data compatibility, but not used by users
-  userPosts?: UserPost[]; // User's own text posts
+  favorites: string[];
+  submittedStories: Array<{ storyId: string; title: string }>;
+  userPosts?: UserPost[];
   followers?: number;
   following?: number;
 };
@@ -79,27 +79,26 @@ export type NavItem = {
   external?: boolean;
 };
 
-// Chat specific types
 export type ChatMessage = {
   id: string;
   senderId: string;
   text: string;
-  timestamp: string; // ISO string
-  isCurrentUser?: boolean; // Helper for styling
+  timestamp: string;
+  isCurrentUser?: boolean;
 };
 
 export type ChatUser = {
   id: string;
   username: string;
   avatarUrl: string;
-  dataAihint?: string; // Optional hint for AI image generation if needed
+  dataAihint?: string;
 };
 
 export type ChatConversation = {
   id: string;
   participant: ChatUser;
   lastMessage: string;
-  lastMessageTimestamp: string; // ISO string
+  lastMessageTimestamp: string;
   unreadCount?: number;
   messages: ChatMessage[];
 };

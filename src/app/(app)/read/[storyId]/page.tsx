@@ -1,7 +1,7 @@
 
 "use client";
 
-import type { Story, StoryChapter, PostComment } from '@/types'; // Added PostComment
+import type { Story, StoryChapter, PostComment, UserProfile } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -24,16 +24,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 import { format, formatDistanceToNowStrict } from 'date-fns';
 
-
-// Mock current user for comments - in a real app, this would come from auth context
-const mockCurrentUserForComments = {
-  id: 'currentUserReader',
-  username: 'StoryReader',
-  avatarUrl: 'https://placehold.co/40x40/2E86C1/FFFFFF?text=SR',
-  dataAihint: 'user initial',
-};
-
-
 export default function ReadingPage() {
   const params = useParams();
   const router = useRouter();
@@ -46,7 +36,7 @@ export default function ReadingPage() {
   const [readingTheme, setReadingTheme] = useState<'light' | 'dark'>('dark');
   
   const [commentText, setCommentText] = useState('');
-  const [chapterComments, setChapterComments] = useState<PostComment[]>([]); // State for chapter comments
+  const [chapterComments, setChapterComments] = useState<PostComment[]>([]); 
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
 
   const [isLoading, setIsLoading] = useState(true);
@@ -54,26 +44,34 @@ export default function ReadingPage() {
   const [userRating, setUserRating] = useState(0);
   const [readingProgress, setReadingProgress] = useState(0);
 
-  const [isUserAuthenticated, setIsUserAuthenticated] = useState(false); 
+  const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState<Partial<UserProfile> | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
+    if (typeof window !== 'undefined') {
+      const storedProfile = localStorage.getItem('userProfileData');
+      if (storedProfile) {
+        try {
+          setCurrentUserProfile(JSON.parse(storedProfile));
+        } catch (e) {
+          console.error("Failed to parse user profile from localStorage", e);
+        }
+      }
+    }
+
     const foundStory = mockStories.find(s => s.id === storyId);
 
     if (foundStory && foundStory.publishedStatus === 'Published') {
       setStory(foundStory);
-      setDisplayViews(foundStory.views ? foundStory.views + 1 : 1); 
+      setDisplayViews(foundStory.views ? foundStory.views + 1 : 1);
       setStoryNotFound(false);
-      // Mock initial comments for the first chapter for demonstration
-      if (foundStory.chapters && foundStory.chapters.length > 0) {
-        const initialComments: PostComment[] = [
-          { id: `chapComment1-${foundStory.chapters[0].id}`, postId: foundStory.chapters[0].id, userId: 'userBot1', username: 'BookFanatic', avatarUrl: 'https://placehold.co/40x40/7E3AF2/FFFFFF?text=BF', dataAihint: "user avatar", text: "What a great start to the story!", timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString() },
-          { id: `chapComment2-${foundStory.chapters[0].id}`, postId: foundStory.chapters[0].id, userId: 'userBot2', username: 'PageExplorer', avatarUrl: 'https://placehold.co/40x40/F28A3A/FFFFFF?text=PE', dataAihint: "user avatar", text: "Can't wait to see what happens next.", timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
-        ];
-        setChapterComments(initialComments);
-      } else {
-        setChapterComments([]);
-      }
+      
+      const initialComments: PostComment[] = [
+        { id: `chapComment1-${foundStory.chapters[0]?.id}`, postId: foundStory.chapters[0]?.id || 'unknown_chapter', userId: 'userBot1', username: 'BookFanatic', avatarUrl: 'https://placehold.co/40x40/7E3AF2/FFFFFF?text=BF', dataAihint: "user avatar", text: "What a great start to the story!", timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString() },
+        { id: `chapComment2-${foundStory.chapters[0]?.id}`, postId: foundStory.chapters[0]?.id || 'unknown_chapter', userId: 'userBot2', username: 'PageExplorer', avatarUrl: 'https://placehold.co/40x40/F28A3A/FFFFFF?text=PE', dataAihint: "user avatar", text: "Can't wait to see what happens next.", timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
+      ];
+      setChapterComments(initialComments);
     } else {
       setStory(null);
       setDisplayViews(undefined);
@@ -142,7 +140,7 @@ export default function ReadingPage() {
           <AlertDescription className="mt-2 text-base">
             You need to be logged in to read this story. Please log in to continue.
           </AlertDescription>
-          <Button asChild className="mt-6 w-full sm:w-auto" onClick={() => setIsUserAuthenticated(true)}> 
+          <Button asChild className="mt-6 w-full sm:w-auto" onClick={() => setIsUserAuthenticated(true)}>
             <span className="cursor-pointer"><LogIn className="mr-2 h-4 w-4" /> Simulate Login & Read</span>
           </Button>
           <Button asChild className="mt-2 w-full sm:w-auto" variant="outline">
@@ -166,8 +164,9 @@ export default function ReadingPage() {
   const goToNextChapter = () => {
     if (currentChapterIndex < story.chapters.length - 1) {
       setCurrentChapterIndex(prev => prev + 1);
-      // Reset comments for the new chapter or load them if they were persisted
-      setChapterComments([]); // For simulation, reset. In real app, fetch chapter-specific comments.
+      // For simulation, reset. In real app, fetch chapter-specific comments or load from story object.
+      const nextChapterId = story.chapters[currentChapterIndex + 1]?.id;
+      setChapterComments(nextChapterId === `chapComment1-${story.chapters[0]?.id}` ? [ /* mock comments for chapter 1 */ ] : []);
       window.scrollTo(0, 0);
     }
   };
@@ -175,7 +174,8 @@ export default function ReadingPage() {
   const goToPrevChapter = () => {
     if (currentChapterIndex > 0) {
       setCurrentChapterIndex(prev => prev - 1);
-      setChapterComments([]); // For simulation, reset.
+      const prevChapterId = story.chapters[currentChapterIndex - 1]?.id;
+      setChapterComments(prevChapterId === `chapComment1-${story.chapters[0]?.id}` ? [ /* mock comments for chapter 1 */ ] : []);
       window.scrollTo(0, 0);
     }
   };
@@ -184,7 +184,7 @@ export default function ReadingPage() {
     const chapterIdx = story.chapters.findIndex(c => c.id === chapterId);
     if (chapterIdx !== -1) {
       setCurrentChapterIndex(chapterIdx);
-      setChapterComments([]); // For simulation, reset.
+      setChapterComments(chapterId === `chapComment1-${story.chapters[0]?.id}` ? [ /* mock comments for chapter 1 */ ] : []);
       window.scrollTo(0, 0);
     }
   };
@@ -199,28 +199,31 @@ export default function ReadingPage() {
         toast({ title: "Empty Comment", description: "Please write something before submitting.", variant: "destructive"});
         return;
     }
+    if (!currentUserProfile || !currentUserProfile.id || !currentUserProfile.username) {
+        toast({ title: "Not Logged In", description: "Please log in to comment.", variant: "destructive"});
+        return;
+    }
     setIsSubmittingComment(true);
-    
-    // Simulate comment submission
+
     const newComment: PostComment = {
       id: `chapComm-${Date.now()}`,
-      postId: currentChapter.id, // Associate comment with chapter ID
-      userId: mockCurrentUserForComments.id,
-      username: mockCurrentUserForComments.username,
-      avatarUrl: mockCurrentUserForComments.avatarUrl,
-      dataAihint: mockCurrentUserForComments.dataAihint,
+      postId: currentChapter.id,
+      userId: currentUserProfile.id,
+      username: currentUserProfile.username,
+      avatarUrl: currentUserProfile.avatarUrl || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U',
+      dataAihint: currentUserProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : 'user avatar',
       text: commentText.trim(),
       timestamp: new Date().toISOString(),
     };
 
-    setTimeout(() => { // Simulate network delay
+    setTimeout(() => {
       setChapterComments(prevComments => [newComment, ...prevComments]);
       setCommentText('');
       setIsSubmittingComment(false);
       toast({ title: "Comment Submitted", description: "Your comment has been added to this chapter (locally)."});
     }, 300);
   };
-  
+
   const formatTimestampDisplay = (timestamp: string) => {
     try {
       return formatDistanceToNowStrict(new Date(timestamp), { addSuffix: true });
@@ -254,7 +257,7 @@ export default function ReadingPage() {
             <Progress value={readingProgress} className="h-2" />
           </div>
           <h4 className="font-semibold mb-2 text-sm text-muted-foreground">Chapters ({story.chapters.length})</h4>
-          <ScrollArea className="h-[calc(100vh-520px)] pr-2"> 
+          <ScrollArea className="h-[calc(100vh-520px)] pr-2">
             <ul className="space-y-1">
               {story.chapters.map((chap, index) => (
                 <li key={chap.id}>
@@ -358,12 +361,12 @@ export default function ReadingPage() {
             </header>
 
             <ScrollArea className="h-auto max-h-[calc(100vh-300px)] md:max-h-[calc(100vh-250px)]">
-               <article 
-                  className={cn("p-4 md:p-6 prose prose-sm sm:prose lg:prose-lg max-w-none no-select", 
+               <article
+                  className={cn("p-4 md:p-6 prose prose-sm sm:prose lg:prose-lg max-w-none no-select",
                     readingTheme === 'light' ? 'prose-gray' : 'prose-invert'
                   )}
                   style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
-                  dangerouslySetInnerHTML={{ __html: currentChapter.content }}
+                  dangerouslySetInnerHTML={{ __html: currentChapter.content.replace(/\n/g, '<br />') }} // Basic newline to <br> conversion
                 />
             </ScrollArea>
 
@@ -395,7 +398,7 @@ export default function ReadingPage() {
                 disabled={isSubmittingComment}
               />
               <div className="flex justify-end">
-                <Button type="submit" variant="default" disabled={isSubmittingComment}>
+                <Button type="submit" variant="default" disabled={isSubmittingComment || !currentUserProfile}>
                   {isSubmittingComment ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   {isSubmittingComment ? "Submitting..." : "Submit Comment"}
                 </Button>
@@ -407,25 +410,30 @@ export default function ReadingPage() {
               <h3 className={`text-md font-semibold mb-3 ${readingTheme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>Comments ({chapterComments.length})</h3>
               <ScrollArea className="max-h-96 pr-2">
                 <div className="space-y-4">
-                  {chapterComments.map(comment => (
-                    <div key={comment.id} className="flex items-start space-x-3">
-                        <Avatar className="h-8 w-8">
-                            <AvatarImage src={comment.avatarUrl} alt={comment.username} data-ai-hint={comment.dataAihint || "user avatar comment"}/>
-                            <AvatarFallback>{comment.username.substring(0,1).toUpperCase()}</AvatarFallback>
-                        </Avatar>
-                        <div className={`flex-1 p-3 rounded-md ${readingTheme === 'light' ? 'bg-gray-100' : 'bg-gray-700/50'}`}>
-                            <div className="flex justify-between items-center">
-                                <p className={`text-sm font-medium ${readingTheme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>{comment.username}</p>
-                                <p className={`text-xs ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>{formatTimestampDisplay(comment.timestamp)}</p>
-                            </div>
-                            <p className={`mt-1 text-sm ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>{comment.text}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                                <Button variant="ghost" size="sm" className={`p-1 h-auto text-xs ${readingTheme === 'light' ? 'text-gray-600 hover:text-primary' : 'text-gray-400 hover:text-primary'}`} onClick={() => toast({title: "Like comment (placeholder)"})}><ThumbsUp className="h-3 w-3 mr-1"/> Like</Button>
-                                <Button variant="ghost" size="sm" className={`p-1 h-auto text-xs ${readingTheme === 'light' ? 'text-gray-600 hover:text-primary' : 'text-gray-400 hover:text-primary'}`} onClick={() => toast({title: "Dislike comment (placeholder)"})}><ThumbsDown className="h-3 w-3 mr-1"/> Dislike</Button>
+                  {chapterComments.map(comment => {
+                    const displayProfile = (currentUserProfile && comment.userId === currentUserProfile.id)
+                                          ? { username: currentUserProfile.username || comment.username, avatarUrl: currentUserProfile.avatarUrl || comment.avatarUrl, dataAihint: currentUserProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : comment.dataAihint }
+                                          : { username: comment.username, avatarUrl: comment.avatarUrl, dataAihint: comment.dataAihint };
+                    return (
+                        <div key={comment.id} className="flex items-start space-x-3">
+                            <Avatar className="h-8 w-8">
+                                <AvatarImage src={displayProfile.avatarUrl} alt={displayProfile.username} data-ai-hint={displayProfile.dataAihint || "user avatar comment"}/>
+                                <AvatarFallback>{displayProfile.username.substring(0,1).toUpperCase()}</AvatarFallback>
+                            </Avatar>
+                            <div className={`flex-1 p-3 rounded-md ${readingTheme === 'light' ? 'bg-gray-100' : 'bg-gray-700/50'}`}>
+                                <div className="flex justify-between items-center">
+                                    <p className={`text-sm font-medium ${readingTheme === 'light' ? 'text-gray-800' : 'text-gray-100'}`}>{displayProfile.username}</p>
+                                    <p className={`text-xs ${readingTheme === 'light' ? 'text-gray-500' : 'text-gray-400'}`}>{formatTimestampDisplay(comment.timestamp)}</p>
+                                </div>
+                                <p className={`mt-1 text-sm ${readingTheme === 'light' ? 'text-gray-700' : 'text-gray-300'}`}>{comment.text}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <Button variant="ghost" size="sm" className={`p-1 h-auto text-xs ${readingTheme === 'light' ? 'text-gray-600 hover:text-primary' : 'text-gray-400 hover:text-primary'}`} onClick={() => toast({title: "Like comment (placeholder)"})}><ThumbsUp className="h-3 w-3 mr-1"/> Like</Button>
+                                    <Button variant="ghost" size="sm" className={`p-1 h-auto text-xs ${readingTheme === 'light' ? 'text-gray-600 hover:text-primary' : 'text-gray-400 hover:text-primary'}`} onClick={() => toast({title: "Dislike comment (placeholder)"})}><ThumbsDown className="h-3 w-3 mr-1"/> Dislike</Button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </CardContent>

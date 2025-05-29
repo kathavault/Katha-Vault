@@ -38,8 +38,8 @@ const defaultUserProfile: UserProfile = {
     { storyId: '2', title: 'Beneath the Emerald Canopy', lastReadChapterId: 'c1', progress: 20 },
   ],
   favorites: ['1'],
-  submittedStories: [],
-  userPosts: [], 
+  submittedStories: [], // Kept for consistency with mock-data structure, but not actively used
+  userPosts: [],
   followers: 1250,
   following: 180,
 };
@@ -58,53 +58,63 @@ export default function AccountPage() {
   const [isFollowersDialogOpen, setIsFollowersDialogOpen] = useState(false);
   const [isFollowingDialogOpen, setIsFollowingDialogOpen] = useState(false);
 
-  // This effect now listens for focus to re-check localStorage for profile updates
-  useEffect(() => {
-    const loadProfileData = () => {
-      let profileToUse: UserProfile = { ...defaultUserProfile };
-      let emailHiddenSetting = false;
+  const loadProfileData = () => {
+    let profileToUse: UserProfile = { ...defaultUserProfile };
+    let emailHiddenSetting = false;
 
-      if (typeof window !== 'undefined') {
-        const storedProfile = localStorage.getItem('userProfileData');
-        const storedIsEmailHidden = localStorage.getItem('settings_isEmailHidden');
+    if (typeof window !== 'undefined') {
+      const storedProfile = localStorage.getItem('userProfileData');
+      const storedIsEmailHidden = localStorage.getItem('settings_isEmailHidden');
 
-        if (storedProfile) {
-          try {
-            const parsedProfile = JSON.parse(storedProfile) as Partial<UserProfile>;
-             profileToUse = {
-              ...defaultUserProfile, // Start with defaults
-              ...parsedProfile,     // Override with stored values
-              id: parsedProfile.id || defaultUserProfile.id, // Ensure ID is consistent
-              email: parsedProfile.email || defaultUserProfile.email, // Prioritize stored email
-              // Ensure mock data arrays are correctly typed or defaulted
-              readingHistory: parsedProfile.readingHistory || defaultUserProfile.readingHistory,
-              favorites: parsedProfile.favorites || defaultUserProfile.favorites,
-              submittedStories: parsedProfile.submittedStories || defaultUserProfile.submittedStories,
-              userPosts: parsedProfile.userPosts || defaultUserProfile.userPosts,
-            };
-          } catch (e) {
-            console.error("Failed to parse stored profile data for account page", e);
-          }
-        }
-        if (storedIsEmailHidden !== null) {
-          emailHiddenSetting = JSON.parse(storedIsEmailHidden);
+      if (storedProfile) {
+        try {
+          const parsedProfile = JSON.parse(storedProfile) as Partial<UserProfile>;
+          profileToUse = {
+            ...defaultUserProfile,
+            ...parsedProfile,
+            id: parsedProfile.id || defaultUserProfile.id,
+            email: parsedProfile.email || defaultUserProfile.email,
+            readingHistory: parsedProfile.readingHistory || defaultUserProfile.readingHistory,
+            favorites: parsedProfile.favorites || defaultUserProfile.favorites,
+            submittedStories: parsedProfile.submittedStories || defaultUserProfile.submittedStories,
+            userPosts: parsedProfile.userPosts || defaultUserProfile.userPosts, // Keep this or fetch specific below
+            name: parsedProfile.name || defaultUserProfile.name,
+            username: parsedProfile.username || defaultUserProfile.username,
+            avatarUrl: parsedProfile.avatarUrl || defaultUserProfile.avatarUrl,
+            bio: parsedProfile.bio || defaultUserProfile.bio,
+            followers: parsedProfile.followers || defaultUserProfile.followers,
+            following: parsedProfile.following || defaultUserProfile.following,
+          };
+        } catch (e) {
+          console.error("Failed to parse stored profile data for account page", e);
         }
       }
-      
-      // Find posts for the current user from allMockPosts
-      const userSpecificPosts = allMockPosts.filter(p => p.userId === profileToUse.id);
-      
-      setCurrentUser(prevUser => ({
-        ...prevUser, // Keep parts of state not directly from userProfileData (like followers/following if managed differently)
-        ...profileToUse, // Apply loaded or default profile data
-        userPosts: userSpecificPosts, // Update posts
-      }));
-      setIsEmailHidden(emailHiddenSetting);
-    };
+      if (storedIsEmailHidden !== null) {
+        emailHiddenSetting = JSON.parse(storedIsEmailHidden);
+      }
+    }
+    
+    // Find posts specifically for this user from the global mockUserPosts
+    // This is for display only. Creating new posts adds to currentUser.userPosts directly.
+    const userSpecificPosts = allMockPosts.filter(p => p.userId === profileToUse.id);
+    
+    // Combine posts from localStorage (newly created) with those from mock data
+    const combinedPosts = [
+      ...(profileToUse.userPosts || []), // Posts created in this session
+      ...userSpecificPosts.filter(mockPost => !(profileToUse.userPosts || []).find(p => p.id === mockPost.id)) // Add mock posts not already in session
+    ];
+    
+    setCurrentUser(prevUser => ({
+      ...prevUser,
+      ...profileToUse,
+      userPosts: combinedPosts,
+    }));
+    setIsEmailHidden(emailHiddenSetting);
+  };
 
-    loadProfileData(); // Load on initial mount
+  useEffect(() => {
+    loadProfileData();
 
-    // Simulate joined date (not stored)
     if (typeof window !== 'undefined' && !localStorage.getItem('userJoinedDate')) {
         const newJoinedDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString();
         localStorage.setItem('userJoinedDate', newJoinedDate);
@@ -113,13 +123,11 @@ export default function AccountPage() {
         setJoinedDate(localStorage.getItem('userJoinedDate') || '');
     }
 
-
-    // Re-load data when the window gains focus, to catch updates from other tabs/windows
     window.addEventListener('focus', loadProfileData);
     return () => {
       window.removeEventListener('focus', loadProfileData);
     };
-  }, []); 
+  }, []);
 
   const handleCreatePost = (e: FormEvent) => {
     e.preventDefault();
@@ -134,9 +142,10 @@ export default function AccountPage() {
     const newPost: UserPost = {
       id: `post${Date.now()}`,
       userId: currentUser.id,
-      username: currentUser.username,
-      avatarUrl: currentUser.avatarUrl,
-      dataAihint: 'user initial',
+      username: currentUser.username, // Use current username from state
+      name: currentUser.name, // Use current name from state
+      avatarUrl: currentUser.avatarUrl, // Use current avatar from state
+      dataAihint: currentUser.avatarUrl?.includes('placehold.co') ? 'user initial' : 'user avatar',
       content: newPostContent.trim(),
       timestamp: new Date().toISOString(),
       likes: 0,
@@ -148,12 +157,26 @@ export default function AccountPage() {
         ...prevUser,
         userPosts: [newPost, ...(prevUser.userPosts || [])]
       }));
+      // Also update localStorage userProfileData if userPosts is part of it.
+      if (typeof window !== 'undefined') {
+        const storedProfile = localStorage.getItem('userProfileData');
+        if (storedProfile) {
+          try {
+            const parsedProfile = JSON.parse(storedProfile);
+            parsedProfile.userPosts = [newPost, ...(parsedProfile.userPosts || [])];
+            localStorage.setItem('userProfileData', JSON.stringify(parsedProfile));
+          } catch (e) {
+            console.error("Failed to update userProfileData with new post", e);
+          }
+        }
+      }
+
       setNewPostContent('');
       toast({ title: "Post Created!", description: "Your post is now live (simulated)." });
       setIsPosting(false);
     }, 500);
   };
-  
+
   const handleLikePost = (postId: string) => {
     setTimeout(() => {
         toast({ title: "Liked! (Simulated)", description: `You liked a post.` });
@@ -208,7 +231,7 @@ export default function AccountPage() {
           </Avatar>
           <div className="flex-grow">
             {currentUser.name && <CardTitle className="text-2xl">{currentUser.name}</CardTitle>}
-            <CardDescription className="text-lg text-muted-foreground -mt-1">@{currentUser.username}</CardDescription>
+            <CardDescription className={cn("text-lg text-muted-foreground", currentUser.name ? "-mt-1" : "mt-1")}>@{currentUser.username}</CardDescription>
             <CardDescription className="flex items-center gap-2 mt-1">
               {isEmailHidden ? <EyeOff className="h-4 w-4" /> : <Mail className="h-4 w-4" />} {displayedEmail}
             </CardDescription>
@@ -240,7 +263,7 @@ export default function AccountPage() {
                   <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
                 </DialogContent>
               </Dialog>
-              
+
               <Dialog open={isFollowingDialogOpen} onOpenChange={setIsFollowingDialogOpen}>
                  <DialogTrigger asChild>
                     <Button variant="link" className="p-0 h-auto flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
@@ -288,7 +311,7 @@ export default function AccountPage() {
               <Separator className="my-4" />
             </>
           )}
-          
+
           <div>
             <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" /> Reading History
@@ -336,7 +359,7 @@ export default function AccountPage() {
             {(currentUser.userPosts && currentUser.userPosts.length > 0) ? (
               <div className="space-y-6">
                 {currentUser.userPosts.map(post => (
-                  <UserPostCard key={post.id} post={post} onLike={handleLikePost} onComment={handleCommentOnPost} />
+                  <UserPostCard key={post.id} post={post} currentUserId={currentUser.id} onLike={handleLikePost} onComment={handleCommentOnPost} />
                 ))}
               </div>
             ) : (
