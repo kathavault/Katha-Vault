@@ -42,7 +42,7 @@ import { toast } from '@/hooks/use-toast';
 import { cn } from "@/lib/utils";
 
 const mockCurrentUser: ChatUser = {
-  id: 'currentUser', // This ID should ideally match the logged-in user's ID from Firebase/localStorage
+  id: 'currentUser', 
   username: 'StorySeeker92',
   avatarUrl: 'https://placehold.co/40x40/E62E9A/FFFFFF?text=ME',
   dataAihint: 'user initial',
@@ -67,13 +67,13 @@ const generateInitialConversationsData = (customAiName?: string | null, customAi
     lastMessageTimestamp: new Date().toISOString(),
     unreadCount: 0,
     messages: [
-      { id: 'aiMsg1', senderId: kathaVaultAiUser.id, text: "Hello! How can I help you with Katha Vault stories today? You can ask me about novels on the site or for suggestions. I can chat in English or Hindi! Feel free to use emojis to make our chat more engaging. My goal is to be a friendly and helpful companion for users exploring Katha Vault.", timestamp: new Date().toISOString() },
+      { id: 'aiMsg1', senderId: kathaVaultAiUser.id, text: "Hello! How can I help you with Katha Vault stories today? You can ask me about novels on the site or for suggestions. I can chat in English or Hindi! Feel free to use emojis where appropriate to make our chat more engaging. My goal is to be a friendly and helpful companion for users exploring Katha Vault.", timestamp: new Date().toISOString() },
     ],
     isAiChat: true,
   },
 ];
 
-const mockActiveUsersList: ChatUser[] = [
+const initialActiveUsersList: ChatUser[] = [ // Renamed to avoid conflict
   kathaVaultAiUser,
 ];
 
@@ -100,6 +100,7 @@ export default function ChatPage() {
 
   const [activeUsers, setActiveUsers] = useState<ChatUser[]>([]);
   const [currentLoggedInUser, setCurrentLoggedInUser] = useState<UserProfile | null>(null);
+  const [chatSearchTerm, setChatSearchTerm] = useState(''); // New state for chat search
 
   useEffect(() => {
     let loggedInUserProfile: UserProfile | null = null;
@@ -128,7 +129,7 @@ export default function ChatPage() {
       if (chatToInitiateJson) {
         try {
           const userToChatWith: ChatUser = JSON.parse(chatToInitiateJson);
-          localStorage.removeItem('initiateChatWithUser'); // Clear it after use
+          localStorage.removeItem('initiateChatWithUser'); 
 
           if (!initialConvos.find(c => c.participant.id === userToChatWith.id)) {
             const newConversation: ChatConversation = {
@@ -155,7 +156,7 @@ export default function ChatPage() {
         setSelectedConversationId(initialConvos[0].id);
       }
       
-      const updatedActiveUsers = mockActiveUsersList.map(user =>
+      const updatedActiveUsers = initialActiveUsersList.map(user =>
         user.id === kathaVaultAiUser.id
         ? { ...user, username: storedNickname || kathaVaultAiUser.username, avatarUrl: storedAvatarDataUri || kathaVaultAiUser.avatarUrl }
         : user
@@ -163,7 +164,7 @@ export default function ChatPage() {
       setActiveUsers(updatedActiveUsers);
     }
     setIsLoadingInitialData(false);
-  }, []); // Removed selectedConversationId from dependencies to avoid re-triggering on select
+  }, []); 
 
   useEffect(() => {
     const updatedAiUserName = aiCustomNickname || kathaVaultAiUser.username;
@@ -266,7 +267,6 @@ export default function ChatPage() {
         setIsAiResponding(false);
       }
     } else {
-      // Placeholder for sending message to another user (backend needed)
       setTimeout(() => {
         toast({ title: "Message Sent (Simulated)", description: `Your message to ${selectedConversation.participant.username} has been sent locally.`});
       }, 300);
@@ -378,6 +378,10 @@ export default function ChatPage() {
   const displayedAiAvatar = aiCustomAvatarDataUri || kathaVaultAiUser.avatarUrl;
   const displayedAiDataAihint = kathaVaultAiUser.dataAihint;
 
+  const filteredConversations = conversations.filter(convo => 
+    convo.participant.username.toLowerCase().includes(chatSearchTerm.toLowerCase())
+  );
+
   return (
     <div className="flex flex-col md:flex-row h-[calc(100vh-var(--header-height,100px))] border rounded-lg shadow-lg bg-card">
       <aside className="w-full md:w-1/3 border-b md:border-b-0 md:border-r flex flex-col">
@@ -387,7 +391,12 @@ export default function ChatPage() {
           </div>
           <div className="relative mt-2">
             <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search chats..." className="pl-8 h-9" disabled />
+            <Input 
+              placeholder="Search chats..." 
+              className="pl-8 h-9" 
+              value={chatSearchTerm}
+              onChange={(e) => setChatSearchTerm(e.target.value)}
+            />
           </div>
         </CardHeader>
 
@@ -408,7 +417,7 @@ export default function ChatPage() {
         </div>
 
         <ScrollArea className="flex-grow">
-          {conversations.map(convo => {
+          {filteredConversations.map(convo => { // Use filteredConversations here
             const participant = convo.isAiChat ? { ...kathaVaultAiUser, username: displayedAiName, avatarUrl: displayedAiAvatar, dataAihint: displayedAiDataAihint } : convo.participant;
             return (
             <div key={convo.id} className="relative group">
@@ -428,7 +437,7 @@ export default function ChatPage() {
                       {participant.username.substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  {(convo.isAiChat || mockActiveUsersList.find(u => u.id === participant.id)) && (
+                  {(convo.isAiChat || activeUsers.find(u => u.id === participant.id)) && ( // Updated logic for green dot
                      <span className="absolute bottom-0 right-2 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-background" />
                   )}
                 </div>
@@ -486,7 +495,7 @@ export default function ChatPage() {
                       {(selectedConversation.isAiChat ? displayedAiName : selectedConversation.participant.username).substring(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  {(selectedConversation.isAiChat || mockActiveUsersList.find(u => u.id === selectedConversation.participant.id)) && (
+                  {(selectedConversation.isAiChat || activeUsers.find(u => u.id === selectedConversation.participant.id)) && ( // Updated logic for green dot
                      <span className="absolute bottom-0 right-0 block h-3 w-3 rounded-full bg-green-500 ring-2 ring-card" />
                   )}
                 </div>
@@ -520,7 +529,6 @@ export default function ChatPage() {
                     </DropdownMenuItem>
                      {!selectedConversation.isAiChat && (
                         <DropdownMenuItem disabled>
-                           {/* Placeholder for future options like "Block User" or "View Profile" */}
                            <span className="text-muted-foreground text-xs">More options soon...</span>
                         </DropdownMenuItem>
                     )}
@@ -551,7 +559,7 @@ export default function ChatPage() {
                            <AvatarImage src={participantToDisplay.avatarUrl} alt={participantToDisplay.username} data-ai-hint={participantToDisplay.dataAihint || "user avatar small"}/>
                            <AvatarFallback>{participantToDisplay.username.substring(0,1).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        {(isAiMsg || mockActiveUsersList.find(u=> u.id === participantToDisplay.id)) && (
+                        {(isAiMsg || activeUsers.find(u=> u.id === participantToDisplay.id)) && ( // Updated logic for green dot
                            <span className="absolute bottom-0 -right-0.5 block h-2.5 w-2.5 rounded-full bg-green-500 ring-1 ring-background" />
                         )}
                       </div>
@@ -754,3 +762,5 @@ export default function ChatPage() {
     </div>
   );
 }
+
+    
