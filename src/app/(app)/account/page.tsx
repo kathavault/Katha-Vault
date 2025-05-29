@@ -25,6 +25,7 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from "@/lib/utils"; // Added import for cn
 
 const defaultUserProfile: UserProfile = {
   id: 'user123',
@@ -38,7 +39,7 @@ const defaultUserProfile: UserProfile = {
     { storyId: '2', title: 'Beneath the Emerald Canopy', lastReadChapterId: 'c1', progress: 20 },
   ],
   favorites: ['1'],
-  submittedStories: [], // Kept for consistency with mock-data structure, but not actively used
+  submittedStories: [],
   userPosts: [],
   followers: 1250,
   following: 180,
@@ -77,7 +78,7 @@ export default function AccountPage() {
             readingHistory: parsedProfile.readingHistory || defaultUserProfile.readingHistory,
             favorites: parsedProfile.favorites || defaultUserProfile.favorites,
             submittedStories: parsedProfile.submittedStories || defaultUserProfile.submittedStories,
-            userPosts: parsedProfile.userPosts || defaultUserProfile.userPosts, // Keep this or fetch specific below
+            userPosts: parsedProfile.userPosts || defaultUserProfile.userPosts,
             name: parsedProfile.name || defaultUserProfile.name,
             username: parsedProfile.username || defaultUserProfile.username,
             avatarUrl: parsedProfile.avatarUrl || defaultUserProfile.avatarUrl,
@@ -94,14 +95,11 @@ export default function AccountPage() {
       }
     }
     
-    // Find posts specifically for this user from the global mockUserPosts
-    // This is for display only. Creating new posts adds to currentUser.userPosts directly.
     const userSpecificPosts = allMockPosts.filter(p => p.userId === profileToUse.id);
     
-    // Combine posts from localStorage (newly created) with those from mock data
     const combinedPosts = [
-      ...(profileToUse.userPosts || []), // Posts created in this session
-      ...userSpecificPosts.filter(mockPost => !(profileToUse.userPosts || []).find(p => p.id === mockPost.id)) // Add mock posts not already in session
+      ...(profileToUse.userPosts || []), 
+      ...userSpecificPosts.filter(mockPost => !(profileToUse.userPosts || []).find(p => p.id === mockPost.id)) 
     ];
     
     setCurrentUser(prevUser => ({
@@ -123,9 +121,13 @@ export default function AccountPage() {
         setJoinedDate(localStorage.getItem('userJoinedDate') || '');
     }
 
-    window.addEventListener('focus', loadProfileData);
+    const handleFocus = () => {
+      loadProfileData(); // Re-load data when window gains focus
+    };
+
+    window.addEventListener('focus', handleFocus);
     return () => {
-      window.removeEventListener('focus', loadProfileData);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 
@@ -142,9 +144,9 @@ export default function AccountPage() {
     const newPost: UserPost = {
       id: `post${Date.now()}`,
       userId: currentUser.id,
-      username: currentUser.username, // Use current username from state
-      name: currentUser.name, // Use current name from state
-      avatarUrl: currentUser.avatarUrl, // Use current avatar from state
+      username: currentUser.username,
+      name: currentUser.name,
+      avatarUrl: currentUser.avatarUrl, 
       dataAihint: currentUser.avatarUrl?.includes('placehold.co') ? 'user initial' : 'user avatar',
       content: newPostContent.trim(),
       timestamp: new Date().toISOString(),
@@ -153,22 +155,14 @@ export default function AccountPage() {
     };
 
     setTimeout(() => {
-      setCurrentUser(prevUser => ({
-        ...prevUser,
-        userPosts: [newPost, ...(prevUser.userPosts || [])]
-      }));
-      // Also update localStorage userProfileData if userPosts is part of it.
+      const updatedUser = {
+        ...currentUser,
+        userPosts: [newPost, ...(currentUser.userPosts || [])]
+      };
+      setCurrentUser(updatedUser);
+      
       if (typeof window !== 'undefined') {
-        const storedProfile = localStorage.getItem('userProfileData');
-        if (storedProfile) {
-          try {
-            const parsedProfile = JSON.parse(storedProfile);
-            parsedProfile.userPosts = [newPost, ...(parsedProfile.userPosts || [])];
-            localStorage.setItem('userProfileData', JSON.stringify(parsedProfile));
-          } catch (e) {
-            console.error("Failed to update userProfileData with new post", e);
-          }
-        }
+        localStorage.setItem('userProfileData', JSON.stringify(updatedUser));
       }
 
       setNewPostContent('');
@@ -246,8 +240,11 @@ export default function AccountPage() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent>
-                  <DialogHeader><DialogTitle>Followers</DialogTitle>
-                  <DialogDescription>This list shows users who follow you. (Mock data for {currentUser.username})</DialogDescription>
+                  <DialogHeader>
+                    <DialogTitle>Followers</DialogTitle>
+                    <DialogDescription>
+                        {isEmailHidden ? `This profile is private. Typically, only approved followers can see this list.` : `This profile is public. This list shows users who follow ${currentUser.username}.`} (Mock data)
+                    </DialogDescription>
                   </DialogHeader>
                   <ScrollArea className="max-h-60">
                     <div className="space-y-2 py-2">
@@ -271,8 +268,11 @@ export default function AccountPage() {
                     </Button>
                 </DialogTrigger>
                  <DialogContent>
-                  <DialogHeader><DialogTitle>Following</DialogTitle>
-                  <DialogDescription>This list shows users you follow. (Mock data for {currentUser.username})</DialogDescription>
+                  <DialogHeader>
+                    <DialogTitle>Following</DialogTitle>
+                    <DialogDescription>
+                         {isEmailHidden ? `This profile is private. Typically, only approved followers can see this list.` : `This profile is public. This list shows users ${currentUser.username} follows.`} (Mock data)
+                    </DialogDescription>
                   </DialogHeader>
                    <ScrollArea className="max-h-60">
                      <div className="space-y-2 py-2">
@@ -311,8 +311,7 @@ export default function AccountPage() {
               <Separator className="my-4" />
             </>
           )}
-
-          <div>
+           <div>
             <h3 className="font-semibold text-foreground mb-2 flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" /> Reading History
             </h3>
@@ -372,3 +371,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+
