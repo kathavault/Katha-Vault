@@ -8,32 +8,53 @@ import { mockUsers, mockUserPosts } from '@/lib/mock-data';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { UserPlus, UserMinus, UserCircle2, ChevronLeft, MessageCircle, AlertTriangle, Loader2 } from "lucide-react";
+import { UserPlus, UserMinus, UserCircle2, ChevronLeft, MessageCircle, AlertTriangle, Loader2, Users } from "lucide-react";
 import { UserPostCard } from '@/components/user-post-card';
 import Link from 'next/link';
 import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { ScrollArea } from '@/components/ui/scroll-area';
+
+// Re-using mock lists similar to account page for dialogs
+const mockGenericFollowersList = ["UserAlpha", "BookLover22", "PageTurnerPro", "ReaderX", "AnotherUser", "BookwormBelle", "SciFiFan", "FantasyGuru", "NovelNinja", "WordSmith", "TechGuru", "ArtFan", "MusicMaven", "TravelBug", "FoodieFiend"];
+const mockGenericFollowingList = ["AdminUser", "EleanorVanceAuthor", "MarcusStoneWrites", "StorySeeker92", "PageTurnerPro", "WordSmith"];
+
 
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
   const userId = params.userId as string;
 
-  const [profileUser, setProfileUser] = useState<UserProfile | null | undefined>(undefined); 
+  const [profileUser, setProfileUser] = useState<UserProfile | null | undefined>(undefined);
   const [userPosts, setUserPosts] = useState<UserPost[]>([]);
-  const [isFollowing, setIsFollowing] = useState(false); 
+  const [isFollowing, setIsFollowing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [displayedFollowersCount, setDisplayedFollowersCount] = useState(0);
   const [currentLoggedInUserId, setCurrentLoggedInUserId] = useState<string | null>(null);
 
+  const [isFollowersDialogOpen, setIsFollowersDialogOpen] = useState(false);
+  const [isFollowingDialogOpen, setIsFollowingDialogOpen] = useState(false);
+
 
   useEffect(() => {
+    let storedUserId = null;
     if (typeof window !== 'undefined') {
         const storedProfile = localStorage.getItem('userProfileData');
         if (storedProfile) {
             try {
                 const parsedProfile: Partial<UserProfile> = JSON.parse(storedProfile);
-                setCurrentLoggedInUserId(parsedProfile.id || null);
+                storedUserId = parsedProfile.id || null;
+                setCurrentLoggedInUserId(storedUserId);
             } catch(e) {
                 console.error("Error parsing userProfileData from localStorage on profile page", e);
             }
@@ -41,6 +62,7 @@ export default function UserProfilePage() {
     }
 
     setIsLoading(true);
+    // Simulate fetching user data
     setTimeout(() => {
       const foundUser = mockUsers.find(user => user.id === userId);
       setProfileUser(foundUser || null);
@@ -50,14 +72,24 @@ export default function UserProfilePage() {
         setUserPosts(posts);
         setDisplayedFollowersCount(foundUser.followers || 0);
         // In a real app, you'd fetch the current user's follow status for this profileUser
-        setIsFollowing(false); 
+        // For simulation, if current user is viewing their own mock profile, and they are in mockUsers, check that
+        if (storedUserId && foundUser.id === storedUserId) {
+           // It's the current user's profile page (via /profile/[theirId])
+           // Follow state isn't relevant for self.
+           setIsFollowing(false); 
+        } else {
+            // Placeholder: check if current user (if exists) follows this profileUser (mocked)
+            // For now, defaulting to false
+            setIsFollowing(false); 
+        }
+
       }
       setIsLoading(false);
-    }, 300); 
+    }, 300);
   }, [userId]);
 
   const handleFollowToggle = () => {
-    if (!profileUser) return;
+    if (!profileUser || profileUser.id === currentLoggedInUserId) return; // Can't follow self
     
     setIsFollowing(prevIsFollowing => {
       const newFollowState = !prevIsFollowing;
@@ -92,7 +124,7 @@ export default function UserProfilePage() {
           <AlertTitle>User Not Found</AlertTitle>
           <AlertDescription>The profile you are looking for does not exist.</AlertDescription>
           <Button asChild variant="link" className="mt-4">
-            <Link href="/">Go to Homepage</Link> 
+            <Link href="/">Go to Homepage</Link>
           </Button>
         </Alert>
       </div>
@@ -118,12 +150,62 @@ export default function UserProfilePage() {
             {profileUser.name && <CardTitle className="text-2xl">{profileUser.name}</CardTitle>}
             <CardDescription className="text-lg text-muted-foreground -mt-1">@{profileUser.username}</CardDescription>
              <div className="flex gap-4 mt-2 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <UserCircle2 className="h-4 w-4" /> <strong>{displayedFollowersCount}</strong> Followers
-              </div>
-              <div className="flex items-center gap-1">
-                <UserPlus className="h-4 w-4" /> <strong>{profileUser.following || 0}</strong> Following
-              </div>
+
+                <Dialog open={isFollowersDialogOpen} onOpenChange={setIsFollowersDialogOpen}>
+                    <DialogTrigger asChild>
+                       <Button variant="link" className="p-0 h-auto flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
+                          <Users className="h-4 w-4" /> <strong>{displayedFollowersCount}</strong> Followers
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Followers</DialogTitle>
+                        <DialogDescription>
+                            Users who follow @{profileUser.username}. (Mock data)
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-60">
+                        <div className="space-y-2 py-2">
+                        {mockGenericFollowersList.slice(0, displayedFollowersCount).map((follower, index) => (
+                            <div key={index} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted">
+                            <Avatar className="h-7 w-7"><AvatarFallback>{follower.substring(0,1)}</AvatarFallback></Avatar>
+                            <span className="text-sm">{follower}</span>
+                            </div>
+                        ))}
+                        {displayedFollowersCount === 0 && <p className="text-sm text-center text-muted-foreground">No followers yet.</p>}
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={isFollowingDialogOpen} onOpenChange={setIsFollowingDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button variant="link" className="p-0 h-auto flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
+                            <UserPlus className="h-4 w-4" /> <strong>{profileUser.following || 0}</strong> Following
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Following</DialogTitle>
+                        <DialogDescription>
+                            Users @{profileUser.username} follows. (Mock data)
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-60">
+                        <div className="space-y-2 py-2">
+                        {mockGenericFollowingList.slice(0, profileUser.following || 0).map((followedUser, index) => (
+                            <div key={index} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted">
+                            <Avatar className="h-7 w-7"><AvatarFallback>{followedUser.substring(0,1)}</AvatarFallback></Avatar>
+                            <span className="text-sm">{followedUser}</span>
+                            </div>
+                        ))}
+                        {(profileUser.following || 0) === 0 && <p className="text-sm text-center text-muted-foreground">Not following anyone yet.</p>}
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </div>
           </div>
           {!isOwnProfile && (
@@ -133,7 +215,7 @@ export default function UserProfilePage() {
                 {isFollowing ? "Unfollow" : "Follow"}
               </Button>
               <Button variant="outline" size="sm" asChild>
-                <Link href={`/chat`}> 
+                <Link href={`/chat`}>
                    <MessageCircle className="mr-2 h-4 w-4" /> Message
                 </Link>
               </Button>
@@ -158,7 +240,7 @@ export default function UserProfilePage() {
       </Card>
 
       <section>
-        <h2 className="text-xl font-semibold mb-4 text-primary">{isOwnProfile ? "My Posts" : `${profileUser.username}'s Posts`}</h2>
+        <h2 className="text-xl font-semibold mb-4 text-primary">{isOwnProfile ? "My Posts" : `${profileUser.name || profileUser.username}'s Posts`}</h2>
         {userPosts.length > 0 ? (
           <div className="space-y-6">
             {userPosts.map(post => (
@@ -167,10 +249,12 @@ export default function UserProfilePage() {
           </div>
         ) : (
           <p className="text-muted-foreground">
-            {isOwnProfile ? "You haven't made any posts yet." : `${profileUser.username} hasn't made any posts yet.`}
+            {isOwnProfile ? "You haven't made any posts yet." : `${profileUser.name || profileUser.username} hasn't made any posts yet.`}
           </p>
         )}
       </section>
     </div>
   );
 }
+
+    
