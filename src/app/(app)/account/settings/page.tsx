@@ -33,6 +33,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger, // Added AlertDialogTrigger
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { useForm, type SubmitHandler } from "react-hook-form";
@@ -189,6 +190,11 @@ export default function AccountSettingsPage() {
       if (typeof window !== 'undefined') {
         localStorage.removeItem('currentUser'); 
         localStorage.removeItem('userProfileData');
+        // Remove other settings from localStorage on logout
+        localStorage.removeItem('settings_emailNotifications');
+        localStorage.removeItem('settings_pushNotifications');
+        localStorage.removeItem('settings_isProfilePrivate');
+        localStorage.removeItem('settings_isEmailHidden');
       }
       toast({ title: "Logged Out", description: "You have been successfully logged out." });
       setIsLogoutConfirmOpen(false);
