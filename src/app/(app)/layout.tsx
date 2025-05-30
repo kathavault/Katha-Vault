@@ -16,14 +16,14 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { buttonVariants } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, UserCircle2 } from 'lucide-react'; // Removed LogIn
+import { Send, UserCircle2, LogIn } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -40,7 +40,7 @@ function AppSidebar() {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && isClient) { 
+    if (typeof window !== 'undefined' && isClient) {
       const storedProfile = localStorage.getItem('userProfileData');
       if (storedProfile) {
         try {
@@ -78,9 +78,17 @@ function AppSidebar() {
         <SidebarContent>
           <ScrollArea className="h-full">
             <SidebarMenu>
-              {siteConfig.mainNav.map((item) => (
-                <SidebarMenuItem key={item.href} className="h-8" />
-              ))}
+              {siteConfig.mainNav.map((item) => {
+                // Apply same admin link logic for SSR placeholder consistency
+                const isAdminLink = item.href === '/admin';
+                // During SSR, userProfile is effectively null, so an admin user cannot be determined this way.
+                // We assume non-admin for the placeholder rendering to match client-side non-admin view.
+                const isSsrAdminUser = false; 
+                if (isAdminLink && !isSsrAdminUser) {
+                  return null;
+                }
+                return <SidebarMenuItem key={item.href} className="h-8" />;
+              })}
             </SidebarMenu>
           </ScrollArea>
         </SidebarContent>
@@ -108,18 +116,11 @@ function AppSidebar() {
           <SidebarMenu>
             {siteConfig.mainNav.map((item) => {
               const isAdminLink = item.href === '/admin';
-              const isAuthLink = item.href === '/auth/login';
               const isAdminUser = isClient && userProfile && userProfile.email && adminEmails.includes(userProfile.email);
-              const isAuthenticated = isClient && userProfile;
-
+              
               if (isAdminLink && !isAdminUser) {
                 return null; 
               }
-              // This logic for hiding authLink if authenticated is now more generally handled by the absence of the link itself for authenticated users.
-              // However, if a "Sign In" link were explicitly in mainNav, this would be relevant.
-              // if (isAuthLink && isAuthenticated) {
-              //   return null; 
-              // }
               
               return (
                 <SidebarMenuItem key={item.href}>
@@ -160,12 +161,10 @@ function AppSidebar() {
 interface AppHeaderProps {
   isAuthenticated: boolean;
   currentUserProfile: Partial<UserProfile> | null;
+  isClient: boolean;
 }
 
-function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => { setIsClient(true); }, []);
-
+function AppHeader({ isAuthenticated, currentUserProfile, isClient }: AppHeaderProps) {
   const pathname = usePathname();
   const isHomePage = isClient ? pathname === '/' : false;
 
@@ -194,19 +193,18 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {isClient && isHomePage ? (
+        {isClient && isHomePage && (
           <Link href="/chat" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative")}>
             <Send className="h-5 w-5" />
             <span className="sr-only">Chat</span>
           </Link>
-        ) : (
-          <div className="h-10 w-10" /> 
+        )}
+        {(!isClient || !isHomePage) && (
+          <div className="h-10 w-10" /> // Placeholder to maintain layout consistency
         )}
 
         <ThemeToggleButton />
-
-        {/* User Avatar / Sign In Button removed from here */}
-        
+        {/* User icon / Sign In button removed from here */}
       </div>
     </header>
   );
@@ -214,9 +212,14 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
 
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<Partial<UserProfile> | null>(null);
   const pathname = usePathname();
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     const checkAuth = () => {
@@ -267,28 +270,34 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setCurrentUserProfile(profileData);
     };
 
-    checkAuth(); 
+    if (isClient) { // Only run checkAuth if we are on the client
+      checkAuth(); 
+    }
 
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'currentUser' || event.key === 'userProfileData') {
-        checkAuth();
+        if (isClient) checkAuth();
       }
     };
     
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('focus', checkAuth); 
+    if (isClient) {
+      window.addEventListener('storage', handleStorageChange);
+      window.addEventListener('focus', checkAuth); 
+    }
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('focus', checkAuth);
+      if (isClient) {
+        window.removeEventListener('storage', handleStorageChange);
+        window.removeEventListener('focus', checkAuth);
+      }
     };
-  }, [pathname]); 
+  }, [pathname, isClient]); // Re-run on pathname change and when isClient becomes true
 
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset>
-        <AppHeader isAuthenticated={isAuthenticated} currentUserProfile={currentUserProfile} />
+        <AppHeader isAuthenticated={isAuthenticated} currentUserProfile={currentUserProfile} isClient={isClient} />
         <main className="flex-1 p-4 sm:p-6 pb-20 md:pb-6">
           {children}
         </main>
@@ -297,3 +306,4 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
