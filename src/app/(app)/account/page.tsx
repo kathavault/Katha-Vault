@@ -13,7 +13,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { UserPostCard } from '@/components/user-post-card';
-import { mockUserPosts as allMockPosts } from '@/lib/mock-data'; // Removed mockUsers
+import { mockUserPosts as allMockPosts } from '@/lib/mock-data';
 import {
   Dialog,
   DialogContent,
@@ -78,37 +78,40 @@ export default function AccountPage() {
 
         if (storedProfile) {
           try {
-            const parsedProfile = JSON.parse(storedProfile) as UserProfile; // Expect full UserProfile
+            const parsedProfile = JSON.parse(storedProfile) as UserProfile; 
             profileToUse = {
-              ...defaultUserProfilePlaceholder, // Fallback for any missing fields
+              ...defaultUserProfilePlaceholder, 
               ...parsedProfile,
             };
-            // Load user posts from localStorage if they exist under userProfileData, otherwise use mock
             userSpecificPosts = parsedProfile.userPosts || allMockPosts.filter(p => p.userId === profileToUse.id);
 
           } catch (e) {
             console.error("Failed to parse stored profile data for account page", e);
-             try { // Fallback to minimal profile from currentUser if userProfileData is corrupt
+             try { 
                 const parsedAuthUser = JSON.parse(storedAuthUser);
                 profileToUse = {
                     ...defaultUserProfilePlaceholder,
                     id: parsedAuthUser.uid || defaultUserProfilePlaceholder.id,
                     email: parsedAuthUser.email || defaultUserProfilePlaceholder.email,
+                    name: parsedAuthUser.displayName || parsedAuthUser.email?.split('@')[0] || defaultUserProfilePlaceholder.name,
                     username: parsedAuthUser.email?.split('@')[0] || defaultUserProfilePlaceholder.username,
+                    avatarUrl: parsedAuthUser.photoURL || defaultUserProfilePlaceholder.avatarUrl,
                 };
             } catch (authParseError) {
                 console.error("Failed to parse storedAuthUser for minimal profile", authParseError);
-                authStatus = false;
+                authStatus = false; // Failed to get even minimal profile
             }
           }
-        } else if (authStatus && storedAuthUser) { // Authenticated but no detailed profile yet
+        } else if (authStatus && storedAuthUser) { // Authenticated but no detailed profileData yet
              try {
                 const parsedAuthUser = JSON.parse(storedAuthUser);
                 profileToUse = {
                     ...defaultUserProfilePlaceholder,
                     id: parsedAuthUser.uid,
                     email: parsedAuthUser.email,
+                    name: parsedAuthUser.displayName || parsedAuthUser.email.split('@')[0],
                     username: parsedAuthUser.email.split('@')[0],
+                    avatarUrl: parsedAuthUser.photoURL || defaultUserProfilePlaceholder.avatarUrl,
                 };
             } catch (authParseError) {
                  console.error("Failed to parse storedAuthUser for profile init", authParseError);
@@ -127,7 +130,6 @@ export default function AccountPage() {
     setIsAuthenticated(authStatus);
 
     if (authStatus) {
-       // Combine posts from userProfileData with any additional mock posts for that user
       const combinedPosts = [
         ...(profileToUse.userPosts || []),
         ...allMockPosts.filter(mockPost => 
@@ -146,7 +148,7 @@ export default function AccountPage() {
     loadProfileData();
 
     if (typeof window !== 'undefined' && isAuthenticated && !localStorage.getItem('userJoinedDate')) {
-        const newJoinedDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 30)).toLocaleDateString(); // Shorter join duration for new users
+        const newJoinedDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 30)).toLocaleDateString(); 
         localStorage.setItem('userJoinedDate', newJoinedDate);
         setJoinedDate(newJoinedDate);
     } else if (typeof window !== 'undefined' && isAuthenticated) {
@@ -166,7 +168,7 @@ export default function AccountPage() {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated]); // Rerun when isAuthenticated changes
 
   const handleCreatePost = (e: FormEvent) => {
     e.preventDefault();
@@ -200,7 +202,7 @@ export default function AccountPage() {
       setCurrentUser(updatedUser);
       
       if (typeof window !== 'undefined') {
-        localStorage.setItem('userProfileData', JSON.stringify(updatedUser)); // Save posts with profile
+        localStorage.setItem('userProfileData', JSON.stringify(updatedUser)); 
       }
 
       setNewPostContent('');
@@ -224,17 +226,19 @@ export default function AccountPage() {
   const displayedEmail = isEmailHidden ? "Email hidden by user" : currentUser?.email;
 
   const handleSocialLoginPlaceholder = (provider: string) => {
-    toast({
-      title: `${provider} Login (Placeholder)`,
-      description: `This would initiate ${provider} OAuth flow. This is a UI placeholder.`,
-    });
+    setTimeout(() => {
+        toast({
+        title: `${provider} Login (Placeholder)`,
+        description: `This would initiate ${provider} OAuth flow. This is a UI placeholder.`,
+        });
+    }, 0);
   };
 
 
   return (
     <div className="relative space-y-8 max-w-4xl mx-auto">
       {!isAuthenticated && (
-         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-background/90 backdrop-blur-sm rounded-lg">
+         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-background/90 backdrop-blur-sm rounded-lg min-h-[calc(100vh-100px)] md:min-h-0">
           <Card className="w-full max-w-md p-6 sm:p-8 text-center shadow-xl border">
             <CardHeader>
               <Lock className="mx-auto h-12 w-12 text-primary mb-4" />
@@ -383,7 +387,6 @@ export default function AccountPage() {
                       <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
                     </Link>
                   </Button>
-                  {/* Message button is a placeholder for future user-to-user chat */}
                   <Button size="sm" asChild>
                     <Link href="/chat"> 
                       <MessageCircle className="mr-2 h-4 w-4" /> Message
@@ -446,7 +449,7 @@ export default function AccountPage() {
                   {(currentUser.userPosts && currentUser.userPosts.length > 0) ? (
                     <div className="space-y-6">
                       {currentUser.userPosts.map(post => (
-                        <UserPostCard key={post.id} post={post} currentUserId={currentUser.id} onLike={handleLikePost} onComment={handleCommentOnPost} />
+                        <UserPostCard key={post.id} post={post} currentUserId={currentUser.id} />
                       ))}
                     </div>
                   ) : (
@@ -462,3 +465,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
