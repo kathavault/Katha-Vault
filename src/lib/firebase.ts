@@ -1,6 +1,6 @@
 
 import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth } from "firebase/auth";
+import { getAuth, type Auth, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth"; // Added social providers
 // import { getFirestore, type Firestore } from "firebase/firestore";
 // import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -19,13 +19,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app: FirebaseApp;
-let authInstance: Auth; // Renamed to avoid conflict with the export name
+let authInstance: Auth; 
 // let firestore: Firestore;
 // let storage: FirebaseStorage;
 
 try {
   app = initializeApp(firebaseConfig);
-  authInstance = getAuth(app); // Use renamed variable
+  authInstance = getAuth(app); 
   // firestore = getFirestore(app);
   // storage = getStorage(app);
 } catch (error) {
@@ -36,4 +36,7 @@ try {
   throw new Error("Firebase initialization failed");
 }
 
-export { app, authInstance as auth /*, firestore, storage */ };
+const googleProvider = new GoogleAuthProvider();
+const facebookProvider = new FacebookAuthProvider();
+
+export { app, authInstance as auth, googleProvider, facebookProvider /*, firestore, storage */ };

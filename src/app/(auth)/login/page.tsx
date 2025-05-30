@@ -11,12 +11,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react"; 
-import { auth } from "@/lib/firebase"; 
-import { signInWithEmailAndPassword, FirebaseError } from "firebase/auth";
+import { auth, googleProvider, facebookProvider } from "@/lib/firebase"; 
+import { signInWithEmailAndPassword, signInWithPopup, FirebaseError, type AuthProvider } from "firebase/auth";
 import { useRouter } from 'next/navigation';
+import type { UserProfile } from '@/types';
 
-const GoogleIcon = () => <Mail className="mr-2 h-4 w-4" />; 
-const FacebookIcon = () => <Mail className="mr-2 h-4 w-4" />; 
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -25,12 +24,11 @@ const loginSchema = z.object({
 
 type LoginFormData = z.infer<typeof loginSchema>;
 
-// Default mock user data - this structure helps initialize profile if not found in localStorage
-const defaultMockUser = {
-  name: "Katha Seeker",
-  username: "StorySeeker92",
-  bio: "Avid reader and aspiring author. Always on the lookout for the next great adventure within the pages of a book. Favorite genres: Sci-Fi and Fantasy.",
-  avatarUrl: "https://placehold.co/150x150/B4317B/F7F2FA?text=SS",
+const defaultUserProfilePlaceholder: Partial<UserProfile> = {
+  name: 'Katha User',
+  username: 'katha_user',
+  bio: "Welcome to Katha Vault!",
+  avatarUrl: 'https://placehold.co/150x150/7E3AF2/FFFFFF?text=KU',
 };
 
 
@@ -44,7 +42,35 @@ export default function LoginPage() {
     },
   });
 
-  const { formState: { isSubmitting } } = form;
+  const { formState: { isSubmitting: isEmailPassSubmitting } } = form;
+  const [isSocialSubmitting, setIsSocialSubmitting] = useState(false);
+  const isSubmitting = isEmailPassSubmitting || isSocialSubmitting;
+
+  const handleSuccessfulLogin = (user: import('firebase/auth').User) => {
+    const userProfileToStore: UserProfile = {
+        id: user.uid,
+        email: user.email || 'unknown@example.com',
+        name: user.displayName || user.email?.split('@')[0] || defaultUserProfilePlaceholder.name,
+        username: user.email?.split('@')[0] || defaultUserProfilePlaceholder.username,
+        avatarUrl: user.photoURL || `https://placehold.co/150x150/B4317B/F7F2FA?text=${(user.email?.substring(0,1) || 'U').toUpperCase()}`,
+        bio: defaultUserProfilePlaceholder.bio,
+        readingHistory: [],
+        favorites: [],
+        submittedStories: [],
+        followers: 0,
+        following: 0,
+      };
+      localStorage.setItem('currentUser', JSON.stringify({ email: user.email, uid: user.uid, displayName: user.displayName, photoURL: user.photoURL }));
+      localStorage.setItem('userProfileData', JSON.stringify(userProfileToStore));
+
+      toast({
+        title: "Login Successful!",
+        description: `Welcome back, ${user.displayName || user.email}!`,
+        variant: "default"
+      });
+      router.push('/'); 
+      // router.refresh(); // Force refresh to update layout state
+  }
 
   const onSubmit: SubmitHandler<LoginFormData> = async (data) => {
     try {
@@ -57,29 +83,10 @@ export default function LoginPage() {
           variant: "destructive",
           duration: 7000,
         });
-        // await auth.signOut(); // Optionally sign out if email not verified
+        // await auth.signOut(); 
         return;
       }
-      
-      // Store more complete user info to indicate logged-in state and for profile display
-      // This is a simulation. In a real app, you'd fetch profile data from your backend.
-      const userProfileToStore = {
-        email: userCredential.user.email,
-        name: userCredential.user.displayName || defaultMockUser.name, // Use Firebase displayName or default
-        username: userCredential.user.email?.split('@')[0] || defaultMockUser.username, // Derive username or use default
-        avatarUrl: userCredential.user.photoURL || defaultMockUser.avatarUrl, // Use Firebase photoURL or default
-        bio: defaultMockUser.bio, // Default bio for now
-      };
-      localStorage.setItem('currentUser', JSON.stringify({ email: userCredential.user.email }));
-      localStorage.setItem('userProfileData', JSON.stringify(userProfileToStore));
-
-
-      toast({
-        title: "Login Successful!",
-        description: `Welcome back, ${userCredential.user.email}!`,
-        variant: "default"
-      });
-      router.push('/'); 
+      handleSuccessfulLogin(userCredential.user);
     } catch (error) {
       let errorMessage = "An unexpected error occurred during login.";
        if (error instanceof FirebaseError) {
@@ -108,12 +115,49 @@ export default function LoginPage() {
     }
   };
 
-  const handleSocialLogin = (provider: "Google" | "Facebook") => {
-    toast({
-        title: `${provider} Login (Simulated)`,
-        description: `This would initiate ${provider} OAuth flow. (Not implemented)`,
-    });
+  const handleSocialLogin = async (providerType: "Google" | "Facebook") => {
+    setIsSocialSubmitting(true);
+    const provider: AuthProvider = providerType === "Google" ? googleProvider : facebookProvider;
+    try {
+        const result = await signInWithPopup(auth, provider);
+        handleSuccessfulLogin(result.user);
+    } catch (error: any) {
+        let errorMessage = `Failed to sign in with ${providerType}.`;
+        if (error instanceof FirebaseError) {
+            switch(error.code) {
+                case 'auth/popup-closed-by-user':
+                    errorMessage = `Sign-in popup closed by user. Please try again.`;
+                    break;
+                case 'auth/account-exists-with-different-credential':
+                    errorMessage = `An account already exists with the same email address but different sign-in credentials. Sign in using a provider associated with this email address.`;
+                    break;
+                case 'auth/cancelled-popup-request':
+                    errorMessage = 'Sign-in cancelled. Please try again.';
+                    break;
+                case 'auth/operation-not-allowed':
+                     errorMessage = `${providerType} sign-in is not enabled. Please contact support.`;
+                     break;
+                case 'auth/popup-blocked':
+                    errorMessage = `Popup blocked by browser. Please allow popups for this site.`;
+                    break;
+                default:
+                    errorMessage = error.message;
+            }
+        }
+        console.error(`${providerType} login error:`, error);
+        toast({
+            title: `${providerType} Login Failed`,
+            description: errorMessage,
+            variant: "destructive",
+        });
+    } finally {
+        setIsSocialSubmitting(false);
+    }
   };
+
+  const GoogleIconPlaceholder = () => <Mail className="mr-2 h-4 w-4" />; 
+  const FacebookIconPlaceholder = () => <Mail className="mr-2 h-4 w-4" />; 
+
 
   return (
     <Card className="w-full shadow-xl">
@@ -166,8 +210,8 @@ export default function LoginPage() {
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isSubmitting ? "Logging in..." : "Login"}
+              {isEmailPassSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isEmailPassSubmitting ? "Logging in..." : "Login"}
             </Button>
             
             <div className="relative w-full">
@@ -180,11 +224,11 @@ export default function LoginPage() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 w-full">
-                <Button variant="outline" type="button" onClick={() => handleSocialLogin("Google")}>
-                    <GoogleIcon /> Google
+                <Button variant="outline" type="button" onClick={() => handleSocialLogin("Google")} disabled={isSubmitting}>
+                    {isSocialSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GoogleIconPlaceholder />} Google
                 </Button>
-                <Button variant="outline" type="button" onClick={() => handleSocialLogin("Facebook")}>
-                    <FacebookIcon /> Facebook
+                <Button variant="outline" type="button" onClick={() => handleSocialLogin("Facebook")} disabled={isSubmitting}>
+                    {isSocialSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FacebookIconPlaceholder />} Facebook
                 </Button>
             </div>
 
