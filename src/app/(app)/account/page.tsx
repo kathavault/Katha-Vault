@@ -16,7 +16,7 @@ import { toast } from '@/hooks/use-toast';
 import { UserPostCard } from '@/components/user-post-card';
 import { mockUsers, mockUserPosts as allMockPosts } from '@/lib/mock-data';
 import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword, sendPasswordResetEmail, FirebaseError } from "firebase/auth";
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from "firebase/auth";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Label } from '@/components/ui/label'; // Added Label import
+import { Label } from '@/components/ui/label';
 
 const defaultUserProfilePlaceholder: UserProfile = {
   id: 'defaultUser',
@@ -107,10 +107,10 @@ export default function AccountPage() {
               };
             } catch (authParseError) {
               console.error("Failed to parse storedAuthUser for minimal profile", authParseError);
-              authStatus = false; 
+              authStatus = false;
             }
           }
-        } else if (authStatus && storedAuthUser) { 
+        } else if (authStatus && storedAuthUser) {
           try {
             const parsedAuthUser = JSON.parse(storedAuthUser);
             profileToUse = {
@@ -177,7 +177,7 @@ export default function AccountPage() {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated]); // Rerun on isAuthenticated change to update profile when user logs in/out
 
   const handleDirectLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -209,8 +209,8 @@ export default function AccountPage() {
         readingHistory: [],
         favorites: [],
         submittedStories: [],
-        followers: 0, // These would typically be fetched
-        following: 0, // from a database
+        followers: 0,
+        following: 0,
         gender: 'Prefer not to say',
         userPosts: [],
       };
@@ -222,14 +222,14 @@ export default function AccountPage() {
         description: `Welcome back, ${userProfileToStore.name}!`,
         variant: "default"
       });
-      setIsAuthenticated(true); // This will trigger re-render and hide the auth card
-      loadProfileData(); // Ensure profile data is reloaded
+      setIsAuthenticated(true);
+      loadProfileData();
       setLoginEmail('');
       setLoginPassword('');
 
-    } catch (error) {
+    } catch (error: any) {
       let errorMessage = "An unexpected error occurred during login.";
-      if (error instanceof FirebaseError) {
+      if (error.code) {
         switch (error.code) {
           case "auth/user-not-found":
           case "auth/wrong-password":
@@ -268,12 +268,13 @@ export default function AccountPage() {
         duration: 7000,
       });
       setForgotPasswordEmail('');
-      setAuthCardView('login'); // Revert to login view
-    } catch (error) {
+      setAuthCardView('login');
+    } catch (error: any) {
       let errorMessage = "An unexpected error occurred.";
-       if (error instanceof FirebaseError) {
+       if (error.code) {
          switch (error.code) {
           case "auth/user-not-found":
+            // For security, don't reveal if an email is registered or not.
             errorMessage = `If an account exists for ${forgotPasswordEmail}, a password reset link has been sent.`;
             break;
           case "auth/invalid-email":
@@ -338,7 +339,7 @@ export default function AccountPage() {
     setTimeout(() => {
       toast({
         title: `${provider} Login (Placeholder)`,
-        description: `This would initiate ${provider} OAuth flow. This is a UI placeholder.`,
+        description: `This would initiate ${provider} OAuth flow. This feature is not yet fully connected.`,
       });
     }, 0);
   };
@@ -631,4 +632,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
