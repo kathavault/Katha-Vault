@@ -62,6 +62,7 @@ export type UserProfile = {
   email: string;
   avatarUrl: string; // Can be a URL or a Data URI string
   bio?: string;
+  gender?: 'Male' | 'Female' | 'Other' | 'Prefer not to say' | string; // Added gender
   readingHistory: Array<{ storyId: string; title: string; lastReadChapterId?: string; progress?: number }>;
   favorites: string[];
   submittedStories: Array<{ storyId: string; title: string }>;

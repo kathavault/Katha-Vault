@@ -13,7 +13,7 @@ import { useState, useEffect, FormEvent } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { UserPostCard } from '@/components/user-post-card';
-import { mockUserPosts as allMockPosts, mockUsers } from '@/lib/mock-data';
+import { mockUserPosts as allMockPosts } from '@/lib/mock-data'; // Removed mockUsers
 import {
   Dialog,
   DialogContent,
@@ -26,23 +26,22 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-const defaultUserProfile: UserProfile = {
-  id: 'user123',
-  name: 'Katha Seeker',
-  username: 'StorySeeker92',
-  email: 'story.seeker@example.com',
-  avatarUrl: 'https://placehold.co/150x150/B4317B/F7F2FA?text=SS',
-  bio: "Avid reader and aspiring author. Always on the lookout for the next great adventure within the pages of a book. Favorite genres: Sci-Fi and Fantasy. Now sharing my thoughts here too!",
-  readingHistory: [
-    { storyId: '1', title: 'The Whispers of Chronos', lastReadChapterId: 'c3', progress: 75 },
-    { storyId: '2', title: 'Beneath the Emerald Canopy', lastReadChapterId: 'c1', progress: 20 },
-  ],
-  favorites: ['1'],
+const defaultUserProfilePlaceholder: UserProfile = {
+  id: 'defaultUser',
+  name: 'Katha User',
+  username: 'katha_user',
+  email: 'user@example.com',
+  avatarUrl: 'https://placehold.co/150x150/7E3AF2/FFFFFF?text=KU',
+  bio: "Welcome to Katha Vault! Complete your profile to share more about yourself.",
+  readingHistory: [],
+  favorites: [],
   submittedStories: [],
   userPosts: [],
-  followers: 1250,
-  following: 180,
+  followers: 0,
+  following: 0,
+  gender: 'Prefer not to say',
 };
 
 const mockFollowersList = ["ReaderRiley", "BookwormBelle", "SciFiFan", "FantasyGuru", "NovelNinja", "WordSmith", "PageTurnerPro", "AlexAuthor"];
@@ -55,7 +54,7 @@ const FacebookIcon = () => <Mail className="mr-2 h-4 w-4" />;
 
 export default function AccountPage() {
   const [joinedDate, setJoinedDate] = useState('');
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null); // Initialize as null
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [newPostContent, setNewPostContent] = useState('');
   const [isPosting, setIsPosting] = useState(false);
   const [isEmailHidden, setIsEmailHidden] = useState(false);
@@ -65,12 +64,13 @@ export default function AccountPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const loadProfileData = () => {
-    let profileToUse: UserProfile = { ...defaultUserProfile };
+    let profileToUse: UserProfile = { ...defaultUserProfilePlaceholder };
     let emailHiddenSetting = false;
     let authStatus = false;
+    let userSpecificPosts: UserPost[] = [];
 
     if (typeof window !== 'undefined') {
-      const storedAuthUser = localStorage.getItem('currentUser'); // Check for Firebase auth marker
+      const storedAuthUser = localStorage.getItem('currentUser');
       if (storedAuthUser) {
         authStatus = true;
         const storedProfile = localStorage.getItem('userProfileData');
@@ -78,56 +78,42 @@ export default function AccountPage() {
 
         if (storedProfile) {
           try {
-            const parsedProfile = JSON.parse(storedProfile) as Partial<UserProfile>;
+            const parsedProfile = JSON.parse(storedProfile) as UserProfile; // Expect full UserProfile
             profileToUse = {
-              ...defaultUserProfile, // Fallback for any missing fields
+              ...defaultUserProfilePlaceholder, // Fallback for any missing fields
               ...parsedProfile,
-              id: parsedProfile.id || defaultUserProfile.id,
-              email: parsedProfile.email || defaultUserProfile.email, // Ensure email comes from parsedProfile if available
-              readingHistory: parsedProfile.readingHistory || defaultUserProfile.readingHistory,
-              favorites: parsedProfile.favorites || defaultUserProfile.favorites,
-              submittedStories: parsedProfile.submittedStories || defaultUserProfile.submittedStories,
-              userPosts: parsedProfile.userPosts || defaultUserProfile.userPosts,
-              name: parsedProfile.name || defaultUserProfile.name,
-              username: parsedProfile.username || defaultUserProfile.username,
-              avatarUrl: parsedProfile.avatarUrl || defaultUserProfile.avatarUrl,
-              bio: parsedProfile.bio || defaultUserProfile.bio,
-              followers: parsedProfile.followers || defaultUserProfile.followers,
-              following: parsedProfile.following || defaultUserProfile.following,
             };
+            // Load user posts from localStorage if they exist under userProfileData, otherwise use mock
+            userSpecificPosts = parsedProfile.userPosts || allMockPosts.filter(p => p.userId === profileToUse.id);
+
           } catch (e) {
             console.error("Failed to parse stored profile data for account page", e);
-            // If parsing fails, user might still be authenticated, but profile data is corrupt
-            // We might use a minimal profile from 'currentUser' if available or default
-             try {
+             try { // Fallback to minimal profile from currentUser if userProfileData is corrupt
                 const parsedAuthUser = JSON.parse(storedAuthUser);
                 profileToUse = {
-                    ...defaultUserProfile,
-                    id: parsedAuthUser.uid || defaultUserProfile.id,
-                    email: parsedAuthUser.email || defaultUserProfile.email,
-                    username: parsedAuthUser.email?.split('@')[0] || defaultUserProfile.username,
-                    // Other fields can use defaults or be blank
+                    ...defaultUserProfilePlaceholder,
+                    id: parsedAuthUser.uid || defaultUserProfilePlaceholder.id,
+                    email: parsedAuthUser.email || defaultUserProfilePlaceholder.email,
+                    username: parsedAuthUser.email?.split('@')[0] || defaultUserProfilePlaceholder.username,
                 };
             } catch (authParseError) {
                 console.error("Failed to parse storedAuthUser for minimal profile", authParseError);
-                authStatus = false; // Treat as not authenticated if basic auth info is unparsable
+                authStatus = false;
             }
           }
-        } else if (storedAuthUser) { // Only basic auth info exists, try to build minimal profile
-            try {
+        } else if (authStatus && storedAuthUser) { // Authenticated but no detailed profile yet
+             try {
                 const parsedAuthUser = JSON.parse(storedAuthUser);
                 profileToUse = {
-                    ...defaultUserProfile,
-                    id: parsedAuthUser.uid || defaultUserProfile.id,
-                    email: parsedAuthUser.email || defaultUserProfile.email,
-                    username: parsedAuthUser.email?.split('@')[0] || defaultUserProfile.username,
+                    ...defaultUserProfilePlaceholder,
+                    id: parsedAuthUser.uid,
+                    email: parsedAuthUser.email,
+                    username: parsedAuthUser.email.split('@')[0],
                 };
             } catch (authParseError) {
                  console.error("Failed to parse storedAuthUser for profile init", authParseError);
                  authStatus = false;
             }
-        } else {
-            authStatus = false; // No stored auth user
         }
         
         if (storedIsEmailHidden !== null) {
@@ -141,14 +127,17 @@ export default function AccountPage() {
     setIsAuthenticated(authStatus);
 
     if (authStatus) {
-      const userSpecificPosts = allMockPosts.filter(p => p.userId === profileToUse.id);
+       // Combine posts from userProfileData with any additional mock posts for that user
       const combinedPosts = [
-        ...(profileToUse.userPosts || []), 
-        ...userSpecificPosts.filter(mockPost => !(profileToUse.userPosts || []).find(p => p.id === mockPost.id)) 
+        ...(profileToUse.userPosts || []),
+        ...allMockPosts.filter(mockPost => 
+            mockPost.userId === profileToUse.id && 
+            !(profileToUse.userPosts || []).find(p => p.id === mockPost.id)
+        )
       ];
       setCurrentUser({ ...profileToUse, userPosts: combinedPosts });
     } else {
-      setCurrentUser(null); // Not authenticated, no user profile to show
+      setCurrentUser(null);
     }
     setIsEmailHidden(emailHiddenSetting);
   };
@@ -157,26 +146,31 @@ export default function AccountPage() {
     loadProfileData();
 
     if (typeof window !== 'undefined' && isAuthenticated && !localStorage.getItem('userJoinedDate')) {
-        const newJoinedDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 365)).toLocaleDateString();
+        const newJoinedDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 30)).toLocaleDateString(); // Shorter join duration for new users
         localStorage.setItem('userJoinedDate', newJoinedDate);
         setJoinedDate(newJoinedDate);
     } else if (typeof window !== 'undefined' && isAuthenticated) {
-        setJoinedDate(localStorage.getItem('userJoinedDate') || '');
+        setJoinedDate(localStorage.getItem('userJoinedDate') || new Date().toLocaleDateString());
     }
 
-    const handleFocus = () => {
-      loadProfileData(); // Re-load data when window gains focus
+    const handleFocus = () => { loadProfileData(); };
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'userProfileData' || event.key === 'currentUser' || event.key === 'settings_isEmailHidden') {
+        loadProfileData();
+      }
     };
 
     window.addEventListener('focus', handleFocus);
+    window.addEventListener('storage', handleStorageChange);
     return () => {
       window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('storage', handleStorageChange);
     };
-  }, [isAuthenticated]); // Re-run if isAuthenticated changes (e.g. after login/logout handled elsewhere)
+  }, [isAuthenticated]);
 
   const handleCreatePost = (e: FormEvent) => {
     e.preventDefault();
-    if (!currentUser) return;
+    if (!currentUser || !currentUser.id) return;
     if (!newPostContent.trim()) {
       setTimeout(() => {
         toast({ title: "Empty Post", description: "Please write something to post.", variant: "destructive" });
@@ -206,7 +200,7 @@ export default function AccountPage() {
       setCurrentUser(updatedUser);
       
       if (typeof window !== 'undefined') {
-        localStorage.setItem('userProfileData', JSON.stringify(updatedUser));
+        localStorage.setItem('userProfileData', JSON.stringify(updatedUser)); // Save posts with profile
       }
 
       setNewPostContent('');
@@ -240,7 +234,7 @@ export default function AccountPage() {
   return (
     <div className="relative space-y-8 max-w-4xl mx-auto">
       {!isAuthenticated && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-background/90 backdrop-blur-sm rounded-lg">
+         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-4 bg-background/90 backdrop-blur-sm rounded-lg">
           <Card className="w-full max-w-md p-6 sm:p-8 text-center shadow-xl border">
             <CardHeader>
               <Lock className="mx-auto h-12 w-12 text-primary mb-4" />
@@ -278,7 +272,6 @@ export default function AccountPage() {
       )}
 
       <div className={cn("space-y-8", !isAuthenticated && "blur-md pointer-events-none")}>
-        {/* Header and Profile Card will only render meaningful data if authenticated */}
         {isAuthenticated && currentUser && (
           <>
             <header className="flex items-center justify-between">
@@ -330,25 +323,25 @@ export default function AccountPage() {
                     <Dialog open={isFollowersDialogOpen} onOpenChange={setIsFollowersDialogOpen}>
                       <DialogTrigger asChild>
                         <Button variant="link" className="p-0 h-auto flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
-                            <Users className="h-4 w-4" /> <strong>{currentUser.followers}</strong> Followers
+                            <Users className="h-4 w-4" /> <strong>{currentUser.followers || 0}</strong> Followers
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Followers</DialogTitle>
-                          <DialogDescription>
+                           <DialogDescription>
                               {isEmailHidden ? `This profile is private. Typically, only approved followers can see this list.` : `This profile is public. This list shows users who follow ${currentUser.username}.`} (Mock data)
                           </DialogDescription>
                         </DialogHeader>
                         <ScrollArea className="max-h-60">
                           <div className="space-y-2 py-2">
-                          {mockFollowersList.slice(0, currentUser.followers).map((follower, index) => (
+                          {mockFollowersList.slice(0, currentUser.followers || 0).map((follower, index) => (
                               <div key={index} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted">
                               <Avatar className="h-7 w-7"><AvatarFallback>{follower.substring(0,1)}</AvatarFallback></Avatar>
                               <span className="text-sm">{follower}</span>
                               </div>
                           ))}
-                          {currentUser.followers === 0 && <p className="text-sm text-center text-muted-foreground">No followers yet.</p>}
+                          {(currentUser.followers || 0) === 0 && <p className="text-sm text-center text-muted-foreground">No followers yet.</p>}
                           </div>
                         </ScrollArea>
                         <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
@@ -358,25 +351,25 @@ export default function AccountPage() {
                     <Dialog open={isFollowingDialogOpen} onOpenChange={setIsFollowingDialogOpen}>
                       <DialogTrigger asChild>
                           <Button variant="link" className="p-0 h-auto flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
-                              <UserPlus className="h-4 w-4" /> <strong>{currentUser.following}</strong> Following
+                              <UserPlus className="h-4 w-4" /> <strong>{currentUser.following || 0}</strong> Following
                           </Button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Following</DialogTitle>
                           <DialogDescription>
-                              {isEmailHidden ? `This profile is private. Typically, only approved followers can see this list.` : `This profile is public. This list shows users ${currentUser.username} follows.`} (Mock data)
+                               {isEmailHidden ? `This profile is private. Typically, only approved followers can see this list.` : `This profile is public. This list shows users ${currentUser.username} follows.`} (Mock data)
                           </DialogDescription>
                         </DialogHeader>
                         <ScrollArea className="max-h-60">
                           <div className="space-y-2 py-2">
-                          {mockFollowingList.slice(0, currentUser.following).map((followedUser, index) => (
+                          {mockFollowingList.slice(0, currentUser.following || 0).map((followedUser, index) => (
                               <div key={index} className="flex items-center gap-2 p-1.5 rounded-md hover:bg-muted">
                               <Avatar className="h-7 w-7"><AvatarFallback>{followedUser.substring(0,1)}</AvatarFallback></Avatar>
                               <span className="text-sm">{followedUser}</span>
                               </div>
                           ))}
-                          {currentUser.following === 0 && <p className="text-sm text-center text-muted-foreground">Not following anyone yet.</p>}
+                          {(currentUser.following || 0) === 0 && <p className="text-sm text-center text-muted-foreground">Not following anyone yet.</p>}
                           </div>
                         </ScrollArea>
                         <DialogFooter><DialogClose asChild><Button variant="outline">Close</Button></DialogClose></DialogFooter>
@@ -390,8 +383,9 @@ export default function AccountPage() {
                       <Edit3 className="mr-2 h-4 w-4" /> Edit Profile
                     </Link>
                   </Button>
+                  {/* Message button is a placeholder for future user-to-user chat */}
                   <Button size="sm" asChild>
-                    <Link href="/chat">
+                    <Link href="/chat"> 
                       <MessageCircle className="mr-2 h-4 w-4" /> Message
                     </Link>
                   </Button>
@@ -468,5 +462,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
-    

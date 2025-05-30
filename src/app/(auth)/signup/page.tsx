@@ -10,8 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "@/hooks/use-toast";
-import { UserPlus, Mail, Lock, User as UserIcon, Loader2 } from "lucide-react"; // Added Loader2
-import { auth } from "@/lib/firebase"; // Import Firebase auth instance
+import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
+import { auth } from "@/lib/firebase";
 import { createUserWithEmailAndPassword, sendEmailVerification, FirebaseError } from "firebase/auth";
 import { useRouter } from 'next/navigation';
 
@@ -20,7 +20,6 @@ const GoogleIcon = () => <Mail className="mr-2 h-4 w-4" />;
 const FacebookIcon = () => <Mail className="mr-2 h-4 w-4" />;
 
 const signupSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters").max(30, "Username must be max 30 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string().min(8, "Please confirm your password"),
@@ -36,7 +35,6 @@ export default function SignupPage() {
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
-      username: "",
       email: "",
       password: "",
       confirmPassword: "",
@@ -48,18 +46,24 @@ export default function SignupPage() {
   const onSubmit: SubmitHandler<SignupFormData> = async (data) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-      // User created. You can optionally update the user's profile with the username here
-      // await updateProfile(userCredential.user, { displayName: data.username });
-
       await sendEmailVerification(userCredential.user);
+
+      // Store minimal info to pass to complete-profile or for later use
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pendingUserProfileCompletion', JSON.stringify({
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+        }));
+      }
 
       toast({
         title: "Account Created!",
-        description: "A verification email has been sent. Please check your inbox to verify your email address.",
+        description: "A verification email has been sent. Please check your inbox. Next, complete your profile.",
         variant: "default",
+        duration: 7000,
       });
-      form.reset();
-      router.push('/auth/login'); // Redirect to login page after successful signup & email sent
+      // Don't reset form yet, user might need to see email if they missed it
+      router.push('/auth/complete-profile'); 
     } catch (error) {
       let errorMessage = "An unexpected error occurred during sign up.";
       if (error instanceof FirebaseError) {
@@ -99,27 +103,11 @@ export default function SignupPage() {
         <CardTitle className="text-2xl flex items-center justify-center gap-2">
             <UserPlus className="h-6 w-6 text-primary" /> Create an Account
         </CardTitle>
-        <CardDescription>Join Katha Vault to discover amazing stories.</CardDescription>
+        <CardDescription>Step 1: Enter your email and password to join Katha Vault.</CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="username"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Username</FormLabel>
-                  <FormControl>
-                    <div className="relative">
-                        <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Choose a username" {...field} className="pl-10" />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="email"
@@ -172,7 +160,7 @@ export default function SignupPage() {
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              {isSubmitting ? "Signing up..." : "Sign Up"}
+              {isSubmitting ? "Creating Account..." : "Create Account & Continue"}
             </Button>
             
             <div className="relative w-full">
