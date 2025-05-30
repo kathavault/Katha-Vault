@@ -11,7 +11,7 @@ const firebaseConfig = {
   authDomain: "katha-vault-novel.firebaseapp.com",
   databaseURL: "https://katha-vault-novel-default-rtdb.firebaseio.com",
   projectId: "katha-vault-novel",
-  storageBucket: "katha-vault-novel.appspot.com", // Corrected: typically .appspot.com
+  storageBucket: "katha-vault-novel.appspot.com", // Corrected
   messagingSenderId: "1050410197456",
   appId: "1:1050410197456:web:3add67c05dac9fe2c419d5"
 };
@@ -25,10 +25,17 @@ try {
   app = initializeApp(firebaseConfig);
   authInstance = getAuth(app);
 
-  // Initialize App Check
-  // This should only be initialized on the client
+  // Initialize App Check - This should only be initialized on the client
   if (typeof window !== 'undefined') {
-    console.log("Attempting to initialize Firebase App Check...");
+    console.log("Firebase App Check: Client-side environment detected. Attempting to initialize...");
+
+    // --- TEMPORARY DEBUGGING FOR APP CHECK ---
+    // IMPORTANT: Set to true for local development if reCAPTCHA v3 is problematic,
+    // OR set to your actual debug token string obtained from the Firebase console.
+    // REMOVE OR SET TO FALSE for production.
+    console.log("Firebase App Check: Enabling DEBUG TOKEN MODE. This is for local development only.");
+    (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true; 
+    // --- END TEMPORARY DEBUGGING ---
 
     // IMPORTANT: Replace 'YOUR_RECAPTCHA_V3_SITE_KEY_HERE' with your actual reCAPTCHA v3 site key.
     // This key is obtained from your Google Cloud Console under reCAPTCHA Enterprise.
@@ -37,32 +44,31 @@ try {
     // Also, ensure App Check is enabled for Authentication in your Firebase project console.
     const reCaptchaSiteKey = 'YOUR_RECAPTCHA_V3_SITE_KEY_HERE';
 
-    if (reCaptchaSiteKey === 'YOUR_RECAPTCHA_V3_SITE_KEY_HERE') {
+    if (reCaptchaSiteKey === 'YOUR_RECAPTCHA_V3_SITE_KEY_HERE' && !(window as any).FIREBASE_APPCHECK_DEBUG_TOKEN) {
       console.warn(
-        "Firebase App Check: CRITICAL - Placeholder reCAPTCHA v3 site key is being used. " +
+        "Firebase App Check: CRITICAL - Placeholder reCAPTCHA v3 site key is being used, and debug token is not active. " +
         "App Check WILL FAIL. Please replace 'YOUR_RECAPTCHA_V3_SITE_KEY_HERE' " +
-        "in src/lib/firebase.ts with your actual site key from Google Cloud Console."
+        "in src/lib/firebase.ts with your actual site key from Google Cloud Console, or ensure debug token is correctly set for local testing."
       );
-    } else {
-      console.log("Firebase App Check: Using provided reCAPTCHA v3 site key.");
+    } else if (!(window as any).FIREBASE_APPCHECK_DEBUG_TOKEN) {
+      console.log("Firebase App Check: Using provided reCAPTCHA v3 site key for provider.");
     }
     
-    // Debug: To use a debug token in development (generate one from Firebase Console -> App Check -> Apps -> Your App -> Manage debug tokens)
-    // (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = "YOUR_DEBUG_TOKEN_IF_NEEDED"; // Uncomment and replace if using a debug token
-
     appCheckInstance = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(reCaptchaSiteKey),
-      isTokenAutoRefreshEnabled: true // Optional: automatically refresh App Check token as needed
+      provider: new ReCaptchaV3Provider(reCaptchaSiteKey), // This key is only used if debug token is not set/false
+      isTokenAutoRefreshEnabled: true
     });
-    console.log("Firebase App Check initialization attempted.");
+    console.log("Firebase App Check: Initialization call completed.");
   } else {
-    console.log("Skipping Firebase App Check initialization (server-side).");
+    console.log("Firebase App Check: Skipping initialization (server-side or non-browser environment).");
   }
 
 } catch (error) {
   console.error("Error initializing Firebase or App Check:", error);
   // Fallback or error handling if initialization fails
-  throw new Error("Firebase/AppCheck initialization failed");
+  // In a real app, you might want to notify the user or disable features that depend on Firebase.
+  // For this prototype, we'll re-throw to make the issue visible during development.
+  throw new Error("Firebase/AppCheck initialization failed. Check console for details.");
 }
 
 const googleProvider = new GoogleAuthProvider();
