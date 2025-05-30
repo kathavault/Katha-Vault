@@ -1,6 +1,6 @@
 
 import type { NavItem } from '@/types';
-import { Home, Library, Search, UserCircle2, Sparkles, ShieldCheck, LogIn } from 'lucide-react'; // Removed UserPlus
+import { Home, Library, Search, UserCircle2, Sparkles, ShieldCheck, LogIn } from 'lucide-react';
 
 export const siteConfig = {
   name: 'Katha Vault',

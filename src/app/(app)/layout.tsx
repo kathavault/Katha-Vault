@@ -23,7 +23,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, UserCircle2, LogIn, UserPlus } from 'lucide-react';
+import { Send, UserCircle2 } from 'lucide-react'; // Removed LogIn
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -115,9 +115,11 @@ function AppSidebar() {
               if (isAdminLink && !isAdminUser) {
                 return null; 
               }
-              if (isAuthLink && isAuthenticated) {
-                return null; // Hide Sign In link if authenticated
-              }
+              // This logic for hiding authLink if authenticated is now more generally handled by the absence of the link itself for authenticated users.
+              // However, if a "Sign In" link were explicitly in mainNav, this would be relevant.
+              // if (isAuthLink && isAuthenticated) {
+              //   return null; 
+              // }
               
               return (
                 <SidebarMenuItem key={item.href}>
@@ -203,31 +205,8 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
 
         <ThemeToggleButton />
 
-        {isClient ? (
-          isAuthenticated && currentUserProfile ? (
-            <Link href="/account" className="flex items-center gap-2 p-1 rounded-full hover:bg-accent">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src={currentUserProfile.avatarUrl || undefined} alt={currentUserProfile.username || "User"} data-ai-hint="user avatar"/>
-                <AvatarFallback>{getInitials(currentUserProfile.name, currentUserProfile.username)}</AvatarFallback>
-              </Avatar>
-              {/* <span className="hidden sm:inline text-sm font-medium">{currentUserProfile.name || currentUserProfile.username}</span> */}
-            </Link>
-          ) : (
-            <Link
-              href="/auth/login"
-              className={cn(buttonVariants({ variant: "default", size: "sm" }))}
-            >
-              <LogIn className="mr-2 h-4 w-4" />
-              Sign In
-            </Link>
-          )
-        ) : (
-          // SSR placeholder to roughly match button size and avoid layout shift
-          <div className={cn(buttonVariants({ variant: "default", size: "sm" }), "invisible")}> 
-             <LogIn className="mr-2 h-4 w-4" />
-             Sign In
-          </div>
-        )}
+        {/* User Avatar / Sign In Button removed from here */}
+        
       </div>
     </header>
   );
@@ -257,7 +236,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               console.error("Failed to parse userProfileData from localStorage in AppLayout:", e);
               try { 
                 const parsedCurrentUser = JSON.parse(userStored);
-                profileData = { email: parsedCurrentUser.email, id: parsedCurrentUser.uid };
+                profileData = { 
+                  email: parsedCurrentUser.email, 
+                  id: parsedCurrentUser.uid,
+                  name: parsedCurrentUser.displayName || parsedCurrentUser.email?.split('@')[0] || 'User',
+                  username: parsedCurrentUser.email?.split('@')[0] || 'User',
+                  avatarUrl: parsedCurrentUser.photoURL || '' 
+                };
               } catch (parseError) {
                 console.error("Failed to parse currentUser (fallback) from localStorage in AppLayout:", parseError);
               }
@@ -265,14 +250,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           } else { 
             try {
               const parsedCurrentUser = JSON.parse(userStored);
-              // Construct a minimal profile if only currentUser exists
               profileData = { 
                 id: parsedCurrentUser.uid, 
                 email: parsedCurrentUser.email,
                 username: parsedCurrentUser.email?.split('@')[0] || 'User',
-                // Provide fallbacks for other fields if needed by header avatar
-                name: parsedCurrentUser.email?.split('@')[0] || 'User',
-                avatarUrl: '' 
+                name: parsedCurrentUser.displayName || parsedCurrentUser.email?.split('@')[0] || 'User',
+                avatarUrl: parsedCurrentUser.photoURL || '' 
               };
             } catch (parseError) {
               console.error("Failed to parse currentUser (for profile) from localStorage in AppLayout:", parseError);
@@ -293,13 +276,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     };
     
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('focus', checkAuth); // Re-check on window focus
+    window.addEventListener('focus', checkAuth); 
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', checkAuth);
     };
-  }, [pathname]); // Re-run on pathname change to ensure header updates after login/logout navigations
+  }, [pathname]); 
 
   return (
     <SidebarProvider defaultOpen={true}>
