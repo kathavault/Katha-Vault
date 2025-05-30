@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "@/hooks/use-toast";
 import { UserPlus, Mail, Lock, Loader2 } from "lucide-react";
 import { auth, googleProvider, facebookProvider } from "@/lib/firebase";
-import { createUserWithEmailAndPassword, sendEmailVerification, signInWithPopup, getAdditionalUserInfo, FirebaseError, type AuthProvider } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification, signInWithPopup, getAdditionalUserInfo, type AuthProvider, type User as FirebaseUser } from "firebase/auth";
 import { useRouter } from 'next/navigation';
 
 const GoogleIconPlaceholder = () => <Mail className="mr-2 h-4 w-4" />; 
@@ -45,17 +45,23 @@ export default function SignupPage() {
   const [isSocialSubmitting, setIsSocialSubmitting] = useState(false);
   const isSubmitting = isEmailPassSubmitting || isSocialSubmitting;
 
+  const handleNewUserRedirect = (user: FirebaseUser) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pendingUserProfileCompletion', JSON.stringify({
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName, 
+        photoURL: user.photoURL 
+      }));
+    }
+    router.push('/auth/complete-profile');
+  };
+
+
   const onSubmit: SubmitHandler<SignupFormData> = async (data) => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
       await sendEmailVerification(userCredential.user);
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('pendingUserProfileCompletion', JSON.stringify({
-          uid: userCredential.user.uid,
-          email: userCredential.user.email,
-        }));
-      }
 
       toast({
         title: "Account Created!",
@@ -63,10 +69,10 @@ export default function SignupPage() {
         variant: "default",
         duration: 7000,
       });
-      router.push('/auth/complete-profile'); 
-    } catch (error) {
+      handleNewUserRedirect(userCredential.user);
+    } catch (error: any) {
       let errorMessage = "An unexpected error occurred during sign up.";
-      if (error instanceof FirebaseError) {
+      if (error.code) {
         switch (error.code) {
           case "auth/email-already-in-use":
             errorMessage = "This email address is already in use by another account.";
@@ -98,21 +104,13 @@ export default function SignupPage() {
         const additionalInfo = getAdditionalUserInfo(result);
 
         if (additionalInfo?.isNewUser) {
-            if (typeof window !== 'undefined') {
-                localStorage.setItem('pendingUserProfileCompletion', JSON.stringify({
-                    uid: result.user.uid,
-                    email: result.user.email,
-                    displayName: result.user.displayName, // Pass display name for pre-fill
-                    photoURL: result.user.photoURL // Pass photoURL for pre-fill
-                }));
-            }
             toast({
                 title: "Account Created!",
                 description: `Welcome! Please complete your profile to get started.`,
                 variant: "default",
                 duration: 5000,
               });
-            router.push('/auth/complete-profile');
+            handleNewUserRedirect(result.user);
         } else {
             // Existing user logged in via social
             const userProfileToStore = {
@@ -135,7 +133,7 @@ export default function SignupPage() {
         }
     } catch (error: any) {
         let errorMessage = `Failed to sign up with ${providerType}.`;
-         if (error instanceof FirebaseError) {
+         if (error.code) {
             switch(error.code) {
                 case 'auth/popup-closed-by-user':
                     errorMessage = `Sign-up popup closed by user. Please try again.`;
@@ -260,3 +258,6 @@ export default function SignupPage() {
     </Card>
   );
 }
+
+
+    

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useState, type ChangeEvent } from 'react';
+import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'; // Added FormEvent
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,7 +22,7 @@ const completeProfileSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(50, "Name must be at most 50 characters"),
   username: z.string().min(3, "Username must be at least 3 characters").max(30, "Username must be at most 30 characters").regex(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
   gender: z.enum(["Male", "Female", "Other", "Prefer not to say"]),
-  avatarDataUrl: z.string().optional(), // Will store Data URI
+  avatarDataUrl: z.string().optional(), 
 });
 
 type CompleteProfileFormData = z.infer<typeof completeProfileSchema>;
@@ -32,6 +32,7 @@ export default function CompleteProfilePage() {
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null); // To hold the actual file
 
   const form = useForm<CompleteProfileFormData>({
     resolver: zodResolver(completeProfileSchema),
@@ -49,89 +50,97 @@ export default function CompleteProfilePage() {
       if (user) {
         setFirebaseUser(user);
         setEmail(user.email);
-        // Pre-fill username if email exists
+        form.setValue("name", user.displayName || "");
         if (user.email && !form.getValues("username")) {
           form.setValue("username", user.email.split('@')[0]);
         }
+        if(user.photoURL) {
+            setAvatarPreview(user.photoURL); // Use actual photoURL if from social provider
+            form.setValue("avatarDataUrl", user.photoURL);
+        }
       } else {
-        // If no user, redirect to signup or login, as this page requires a pending user
-        toast({ title: "Session Error", description: "Please sign up or log in first.", variant: "destructive" });
-        router.push('/auth/signup');
-      }
-    });
-
-    // Check for pending completion data from localStorage if direct auth state is not yet available
-    if (typeof window !== 'undefined' && !auth.currentUser) {
+        // If no user, check for pending data, then decide to redirect
         const pendingDataString = localStorage.getItem('pendingUserProfileCompletion');
         if (pendingDataString) {
             try {
                 const pendingData = JSON.parse(pendingDataString);
+                setEmail(pendingData.email);
                 if (pendingData.email && !form.getValues("username")) {
-                     setEmail(pendingData.email);
                      form.setValue("username", pendingData.email.split('@')[0]);
+                }
+                if (pendingData.displayName) {
+                    form.setValue("name", pendingData.displayName);
+                }
+                if (pendingData.photoURL) { // From social signup
+                    setAvatarPreview(pendingData.photoURL);
+                    form.setValue("avatarDataUrl", pendingData.photoURL);
                 }
             } catch (e) {
                 console.error("Error parsing pending profile data", e);
+                toast({ title: "Session Error", description: "Please sign up or log in first.", variant: "destructive" });
+                router.push('/auth/signup');
             }
+        } else {
+            toast({ title: "Session Error", description: "Please sign up or log in first.", variant: "destructive" });
+            router.push('/auth/signup');
         }
-    }
-
-
+      }
+    });
     return () => unsubscribe();
   }, [router, form]);
 
   const handleAvatarFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setAvatarFile(file); // Store the file
       const reader = new FileReader();
       reader.onloadend = () => {
         const dataUrl = reader.result as string;
-        setAvatarPreview(dataUrl);
-        form.setValue("avatarDataUrl", dataUrl);
+        setAvatarPreview(dataUrl); // For preview
+        form.setValue("avatarDataUrl", dataUrl); // Store Data URI for Firebase update
       };
       reader.readAsDataURL(file);
     } else {
-      setAvatarPreview(null);
-      form.setValue("avatarDataUrl", "");
+      setAvatarFile(null);
+      setAvatarPreview(firebaseUser?.photoURL || null); // Revert to original if cleared
+      form.setValue("avatarDataUrl", firebaseUser?.photoURL || "");
     }
   };
 
   const onSubmit: SubmitHandler<CompleteProfileFormData> = async (data) => {
-    const currentUser = auth.currentUser; // Get current user again at submission time
-    if (!currentUser) {
+    const currentUserToUpdate = firebaseUser || auth.currentUser; 
+    if (!currentUserToUpdate) {
       toast({ title: "Error", description: "No active user session. Please try logging in.", variant: "destructive" });
       router.push('/auth/login');
       return;
     }
 
     try {
-      // Update Firebase Profile (displayName and photoURL)
-      await updateProfile(currentUser, {
-        displayName: data.name, // Using full name for displayName
+      await updateProfile(currentUserToUpdate, {
+        displayName: data.name, 
         photoURL: data.avatarDataUrl || null, 
       });
 
-      // Prepare data for localStorage
       const userProfileToStore: UserProfile = {
-        id: currentUser.uid,
-        email: currentUser.email || 'unknown@example.com', // Should always exist here
+        id: currentUserToUpdate.uid,
+        email: currentUserToUpdate.email || email || 'unknown@example.com', 
         name: data.name,
         username: data.username,
         avatarUrl: data.avatarDataUrl || `https://placehold.co/150x150/CCCCCC/FFFFFF?text=${data.username.substring(0,2).toUpperCase()}`,
         gender: data.gender,
-        bio: "", // Default empty bio
-        readingHistory: [],
-        favorites: [],
-        submittedStories: [],
-        userPosts: [],
-        followers: 0,
-        following: 0,
+        bio: "", 
+        readingHistory: [], favorites: [], submittedStories: [], userPosts: [], followers: 0, following: 0,
       };
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('userProfileData', JSON.stringify(userProfileToStore));
-        localStorage.setItem('currentUser', JSON.stringify({ email: currentUser.email, uid: currentUser.uid })); // Mark as fully logged in
-        localStorage.removeItem('pendingUserProfileCompletion'); // Clean up
+        localStorage.setItem('currentUser', JSON.stringify({ 
+            email: userProfileToStore.email, 
+            uid: userProfileToStore.id,
+            displayName: userProfileToStore.name, // Store name
+            photoURL: userProfileToStore.avatarUrl // Store avatar
+        }));
+        localStorage.removeItem('pendingUserProfileCompletion');
       }
 
       toast({
@@ -139,7 +148,7 @@ export default function CompleteProfilePage() {
         description: "Your profile has been set up.",
         variant: "default",
       });
-      router.push('/account'); // Redirect to account page or home
+      router.push('/account'); 
     } catch (error: any) {
       console.error("Error completing profile:", error);
       toast({
@@ -150,7 +159,7 @@ export default function CompleteProfilePage() {
     }
   };
 
-  if (!firebaseUser && !email) { // Show loader if still determining user state
+  if (!firebaseUser && !localStorage.getItem('pendingUserProfileCompletion')) { 
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -244,3 +253,5 @@ export default function CompleteProfilePage() {
     </Card>
   );
 }
+
+    
