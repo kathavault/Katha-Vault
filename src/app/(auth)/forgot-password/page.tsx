@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 import { Mail, KeyRound, ArrowLeft, Loader2 } from "lucide-react"; // Added Loader2
 import { auth } from "@/lib/firebase"; // Import Firebase auth instance
 import { sendPasswordResetEmail, FirebaseError } from "firebase/auth";
+import type { FirebaseError as FirebaseErrorType } from "firebase/app"; // Import FirebaseError type
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -34,7 +35,7 @@ export default function ForgotPasswordPage() {
     try {
       await sendPasswordResetEmail(auth, data.email);
       toast({
-        title: "Password Reset Link Sent",
+        title: "Password Reset Initiated", // More generic title
         description: `If an account exists for ${data.email}, a password reset link has been sent. Please check your inbox.`,
         variant: "default",
       });
@@ -42,7 +43,7 @@ export default function ForgotPasswordPage() {
     } catch (error) {
       let errorMessage = "An unexpected error occurred.";
       if (error instanceof FirebaseError) {
-         switch (error.code) {
+        switch ((error as FirebaseErrorType).code) { // Use the imported type for type assertion
           case "auth/user-not-found":
             // It's common practice not to reveal if an email exists for security reasons
             // So, show a generic message.

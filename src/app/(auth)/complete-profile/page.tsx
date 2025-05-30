@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'; // Added FormEvent
@@ -30,7 +29,8 @@ type CompleteProfileFormData = z.infer<typeof completeProfileSchema>;
 export default function CompleteProfilePage() {
   const router = useRouter();
   const [firebaseUser, setFirebaseUser] = useState<User | null>(null);
-  const [email, setEmail] = useState<string | null>(null);
+  const [email, setEmail] = useState<string | null>(null); // Initialize email to null
+  const [isLoadingInitialData, setIsLoadingInitialData] = useState(true); // New state for initial loading
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null); // To hold the actual file
 
@@ -45,6 +45,14 @@ export default function CompleteProfilePage() {
   });
   const { formState: { isSubmitting } } = form;
 
+  // Add a loading check at the beginning of the component render
+  if (isLoadingInitialData) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      </div>
+    );
+  }
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
       if (user) {
@@ -59,6 +67,7 @@ export default function CompleteProfilePage() {
             form.setValue("avatarDataUrl", user.photoURL);
         }
       } else {
+        if (typeof window !== 'undefined') { // Check if running on client-side
         // If no user, check for pending data, then decide to redirect
         const pendingDataString = localStorage.getItem('pendingUserProfileCompletion');
         if (pendingDataString) {
@@ -84,7 +93,9 @@ export default function CompleteProfilePage() {
             toast({ title: "Session Error", description: "Please sign up or log in first.", variant: "destructive" });
             router.push('/auth/signup');
         }
+        }
       }
+      setIsLoadingInitialData(false); // Set loading to false after check
     });
     return () => unsubscribe();
   }, [router, form]);
@@ -158,14 +169,6 @@ export default function CompleteProfilePage() {
       });
     }
   };
-
-  if (!firebaseUser && !localStorage.getItem('pendingUserProfileCompletion')) { 
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <Card className="w-full shadow-xl">

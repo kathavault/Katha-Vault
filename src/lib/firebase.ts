@@ -33,8 +33,8 @@ try {
     // IMPORTANT: Set to true for local development if reCAPTCHA v3 is problematic,
     // OR set to your actual debug token string obtained from the Firebase console.
     // REMOVE OR SET TO FALSE for production.
-    console.log("Firebase App Check: Enabling DEBUG TOKEN MODE. This is for local development only.");
-    (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true; 
+    (window as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    console.log("Firebase App Check: FIREBASE_APPCHECK_DEBUG_TOKEN explicitly set to true for this session. Check browser console for the debug token if issues persist.");
     // --- END TEMPORARY DEBUGGING ---
 
     // IMPORTANT: Replace 'YOUR_RECAPTCHA_V3_SITE_KEY_HERE' with your actual reCAPTCHA v3 site key.
