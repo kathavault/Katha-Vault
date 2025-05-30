@@ -44,34 +44,54 @@ export default function ReadingPage() {
   const [userRating, setUserRating] = useState(0);
   const [readingProgress, setReadingProgress] = useState(0);
 
-  const [isUserAuthenticated, setIsUserAuthenticated] = useState(false);
-  const [currentUserProfile, setCurrentUserProfile] = useState<Partial<UserProfile> | null>(null);
+  const [isUserActuallyAuthenticated, setIsUserActuallyAuthenticated] = useState(false);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
+    let authStatus = false;
+    let profile: UserProfile | null = null;
+
     if (typeof window !== 'undefined') {
+      const storedAuthUser = localStorage.getItem('currentUser');
       const storedProfile = localStorage.getItem('userProfileData');
-      if (storedProfile) {
-        try {
-          setCurrentUserProfile(JSON.parse(storedProfile));
-        } catch (e) {
-          console.error("Failed to parse user profile from localStorage", e);
+      if (storedAuthUser) {
+        authStatus = true;
+        if (storedProfile) {
+          try {
+            profile = JSON.parse(storedProfile);
+          } catch (e) { console.error("Failed to parse userProfileData for read page", e); }
+        } else { // Minimal profile from currentUser if userProfileData is missing
+          try {
+            const parsedAuthUser = JSON.parse(storedAuthUser);
+            profile = {
+              id: parsedAuthUser.uid,
+              email: parsedAuthUser.email,
+              username: parsedAuthUser.email.split('@')[0],
+              avatarUrl: `https://placehold.co/40x40/CCCCCC/FFFFFF?text=${parsedAuthUser.email.substring(0,1).toUpperCase()}`,
+              readingHistory: [], favorites: [], submittedStories: []
+            };
+          } catch (e) { console.error("Failed to parse currentUser for read page profile", e); }
         }
       }
     }
+    setIsUserActuallyAuthenticated(authStatus);
+    setCurrentUserProfile(profile);
 
     const foundStory = mockStories.find(s => s.id === storyId);
 
     if (foundStory && foundStory.publishedStatus === 'Published') {
       setStory(foundStory);
-      setDisplayViews(foundStory.views ? foundStory.views + 1 : 1);
+      setDisplayViews(foundStory.views ? foundStory.views + 1 : 1); 
       setStoryNotFound(false);
       
-      const initialComments: PostComment[] = [
-        { id: `chapComment1-${foundStory.chapters[0]?.id}`, postId: foundStory.chapters[0]?.id || 'unknown_chapter', userId: 'userBot1', username: 'BookFanatic', avatarUrl: 'https://placehold.co/40x40/7E3AF2/FFFFFF?text=BF', dataAihint: "user avatar", text: "What a great start to the story!", timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString() },
-        { id: `chapComment2-${foundStory.chapters[0]?.id}`, postId: foundStory.chapters[0]?.id || 'unknown_chapter', userId: 'userBot2', username: 'PageExplorer', avatarUrl: 'https://placehold.co/40x40/F28A3A/FFFFFF?text=PE', dataAihint: "user avatar", text: "Can't wait to see what happens next.", timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString() },
+      // Simulate fetching initial comments for the first chapter
+      const initialCommentsForChapter: PostComment[] = [
+        { id: `chapComment1-${foundStory.chapters[0]?.id}`, postId: foundStory.chapters[0]?.id || 'unknown_chapter', userId: 'userBot1', username: 'BookFanatic', avatarUrl: 'https://placehold.co/40x40/7E3AF2/FFFFFF?text=BF', dataAihint: "user avatar", text: "What a great start to the story!", timestamp: new Date(Date.now() - 1000 * 60 * 60).toISOString(), likes: 5 },
+        { id: `chapComment2-${foundStory.chapters[0]?.id}`, postId: foundStory.chapters[0]?.id || 'unknown_chapter', userId: 'userBot2', username: 'PageExplorer', avatarUrl: 'https://placehold.co/40x40/F28A3A/FFFFFF?text=PE', dataAihint: "user avatar", text: "Can't wait to see what happens next.", timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), likes: 2 },
       ];
-      setChapterComments(initialComments);
+      setChapterComments(initialCommentsForChapter);
+
     } else {
       setStory(null);
       setDisplayViews(undefined);
@@ -93,6 +113,10 @@ export default function ReadingPage() {
   }, [currentChapterIndex, story]);
 
   const handleRatingSubmit = (rating: number) => {
+    if (!isUserActuallyAuthenticated) {
+      toast({ title: "Login Required", description: "Please log in to rate stories.", variant: "destructive"});
+      return;
+    }
     setUserRating(rating);
     toast({
       title: "Rating Submitted (Simulated)",
@@ -131,7 +155,7 @@ export default function ReadingPage() {
     );
   }
 
-  if (!isUserAuthenticated) {
+  if (!isUserActuallyAuthenticated) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center p-4">
         <Alert variant="default" className="max-w-md w-full shadow-lg">
@@ -140,10 +164,7 @@ export default function ReadingPage() {
           <AlertDescription className="mt-2 text-base">
             You need to be logged in to read this story. Please log in to continue.
           </AlertDescription>
-          <Button asChild className="mt-6 w-full sm:w-auto" onClick={() => setIsUserAuthenticated(true)}>
-            <span className="cursor-pointer"><LogIn className="mr-2 h-4 w-4" /> Simulate Login & Read</span>
-          </Button>
-          <Button asChild className="mt-2 w-full sm:w-auto" variant="outline">
+          <Button asChild className="mt-4 w-full sm:w-auto">
             <Link href="/auth/login">
               <LogIn className="mr-2 h-4 w-4" /> Go to Login Page
             </Link>
@@ -164,9 +185,10 @@ export default function ReadingPage() {
   const goToNextChapter = () => {
     if (currentChapterIndex < story.chapters.length - 1) {
       setCurrentChapterIndex(prev => prev + 1);
-      // For simulation, reset. In real app, fetch chapter-specific comments or load from story object.
+      // Simulate fetching comments for the next chapter
       const nextChapterId = story.chapters[currentChapterIndex + 1]?.id;
-      setChapterComments(nextChapterId === `chapComment1-${story.chapters[0]?.id}` ? [ /* mock comments for chapter 1 */ ] : []);
+      // For now, we'll just reset comments or fetch if we had per-chapter mock data
+      setChapterComments(story.chapters[currentChapterIndex + 1]?.id === story.chapters[0]?.id ? [ /* mock comments for chapter 1 if logic dictates */ ] : []); 
       window.scrollTo(0, 0);
     }
   };
@@ -175,7 +197,7 @@ export default function ReadingPage() {
     if (currentChapterIndex > 0) {
       setCurrentChapterIndex(prev => prev - 1);
       const prevChapterId = story.chapters[currentChapterIndex - 1]?.id;
-      setChapterComments(prevChapterId === `chapComment1-${story.chapters[0]?.id}` ? [ /* mock comments for chapter 1 */ ] : []);
+       setChapterComments(story.chapters[currentChapterIndex - 1]?.id === story.chapters[0]?.id ? [ /* mock comments for chapter 1 if logic dictates */ ] : []); 
       window.scrollTo(0, 0);
     }
   };
@@ -184,7 +206,7 @@ export default function ReadingPage() {
     const chapterIdx = story.chapters.findIndex(c => c.id === chapterId);
     if (chapterIdx !== -1) {
       setCurrentChapterIndex(chapterIdx);
-      setChapterComments(chapterId === `chapComment1-${story.chapters[0]?.id}` ? [ /* mock comments for chapter 1 */ ] : []);
+       setChapterComments(story.chapters[chapterIdx]?.id === story.chapters[0]?.id ? [ /* mock comments for chapter 1 if logic dictates */ ] : []); 
       window.scrollTo(0, 0);
     }
   };
@@ -195,25 +217,30 @@ export default function ReadingPage() {
 
   const handleCommentSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim()) {
-        toast({ title: "Empty Comment", description: "Please write something before submitting.", variant: "destructive"});
+    if (!isUserActuallyAuthenticated || !currentUserProfile) {
+        setTimeout(() => {
+          toast({ title: "Login Required", description: "Please log in to comment.", variant: "destructive"});
+        },0);
         return;
     }
-    if (!currentUserProfile || !currentUserProfile.id || !currentUserProfile.username) {
-        toast({ title: "Not Logged In", description: "Please log in to comment.", variant: "destructive"});
+    if (!commentText.trim()) {
+        setTimeout(() => {
+          toast({ title: "Empty Comment", description: "Please write something before submitting.", variant: "destructive"});
+        },0);
         return;
     }
     setIsSubmittingComment(true);
 
     const newComment: PostComment = {
       id: `chapComm-${Date.now()}`,
-      postId: currentChapter.id,
+      postId: currentChapter.id, // postId is the chapter ID here
       userId: currentUserProfile.id,
       username: currentUserProfile.username,
       avatarUrl: currentUserProfile.avatarUrl || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U',
       dataAihint: currentUserProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : 'user avatar',
       text: commentText.trim(),
       timestamp: new Date().toISOString(),
+      likes: 0,
     };
 
     setTimeout(() => {
@@ -298,6 +325,7 @@ export default function ReadingPage() {
                                 key={star}
                                 variant="ghost"
                                 size="icon"
+                                disabled={!isUserActuallyAuthenticated}
                                 className={`p-1 h-7 w-7 ${readingTheme === 'light' ? 'text-gray-500 hover:text-yellow-500' : 'text-gray-400 hover:text-yellow-400'} ${userRating >= star ? (readingTheme === 'light' ? 'text-yellow-500 fill-yellow-500' : 'text-yellow-400 fill-yellow-400') : ''}`}
                                 onClick={() => handleRatingSubmit(star)}
                               >
@@ -366,7 +394,7 @@ export default function ReadingPage() {
                     readingTheme === 'light' ? 'prose-gray' : 'prose-invert'
                   )}
                   style={{ fontSize: `${fontSize}px`, lineHeight: 1.8 }}
-                  dangerouslySetInnerHTML={{ __html: currentChapter.content.replace(/\n/g, '<br />') }} // Basic newline to <br> conversion
+                  dangerouslySetInnerHTML={{ __html: currentChapter.content.replace(/\n/g, '<br />') }}
                 />
             </ScrollArea>
 
@@ -395,10 +423,10 @@ export default function ReadingPage() {
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 className={`${readingTheme === 'light' ? 'bg-gray-50 border-gray-300' : 'bg-gray-700 border-gray-600 text-gray-200 placeholder-gray-400'}`}
-                disabled={isSubmittingComment}
+                disabled={isSubmittingComment || !isUserActuallyAuthenticated}
               />
               <div className="flex justify-end">
-                <Button type="submit" variant="default" disabled={isSubmittingComment || !currentUserProfile}>
+                <Button type="submit" variant="default" disabled={isSubmittingComment || !isUserActuallyAuthenticated || !currentUserProfile}>
                   {isSubmittingComment ? <LoaderIcon className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   {isSubmittingComment ? "Submitting..." : "Submit Comment"}
                 </Button>

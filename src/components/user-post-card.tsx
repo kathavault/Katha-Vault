@@ -40,12 +40,13 @@ const mockLikersList = ["UserAlpha", "BookLover22", "PageTurnerPro", "ReaderX", 
 
 interface UserPostCardProps {
   post: UserPost;
-  currentUserId?: string; // ID of the currently logged-in user
-  onLike?: (postId: string) => void;
-  onComment?: (postId: string, commentText: string) => void;
+  currentUserId?: string; 
 }
 
-export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPostCardProps) {
+export function UserPostCard({ post, currentUserId }: UserPostCardProps) {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [loggedInUserProfile, setLoggedInUserProfile] = useState<UserProfile | null>(null);
+
   const [isLiked, setIsLiked] = useState(false);
   const [currentLikeCount, setCurrentLikeCount] = useState(post.likes);
   const [displayedComments, setDisplayedComments] = useState<PostComment[]>([]);
@@ -66,6 +67,28 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
   const [commenterProfiles, setCommenterProfiles] = useState<Record<string, {username: string; avatarUrl: string; dataAihint?: string}>>({});
   
   const effectiveCurrentUserId = currentUserId; 
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedAuthUser = localStorage.getItem('currentUser');
+      const storedProfile = localStorage.getItem('userProfileData');
+      if (storedAuthUser) {
+        setIsLoggedIn(true);
+        if (storedProfile) {
+          try {
+            setLoggedInUserProfile(JSON.parse(storedProfile));
+          } catch (e) {
+            console.error("Error parsing loggedInUserProfile in UserPostCard", e);
+            setLoggedInUserProfile(null);
+          }
+        }
+      } else {
+        setIsLoggedIn(false);
+        setLoggedInUserProfile(null);
+      }
+    }
+  }, []);
+
 
   useEffect(() => {
     setCurrentLikeCount(post.likes);
@@ -128,6 +151,12 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
   }, [post, effectiveCurrentUserId]); 
 
   const handleLikeToggle = () => {
+    if (!isLoggedIn) {
+      setTimeout(() => {
+        toast({ title: "Login Required", description: "Please log in to like posts.", variant: "destructive" });
+      }, 0);
+      return;
+    }
     setIsLiked(prevIsLiked => {
       const newLikedState = !prevIsLiked;
       if (newLikedState) {
@@ -141,7 +170,6 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
           toast({ title: "Post Unliked", description: `You unliked ${postAuthorProfile.username}'s post.` });
         }, 0);
       }
-      if (onLike) onLike(post.id); // Call the prop if provided
       return newLikedState;
     });
   };
@@ -149,6 +177,12 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
 
   const handleCommentSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (!isLoggedIn || !loggedInUserProfile) {
+      setTimeout(() => {
+        toast({ title: "Login Required", description: "Please log in to comment.", variant: "destructive" });
+      }, 0);
+      return;
+    }
     if (!commentText.trim()) {
       setTimeout(() => {
         toast({ title: "Empty Comment", description: "Please write something.", variant: "destructive" });
@@ -157,54 +191,20 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
     }
     setIsSubmittingComment(true);
 
-    let currentUserCommentingProfile: UserProfile = {
-        id: effectiveCurrentUserId || `anonUser${Date.now()}`, 
-        username: 'You',
-        avatarUrl: 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U',
-        dataAihint: 'user initial',
-        email: '', 
-        readingHistory: [],
-        favorites: [],
-        submittedStories: []
+    const newComment: PostComment = {
+      id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      postId: post.id,
+      userId: loggedInUserProfile.id,
+      username: loggedInUserProfile.username,
+      avatarUrl: loggedInUserProfile.avatarUrl || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U',
+      dataAihint: loggedInUserProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : 'user avatar',
+      text: commentText.trim(),
+      timestamp: new Date().toISOString(),
+      likes: 0,
+      replies: [],
     };
 
-    if (typeof window !== 'undefined') {
-        const storedProfile = localStorage.getItem('userProfileData');
-        if (storedProfile) {
-            try {
-                const parsedProfile = JSON.parse(storedProfile) as Partial<UserProfile>;
-                if(parsedProfile.id && parsedProfile.username && parsedProfile.avatarUrl && parsedProfile.email){
-                    currentUserCommentingProfile = {
-                        id: parsedProfile.id,
-                        username: parsedProfile.username,
-                        name: parsedProfile.name,
-                        avatarUrl: parsedProfile.avatarUrl,
-                        dataAihint: parsedProfile.avatarUrl?.includes('placehold.co') ? 'user initial' : 'user avatar',
-                        email: parsedProfile.email,
-                        readingHistory: parsedProfile.readingHistory || [],
-                        favorites: parsedProfile.favorites || [],
-                        submittedStories: parsedProfile.submittedStories || [],
-                    };
-                }
-            } catch (err) {
-                console.error("Failed to parse stored profile for commenting", err);
-            }
-        }
-    }
-
     setTimeout(() => {
-      const newComment: PostComment = {
-        id: `comment-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-        postId: post.id,
-        userId: currentUserCommentingProfile.id,
-        username: currentUserCommentingProfile.username,
-        avatarUrl: currentUserCommentingProfile.avatarUrl,
-        dataAihint: currentUserCommentingProfile.dataAihint,
-        text: commentText.trim(),
-        timestamp: new Date().toISOString(),
-        likes: 0,
-        replies: [],
-      };
       setDisplayedComments(prevComments => [newComment, ...prevComments]);
       setCommentLikes(prev => ({ ...prev, [newComment.id]: { count: 0, liked: false } }));
       
@@ -221,7 +221,6 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
       setShowCommentInput(false);
       setIsSubmittingComment(false);
       toast({ title: "Comment Posted!", description: "Your comment has been added locally." });
-      if (onComment) onComment(post.id, newComment.text);
     }, 500);
   };
 
@@ -249,6 +248,12 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
   };
 
   const handleLikeComment = (commentId: string) => {
+     if (!isLoggedIn) {
+      setTimeout(() => {
+        toast({ title: "Login Required", description: "Please log in to like comments.", variant: "destructive" });
+      }, 0);
+      return;
+    }
     setCommentLikes(prev => {
       const currentCommentLikeState = prev[commentId] || { count: 0, liked: false };
       const newLikedState = !currentCommentLikeState.liked;
@@ -268,6 +273,12 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
   };
 
   const handleReplyToComment = (commentId: string, username: string) => {
+     if (!isLoggedIn) {
+      setTimeout(() => {
+        toast({ title: "Login Required", description: "Please log in to reply.", variant: "destructive" });
+      }, 0);
+      return;
+    }
     setTimeout(() => {
       toast({
         title: "Reply to Comment",
@@ -288,7 +299,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
   const commentsToDisplay = showAllComments ? displayedComments : displayedComments.slice(0, 2);
   
   let canCurrentUserModeratePost = false; 
-  if (effectiveCurrentUserId && post.userId === effectiveCurrentUserId) {
+  if (loggedInUserProfile && post.userId === loggedInUserProfile.id) {
       canCurrentUserModeratePost = true;
   }
 
@@ -372,20 +383,29 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
         </div>
         <div className="flex gap-1">
           <Button variant="ghost" size="sm" onClick={handleLikeToggle}
-            className={cn("hover:text-primary", isLiked ? "text-primary" : "text-muted-foreground")}>
-            <Heart className={cn("mr-1.5 h-4 w-4", isLiked && "fill-primary")} /> Like
+            disabled={!isLoggedIn}
+            className={cn("hover:text-primary", isLiked ? "text-primary" : "text-muted-foreground", !isLoggedIn && "opacity-50 cursor-not-allowed")}>
+            <Heart className={cn("mr-1.5 h-4 w-4", isLiked && isLoggedIn && "fill-primary")} /> Like
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowCommentInput(!showCommentInput)} className="text-muted-foreground hover:text-primary">
+          <Button variant="ghost" size="sm" onClick={() => {
+            if (!isLoggedIn) {
+              toast({ title: "Login Required", description: "Please log in to comment.", variant: "destructive" });
+              return;
+            }
+            setShowCommentInput(!showCommentInput);
+          }} 
+          disabled={!isLoggedIn}
+          className={cn("text-muted-foreground hover:text-primary", !isLoggedIn && "opacity-50 cursor-not-allowed")}>
             <MessageCircle className="mr-1.5 h-4 w-4" /> Comment
           </Button>
         </div>
       </CardFooter>
-      {showCommentInput && (
+      {showCommentInput && isLoggedIn && (
         <form onSubmit={handleCommentSubmit} className="px-3 pb-3 border-t pt-3">
           <div className="flex gap-2 items-start">
              <Avatar className="h-8 w-8 mt-1">
-                <AvatarImage src={(typeof window !== 'undefined' && JSON.parse(localStorage.getItem('userProfileData') || '{}').avatarUrl) || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U'} alt="Current User" data-ai-hint="user initial"/>
-                <AvatarFallback>{((typeof window !== 'undefined' && JSON.parse(localStorage.getItem('userProfileData') || '{}').username) || 'U').substring(0,1).toUpperCase()}</AvatarFallback>
+                <AvatarImage src={loggedInUserProfile?.avatarUrl || 'https://placehold.co/40x40/CCCCCC/FFFFFF?text=U'} alt="Current User" data-ai-hint="user initial"/>
+                <AvatarFallback>{(loggedInUserProfile?.username || 'U').substring(0,1).toUpperCase()}</AvatarFallback>
             </Avatar>
             <Input
               value={commentText}
@@ -409,7 +429,7 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
               const commentLikeState = commentLikes[comment.id] || { count: 0, liked: false };
               const profile = commenterProfiles[comment.id] || { username: comment.username, avatarUrl: comment.avatarUrl, dataAihint: comment.dataAihint };
               
-              const canCurrentUserDeleteThisComment = effectiveCurrentUserId && (comment.userId === effectiveCurrentUserId || canCurrentUserModeratePost);
+              const canCurrentUserDeleteThisComment = loggedInUserProfile && (comment.userId === loggedInUserProfile.id || canCurrentUserModeratePost);
               
               return (
                 <div key={comment.id} className="flex items-start space-x-2 text-xs group">
@@ -431,21 +451,23 @@ export function UserPostCard({ post, currentUserId, onLike, onComment }: UserPos
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className={cn("p-0 h-auto text-xs hover:text-primary", commentLikeState.liked ? "text-primary" : "text-muted-foreground")}
+                                disabled={!isLoggedIn}
+                                className={cn("p-0 h-auto text-xs hover:text-primary", commentLikeState.liked && isLoggedIn ? "text-primary" : "text-muted-foreground", !isLoggedIn && "opacity-50 cursor-not-allowed")}
                                 onClick={() => handleLikeComment(comment.id)}
                             >
-                                <Heart className={cn("mr-1 h-3 w-3", commentLikeState.liked && "fill-primary")} />
+                                <Heart className={cn("mr-1 h-3 w-3", commentLikeState.liked && isLoggedIn && "fill-primary")} />
                                 {commentLikeState.count > 0 ? commentLikeState.count : 'Like'}
                             </Button>
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="p-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                                disabled={!isLoggedIn}
+                                className={cn("p-0 h-auto text-xs text-muted-foreground hover:text-primary", !isLoggedIn && "opacity-50 cursor-not-allowed")}
                                 onClick={() => handleReplyToComment(comment.id, profile.username)}
                             >
                                 <MessageSquareReply className="mr-1 h-3 w-3" /> Reply
                             </Button>
-                            {canCurrentUserDeleteThisComment && (
+                            {canCurrentUserDeleteThisComment && isLoggedIn && (
                                 <AlertDialog open={commentToDeleteId === comment.id} onOpenChange={(open) => !open && setCommentToDeleteId(null)}>
                                     <AlertDialogTrigger asChild>
                                         <Button
