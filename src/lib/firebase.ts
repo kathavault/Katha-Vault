@@ -1,6 +1,7 @@
 
 import { initializeApp, type FirebaseApp } from "firebase/app";
-import { getAuth, type Auth, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth"; // Added social providers
+import { getAuth, type Auth, GoogleAuthProvider, FacebookAuthProvider } from "firebase/auth";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 // import { getFirestore, type Firestore } from "firebase/firestore";
 // import { getStorage, type FirebaseStorage } from "firebase/storage";
 
@@ -19,13 +20,25 @@ const firebaseConfig = {
 
 // Initialize Firebase
 let app: FirebaseApp;
-let authInstance: Auth; 
+let authInstance: Auth;
 // let firestore: Firestore;
 // let storage: FirebaseStorage;
 
 try {
   app = initializeApp(firebaseConfig);
-  authInstance = getAuth(app); 
+  authInstance = getAuth(app);
+
+  // Initialize App Check
+  // IMPORTANT: Replace 'YOUR_RECAPTCHA_V3_SITE_KEY_HERE' with your actual reCAPTCHA v3 site key.
+  // You need to set up reCAPTCHA v3 in your Google Cloud Console and link it to your Firebase project.
+  // Also ensure App Check is enabled for Authentication in your Firebase project console.
+  if (typeof window !== 'undefined') { // App Check should only be initialized on the client
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider('YOUR_RECAPTCHA_V3_SITE_KEY_HERE'),
+      isTokenAutoRefreshEnabled: true // Optional: automatically refresh App Check token as needed
+    });
+  }
+
   // firestore = getFirestore(app);
   // storage = getStorage(app);
 } catch (error) {
