@@ -40,7 +40,7 @@ function AppSidebar() {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && isClient) { // Ensure isClient is true
+    if (typeof window !== 'undefined' && isClient) { 
       const storedProfile = localStorage.getItem('userProfileData');
       if (storedProfile) {
         try {
@@ -56,13 +56,18 @@ function AppSidebar() {
   }, [pathname, open, isClient]);
 
   const getInitials = (name?: string, username?: string) => {
-    if (name) return name.substring(0,1).toUpperCase();
-    if (username) return username.substring(0,1).toUpperCase();
+    if (name) {
+        const names = name.split(' ');
+        if (names.length > 1 && names[0] && names[1]) {
+            return `${names[0][0]}${names[1][0]}`.toUpperCase();
+        }
+        return name.substring(0, Math.min(name.length, 2)).toUpperCase();
+    }
+    if (username) return username.substring(0, Math.min(username.length, 2)).toUpperCase();
     return 'U';
   };
 
   if (!isClient) {
-    // Render a placeholder or null during SSR/initial client render to avoid hydration issues with localStorage
     return (
       <Sidebar collapsible="icon" variant="sidebar" side="left" className="hidden md:block">
         <SidebarHeader>
@@ -103,10 +108,15 @@ function AppSidebar() {
           <SidebarMenu>
             {siteConfig.mainNav.map((item) => {
               const isAdminLink = item.href === '/admin';
+              const isAuthLink = item.href === '/auth/login';
               const isAdminUser = isClient && userProfile && userProfile.email && adminEmails.includes(userProfile.email);
+              const isAuthenticated = isClient && userProfile;
 
               if (isAdminLink && !isAdminUser) {
-                return null; // Hide admin link if it's the admin link AND user is not an admin
+                return null; 
+              }
+              if (isAuthLink && isAuthenticated) {
+                return null; // Hide Sign In link if authenticated
               }
               
               return (
@@ -136,7 +146,7 @@ function AppSidebar() {
             {!open ? null : (
               <div className="flex flex-col text-sm truncate">
                 <span className="font-medium text-sidebar-foreground truncate">{userProfile?.name || userProfile?.username || "Guest User"}</span>
-                <span className="text-xs text-sidebar-foreground/70 truncate">{userProfile?.email || "No email"}</span>
+                <span className="text-xs text-sidebar-foreground/70 truncate">{userProfile?.email || "Not logged in"}</span>
               </div>
             )}
           </div>
@@ -157,6 +167,18 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
   const pathname = usePathname();
   const isHomePage = isClient ? pathname === '/' : false;
 
+  const getInitials = (name?: string, username?: string) => {
+    if (name) {
+        const names = name.split(' ');
+        if (names.length > 1 && names[0] && names[1]) {
+            return `${names[0][0]}${names[1][0]}`.toUpperCase();
+        }
+        return name.substring(0, Math.min(name.length, 2)).toUpperCase();
+    }
+    if (username) return username.substring(0, Math.min(username.length, 2)).toUpperCase();
+    return 'U';
+  };
+
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
       <div className="md:hidden">{/* Ensure no whitespace here */}
@@ -170,7 +192,6 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
         </div>
       </div>
       <div className="flex items-center gap-2">
-        {/* Chat Button */}
         {isClient && isHomePage ? (
           <Link href="/chat" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "relative")}>
             <Send className="h-5 w-5" />
@@ -181,7 +202,32 @@ function AppHeader({ isAuthenticated, currentUserProfile }: AppHeaderProps) {
         )}
 
         <ThemeToggleButton />
-        {/* User Icon / Sign In Button - REMOVED */}
+
+        {isClient ? (
+          isAuthenticated && currentUserProfile ? (
+            <Link href="/account" className="flex items-center gap-2 p-1 rounded-full hover:bg-accent">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={currentUserProfile.avatarUrl || undefined} alt={currentUserProfile.username || "User"} data-ai-hint="user avatar"/>
+                <AvatarFallback>{getInitials(currentUserProfile.name, currentUserProfile.username)}</AvatarFallback>
+              </Avatar>
+              {/* <span className="hidden sm:inline text-sm font-medium">{currentUserProfile.name || currentUserProfile.username}</span> */}
+            </Link>
+          ) : (
+            <Link
+              href="/auth/login"
+              className={cn(buttonVariants({ variant: "default", size: "sm" }))}
+            >
+              <LogIn className="mr-2 h-4 w-4" />
+              Sign In
+            </Link>
+          )
+        ) : (
+          // SSR placeholder to roughly match button size and avoid layout shift
+          <div className={cn(buttonVariants({ variant: "default", size: "sm" }), "invisible")}> 
+             <LogIn className="mr-2 h-4 w-4" />
+             Sign In
+          </div>
+        )}
       </div>
     </header>
   );
@@ -195,35 +241,46 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const checkAuth = () => {
-      const userStored = localStorage.getItem('currentUser');
+      let authStatus = false;
       let profileData: Partial<UserProfile> | null = null;
-
-      if (userStored) {
-        setIsAuthenticated(true);
+      
+      if (typeof window !== 'undefined') {
+        const userStored = localStorage.getItem('currentUser');
         const profileStored = localStorage.getItem('userProfileData');
-        if (profileStored) {
-          try {
-            profileData = JSON.parse(profileStored);
-          } catch (e) {
-            console.error("Failed to parse userProfileData from localStorage in AppLayout:", e);
-            try { // Fallback to currentUser if userProfileData is corrupt
+
+        if (userStored) {
+          authStatus = true;
+          if (profileStored) {
+            try {
+              profileData = JSON.parse(profileStored);
+            } catch (e) {
+              console.error("Failed to parse userProfileData from localStorage in AppLayout:", e);
+              try { 
+                const parsedCurrentUser = JSON.parse(userStored);
+                profileData = { email: parsedCurrentUser.email, id: parsedCurrentUser.uid };
+              } catch (parseError) {
+                console.error("Failed to parse currentUser (fallback) from localStorage in AppLayout:", parseError);
+              }
+            }
+          } else { 
+            try {
               const parsedCurrentUser = JSON.parse(userStored);
-              profileData = { email: parsedCurrentUser.email, id: parsedCurrentUser.uid };
+              // Construct a minimal profile if only currentUser exists
+              profileData = { 
+                id: parsedCurrentUser.uid, 
+                email: parsedCurrentUser.email,
+                username: parsedCurrentUser.email?.split('@')[0] || 'User',
+                // Provide fallbacks for other fields if needed by header avatar
+                name: parsedCurrentUser.email?.split('@')[0] || 'User',
+                avatarUrl: '' 
+              };
             } catch (parseError) {
-              console.error("Failed to parse currentUser (fallback) from localStorage in AppLayout:", parseError);
+              console.error("Failed to parse currentUser (for profile) from localStorage in AppLayout:", parseError);
             }
           }
-        } else { 
-          try { // Only currentUser exists, try to use it
-            const parsedCurrentUser = JSON.parse(userStored);
-            profileData = { email: parsedCurrentUser.email, id: parsedCurrentUser.uid };
-          } catch (parseError) {
-            console.error("Failed to parse currentUser (for profile) from localStorage in AppLayout:", parseError);
-          }
         }
-      } else {
-        setIsAuthenticated(false);
       }
+      setIsAuthenticated(authStatus);
       setCurrentUserProfile(profileData);
     };
 
@@ -234,15 +291,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         checkAuth();
       }
     };
+    
     window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('focus', checkAuth);
-
+    window.addEventListener('focus', checkAuth); // Re-check on window focus
 
     return () => {
       window.removeEventListener('storage', handleStorageChange);
       window.removeEventListener('focus', checkAuth);
     };
-  }, [pathname]); 
+  }, [pathname]); // Re-run on pathname change to ensure header updates after login/logout navigations
 
   return (
     <SidebarProvider defaultOpen={true}>
