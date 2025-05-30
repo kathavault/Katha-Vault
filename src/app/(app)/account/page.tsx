@@ -4,16 +4,17 @@
 import type { UserProfile, UserPost } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { User, Edit3, BookOpen, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle, PlusCircle, EyeOff, Lock } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect, FormEvent } from 'react';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input'; // Added Input import
 import { toast } from '@/hooks/use-toast';
 import { UserPostCard } from '@/components/user-post-card';
-import { mockUserPosts as allMockPosts } from '@/lib/mock-data';
+import { mockUsers, mockUserPosts as allMockPosts } from '@/lib/mock-data'; // Ensure mockUsers is imported if needed for profileUser logic
 import {
   Dialog,
   DialogContent,
@@ -78,16 +79,16 @@ export default function AccountPage() {
 
         if (storedProfile) {
           try {
-            const parsedProfile = JSON.parse(storedProfile) as UserProfile; 
+            const parsedProfile = JSON.parse(storedProfile) as UserProfile;
             profileToUse = {
-              ...defaultUserProfilePlaceholder, 
+              ...defaultUserProfilePlaceholder,
               ...parsedProfile,
             };
             userSpecificPosts = parsedProfile.userPosts || allMockPosts.filter(p => p.userId === profileToUse.id);
 
           } catch (e) {
             console.error("Failed to parse stored profile data for account page", e);
-             try { 
+             try {
                 const parsedAuthUser = JSON.parse(storedAuthUser);
                 profileToUse = {
                     ...defaultUserProfilePlaceholder,
@@ -118,7 +119,7 @@ export default function AccountPage() {
                  authStatus = false;
             }
         }
-        
+
         if (storedIsEmailHidden !== null) {
           emailHiddenSetting = JSON.parse(storedIsEmailHidden);
         }
@@ -126,14 +127,14 @@ export default function AccountPage() {
         authStatus = false;
       }
     }
-    
+
     setIsAuthenticated(authStatus);
 
     if (authStatus) {
       const combinedPosts = [
         ...(profileToUse.userPosts || []),
-        ...allMockPosts.filter(mockPost => 
-            mockPost.userId === profileToUse.id && 
+        ...allMockPosts.filter(mockPost =>
+            mockPost.userId === profileToUse.id &&
             !(profileToUse.userPosts || []).find(p => p.id === mockPost.id)
         )
       ];
@@ -148,7 +149,7 @@ export default function AccountPage() {
     loadProfileData();
 
     if (typeof window !== 'undefined' && isAuthenticated && !localStorage.getItem('userJoinedDate')) {
-        const newJoinedDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 30)).toLocaleDateString(); 
+        const newJoinedDate = new Date(Date.now() - 1000 * 60 * 60 * 24 * Math.floor(Math.random() * 30)).toLocaleDateString();
         localStorage.setItem('userJoinedDate', newJoinedDate);
         setJoinedDate(newJoinedDate);
     } else if (typeof window !== 'undefined' && isAuthenticated) {
@@ -186,7 +187,7 @@ export default function AccountPage() {
       userId: currentUser.id,
       username: currentUser.username,
       name: currentUser.name,
-      avatarUrl: currentUser.avatarUrl, 
+      avatarUrl: currentUser.avatarUrl,
       dataAihint: currentUser.avatarUrl?.includes('placehold.co') ? 'user initial' : 'user avatar',
       content: newPostContent.trim(),
       timestamp: new Date().toISOString(),
@@ -200,9 +201,9 @@ export default function AccountPage() {
         userPosts: [newPost, ...(currentUser.userPosts || [])]
       };
       setCurrentUser(updatedUser);
-      
+
       if (typeof window !== 'undefined') {
-        localStorage.setItem('userProfileData', JSON.stringify(updatedUser)); 
+        localStorage.setItem('userProfileData', JSON.stringify(updatedUser));
       }
 
       setNewPostContent('');
@@ -212,14 +213,17 @@ export default function AccountPage() {
   };
 
   const handleLikePost = (postId: string) => {
+    // This function is now primarily managed within UserPostCard
+    // This outer handler can be removed if not used elsewhere on AccountPage
     setTimeout(() => {
-        toast({ title: "Liked! (Simulated)", description: `You liked a post.` });
+        // toast({ title: "Liked! (Simulated)", description: `You liked a post.` });
     }, 0);
   };
 
   const handleCommentOnPost = (postId: string, commentText: string) => {
+     // This function is now primarily managed within UserPostCard
     setTimeout(() => {
-        toast({ title: "Comment Added! (Simulated)", description: `Your comment: "${commentText}"` });
+        // toast({ title: "Comment Added! (Simulated)", description: `Your comment: "${commentText}"` });
     }, 0);
   };
 
@@ -248,6 +252,16 @@ export default function AccountPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Input type="text" placeholder="Username or Email" className="text-center" />
+                <Input type="password" placeholder="Password" className="text-center" />
+                <div className="text-right text-sm">
+                  <Link href="/auth/forgot-password" className="text-destructive hover:underline">
+                    Forgot Password?
+                  </Link>
+                </div>
+              </div>
+
               <Button asChild className="w-full">
                 <Link href="/auth/login">Log In</Link>
               </Button>
@@ -388,7 +402,7 @@ export default function AccountPage() {
                     </Link>
                   </Button>
                   <Button size="sm" asChild>
-                    <Link href="/chat"> 
+                    <Link href="/chat">
                       <MessageCircle className="mr-2 h-4 w-4" /> Message
                     </Link>
                   </Button>
@@ -465,5 +479,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
-    
