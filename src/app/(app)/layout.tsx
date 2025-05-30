@@ -15,7 +15,7 @@ import {
   SidebarInset,
   SidebarTrigger,
   useSidebar,
-  SidebarMenuSkeleton, // Import SidebarMenuSkeleton
+  SidebarMenuSkeleton,
 } from '@/components/ui/sidebar';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,7 +24,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ThemeToggleButton } from '@/components/theme-toggle-button';
 import { BottomNavigation } from '@/components/bottom-navigation';
-import { Send, UserCircle2, LogIn, UserPlus, Home, Library, Search, Sparkles, ShieldCheck } from 'lucide-react'; // Added missing icons that might be used
+import { Send, UserCircle2, LogIn, UserPlus, Home, Library, Search, Sparkles, ShieldCheck } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from 'react';
 
@@ -51,7 +51,7 @@ function AppSidebar() {
         setUserProfile(null);
       }
     }
-  }, []); // Run once on mount
+  }, []);
 
   const getInitials = (name?: string, username?: string) => {
     if (name) {
@@ -78,7 +78,8 @@ function AppSidebar() {
             <SidebarMenu>
               {siteConfig.mainNav.map((item) => {
                 const isAdminLink = item.href === '/admin';
-                const isAdminUser = userProfile && userProfile.email && adminEmails.includes(userProfile.email);
+                // Robust check for userProfile and its email property
+                const isAdminUser = userProfile && typeof userProfile.email === 'string' && adminEmails.includes(userProfile.email);
                 
                 if (isAdminLink && !isAdminUser) {
                   return null; 
@@ -101,7 +102,6 @@ function AppSidebar() {
               })}
             </SidebarMenu>
           ) : (
-            // Render skeletons during SSR and initial client render
             <div className="p-2 space-y-1">
               <SidebarMenuSkeleton showIcon />
               <SidebarMenuSkeleton showIcon />
@@ -134,17 +134,31 @@ function AppSidebar() {
 
 interface AppHeaderProps {
   isAuthenticated: boolean;
-  isClient: boolean; // Prop to indicate if client-side rendering is active
+  isClient: boolean;
+  currentUserProfile: Partial<UserProfile> | null;
 }
 
-function AppHeader({ isAuthenticated, isClient }: AppHeaderProps) {
+function AppHeader({ isAuthenticated, isClient, currentUserProfile }: AppHeaderProps) {
   const pathname = usePathname();
-  const isHomePage = isClient ? pathname === '/' : false; // Calculate only if client-side
+  const isHomePage = isClient ? pathname === '/' : false;
+
+  const getInitials = (name?: string, username?: string) => {
+    if (name) {
+        const names = name.split(' ');
+        if (names.length > 1 && names[0] && names[1]) {
+            return `${names[0][0]}${names[1][0]}`.toUpperCase();
+        }
+        return name.substring(0, Math.min(name.length, 2)).toUpperCase();
+    }
+    if (username) return username.substring(0, Math.min(username.length, 2)).toUpperCase();
+    return 'U';
+  };
+
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background/80 backdrop-blur-sm px-4 lg:h-[60px] lg:px-6">
       <div className="md:hidden">{/* Ensure no whitespace here */}
-        {isClient ? <SidebarTrigger /> : <div className="h-7 w-7" />} {/* Placeholder for trigger */}
+        {isClient ? <SidebarTrigger /> : <div className="h-7 w-7" />}
       </div>
       <div className="flex-1 md:flex md:justify-center">
         <div className="md:absolute md:left-1/2 md:-translate-x-1/2">
@@ -160,11 +174,11 @@ function AppHeader({ isAuthenticated, isClient }: AppHeaderProps) {
             <span className="sr-only">Chat</span>
           </Link>
         )}
-        {(!isClient || !isHomePage) && ( // Ensure consistent placeholder for layout
+        {(!isClient || !isHomePage) && (
            <div className="h-10 w-10" />
         )}
         <ThemeToggleButton />
-        {/* User icon / Sign In button removed from here previously based on request */}
+        {/* User icon / Sign In button is removed as per user request */}
       </div>
     </header>
   );
@@ -175,19 +189,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isClient, setIsClient] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState<Partial<UserProfile> | null>(null);
-  const pathname = usePathname(); // used for re-checking auth state on navigation
+  const pathname = usePathname();
 
   useEffect(() => {
-    setIsClient(true); // Indicate client-side environment is active
+    setIsClient(true);
   }, []);
 
   useEffect(() => {
-    // This effect runs when isClient becomes true, or when pathname changes
     const checkAuth = () => {
       let authStatus = false;
       let profileData: Partial<UserProfile> | null = null;
       
-      if (typeof window !== 'undefined') { // Ensure localStorage is accessed only on client
+      if (typeof window !== 'undefined') {
         const userStored = localStorage.getItem('currentUser');
         const profileStored = localStorage.getItem('userProfileData');
 
@@ -231,11 +244,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       setCurrentUserProfile(profileData);
     };
 
-    if (isClient) { // Only run checkAuth if we are on the client
+    if (isClient) {
       checkAuth(); 
     }
 
-    // Optional: Listen to storage changes to reflect logout/login from other tabs
     const handleStorageChange = (event: StorageEvent) => {
       if (event.key === 'currentUser' || event.key === 'userProfileData') {
         if (isClient) checkAuth();
@@ -244,7 +256,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     
     if (isClient) {
       window.addEventListener('storage', handleStorageChange);
-      window.addEventListener('focus', checkAuth); // Re-check on window focus
+      window.addEventListener('focus', checkAuth);
     }
 
     return () => {
@@ -253,13 +265,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         window.removeEventListener('focus', checkAuth);
       }
     };
-  }, [isClient, pathname]); // Re-run on pathname change and when isClient becomes true
+  }, [isClient, pathname]);
 
   return (
     <SidebarProvider defaultOpen={true}>
       <AppSidebar />
       <SidebarInset>
-        <AppHeader isAuthenticated={isAuthenticated} isClient={isClient} />
+        <AppHeader 
+          isAuthenticated={isAuthenticated} 
+          isClient={isClient} 
+          currentUserProfile={currentUserProfile} 
+        />
         <main className="flex-1 p-4 sm:p-6 pb-20 md:pb-6">
           {children}
         </main>
@@ -268,5 +284,3 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
