@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { User, Edit3, BookOpen, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle, PlusCircle, EyeOff, Lock, Loader2, AlertTriangle, Image as ImageIcon, KeyRound, LogIn } from "lucide-react"; // Added LogIn here
+import { User, Edit3, BookOpen, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle, PlusCircle, EyeOff, Lock, Loader2, AlertTriangle, Image as ImageIcon, KeyRound, LogIn } from "lucide-react"; 
 import Link from "next/link";
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { Textarea } from "@/components/ui/textarea";
@@ -16,7 +16,8 @@ import { toast } from '@/hooks/use-toast';
 import { UserPostCard } from '@/components/user-post-card';
 import { mockUsers, mockUserPosts as allMockPosts } from '@/lib/mock-data';
 import { auth } from "@/lib/firebase";
-import { signInWithEmailAndPassword, sendPasswordResetEmail, createUserWithEmailAndPassword, sendEmailVerification, updateProfile, type User as FirebaseUser } from "firebase/auth";
+// Removed Firebase auth method imports not used elsewhere in this file after form removal
+import { type User as FirebaseUser } from "firebase/auth";
 import {
   Dialog,
   DialogContent,
@@ -51,9 +52,6 @@ const defaultUserProfilePlaceholder: UserProfile = {
 
 const mockFollowersList = ["ReaderRiley", "BookwormBelle", "SciFiFan", "FantasyGuru", "NovelNinja", "WordSmith", "PageTurnerPro", "AlexAuthor"];
 const mockFollowingList = ["EleanorVanceAuthor", "MarcusStoneWrites", "ReaderRiley", "AdminUser"];
-
-const GoogleIcon = () => <Mail className="mr-2 h-4 w-4" />;
-const FacebookIcon = () => <Mail className="mr-2 h-4 w-4" />;
 
 
 export default function AccountPage() {
@@ -434,5 +432,3 @@ export default function AccountPage() {
     </div>
   );
 }
-
-    
