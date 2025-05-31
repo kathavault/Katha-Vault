@@ -6,7 +6,7 @@ import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from "firebase
 // IMPORTANT: In a real application, these should come from environment variables
 // and not be hardcoded directly in the source code for security reasons.
 // Example: const firebaseConfig = { apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY, ... };
-const firebaseConfig = {
+const firebaseConfig: { [key: string]: string | undefined } = {
   apiKey: "AIzaSyDT4-R0H8uydAqzrTsHfMKLXQ59p7u67Ho",
   authDomain: "katha-vault-novel.firebaseapp.com",
   databaseURL: "https://katha-vault-novel-default-rtdb.firebaseio.com",
