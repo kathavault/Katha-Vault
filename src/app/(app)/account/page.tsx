@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { User, Edit3, BookOpen, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle, PlusCircle, EyeOff, Lock, Loader2, AlertTriangle, Image as ImageIcon, KeyRound, LogIn } from "lucide-react"; 
+import { User, Edit3, BookOpen, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle, PlusCircle, EyeOff, Lock, Loader2, AlertTriangle, Image as ImageIcon, KeyRound } from "lucide-react"; 
 import Link from "next/link";
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { Textarea } from "@/components/ui/textarea";
@@ -217,32 +217,8 @@ export default function AccountPage() {
   return (
     <div className="relative space-y-8 max-w-4xl mx-auto">
       <div className={cn("space-y-8")}>
-        {!isAuthenticated && (
-           <Card className="w-full max-w-md mx-auto p-6 sm:p-8 text-center shadow-xl border">
-            <CardHeader>
-              <Lock className="mx-auto h-12 w-12 text-primary mb-4" />
-              <CardTitle className="text-2xl font-semibold">
-                Access Your Account
-              </CardTitle>
-              <CardDescription>
-                Please log in to view your account details, manage your profile, and see your activity.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button asChild className="w-full">
-                    <Link href="/auth/login">
-                        <LogIn className="mr-2 h-4 w-4"/> Go to Login
-                    </Link>
-                </Button>
-                 <p className="mt-4 text-sm text-muted-foreground">
-                    New to Katha Vault?{" "}
-                    <Link href="/auth/signup" className="font-medium text-primary hover:underline">
-                        Create an account
-                    </Link>
-                </p>
-            </CardContent>
-          </Card>
-        )}
+        {/* "Access Your Account" card for unauthenticated users has been removed as per request */}
+        
         {isAuthenticated && currentUser && (
           <>
             <header className="flex items-center justify-between">
@@ -428,7 +404,18 @@ export default function AccountPage() {
             </Card>
           </>
         )}
+         {!isAuthenticated && (
+          <div className="text-center py-10">
+            <Lock className="mx-auto h-12 w-12 text-primary mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Access Your Account</h2>
+            <p className="text-muted-foreground mb-4">
+              Please <Link href="/auth/login" className="text-primary hover:underline">log in</Link> or <Link href="/auth/signup" className="text-primary hover:underline">create an account</Link> to view your profile and activity.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+    
