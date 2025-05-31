@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { User, Edit3, BookOpen, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle, PlusCircle, EyeOff, Lock, Loader2, AlertTriangle, Image as ImageIcon, KeyRound } from "lucide-react";
+import { User, Edit3, BookOpen, Mail, CalendarDays, Users, UserPlus, Settings, Menu as MenuIcon, MessageCircle, PlusCircle, EyeOff, Lock, Loader2, AlertTriangle, Image as ImageIcon, KeyRound, LogIn } from "lucide-react"; // Added LogIn here
 import Link from "next/link";
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { Textarea } from "@/components/ui/textarea";
@@ -434,3 +434,5 @@ export default function AccountPage() {
     </div>
   );
 }
+
+    
