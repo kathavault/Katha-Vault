@@ -2,6 +2,7 @@
 "use client";
 
 import { useForm, type SubmitHandler } from "react-hook-form";
+import { useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import Link from "next/link";
@@ -12,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "@/hooks/use-toast";
 import { LogIn, Mail, Lock, Loader2 } from "lucide-react"; 
 import { auth, googleProvider, facebookProvider } from "@/lib/firebase"; 
-import { signInWithEmailAndPassword, signInWithPopup, FirebaseError, type AuthProvider } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithPopup, type AuthProvider } from "firebase/auth";
 import { useRouter } from 'next/navigation';
 import type { UserProfile } from '@/types';
 
@@ -31,6 +32,7 @@ const defaultUserProfilePlaceholder: Partial<UserProfile> = {
   avatarUrl: 'https://placehold.co/150x150/7E3AF2/FFFFFF?text=KU',
 };
 
+import { FirebaseError } from "firebase/app";
 
 export default function LoginPage() {
   const router = useRouter();

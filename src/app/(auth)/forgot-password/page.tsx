@@ -12,7 +12,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { toast } from "@/hooks/use-toast";
 import { Mail, KeyRound, ArrowLeft, Loader2 } from "lucide-react"; // Added Loader2
 import { auth } from "@/lib/firebase"; // Import Firebase auth instance
-import { sendPasswordResetEmail, FirebaseError } from "firebase/auth"; // Import FirebaseError from firebase/auth
+import { sendPasswordResetEmail } from "firebase/auth"; // Import FirebaseError from firebase/auth
+import { FirebaseError } from "firebase/app";
 
 const forgotPasswordSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
